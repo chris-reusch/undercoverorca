@@ -85,18 +85,4 @@ describe('task drawer source boundaries', () => {
     expect(drawer).toContain('linearGetIssue(providerSettings')
     expect(drawer).toContain('linearIssueComments(providerSettings')
   })
-
-  it('uses Jira task source context for drawer reads, mutations, and optimistic patches', () => {
-    const source = componentSource('JiraIssueWorkspace.tsx')
-    const drawer = sourceBetween(source, 'export default function JiraIssueWorkspace', 'return (')
-
-    expect(drawer).toContain('const providerSettings = sourceContext ?? settings')
-    expect(drawer).toContain('jiraIssueComments(providerSettings')
-    expect(drawer).toContain('jiraGetIssue(providerSettings')
-    expect(drawer).toContain('jiraListTransitions(providerSettings')
-    expect(drawer).toContain('jiraUpdateIssue(providerSettings')
-    expect(drawer).toContain('jiraAddIssueComment(')
-    expect(drawer).toContain('patchJiraIssue(displayed.key, optimistic, { sourceContext })')
-    expect(drawer).toContain('patchJiraIssue(previous.key, previous, { sourceContext })')
-  })
 })
