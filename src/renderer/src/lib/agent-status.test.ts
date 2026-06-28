@@ -225,13 +225,6 @@ describe('detectAgentStatusFromTitle', () => {
     expect(detectAgentStatusFromTitle('Droid working')).toBe('working')
   })
 
-  it('classifies synthesized Hermes titles', () => {
-    expect(detectAgentStatusFromTitle('⠋ Hermes')).toBe('working')
-    expect(detectAgentStatusFromTitle('Hermes ready')).toBe('idle')
-    expect(detectAgentStatusFromTitle('Hermes - action required')).toBe('permission')
-    expect(detectAgentStatusFromTitle('Hermes working')).toBe('working')
-  })
-
   it('classifies synthesized Devin titles', () => {
     expect(detectAgentStatusFromTitle('⠋ Devin')).toBe('working')
     expect(detectAgentStatusFromTitle('Devin ready')).toBe('idle')
@@ -278,10 +271,6 @@ describe('detectAgentStatusFromTitle', () => {
     expect(detectAgentStatusFromTitle('android permission check')).toBeNull()
   })
 
-  it('does not treat path fragments containing Hermes as agent activity', () => {
-    expect(detectAgentStatusFromTitle('~/hermes/working')).not.toBe('working')
-    expect(detectAgentStatusFromTitle('C:\\hermes\\ready')).toBeNull()
-  })
 })
 
 // Why: regression guard for the STRONG_WORKING_KEYWORDS_RE path-separator
@@ -435,8 +424,6 @@ describe('getAgentLabel', () => {
     expect(getAgentLabel('Grok running')).toBe('Grok')
     expect(getAgentLabel('⠋ Droid')).toBe('Droid')
     expect(getAgentLabel('Droid ready')).toBe('Droid')
-    expect(getAgentLabel('⠋ Hermes')).toBe('Hermes')
-    expect(getAgentLabel('Hermes ready')).toBe('Hermes')
     expect(getAgentLabel('⠋ Devin')).toBe('Devin')
     expect(getAgentLabel('Devin ready')).toBe('Devin')
   })
@@ -813,10 +800,6 @@ describe('formatAgentTypeLabel', () => {
 
   it("maps 'cursor' to 'Cursor'", () => {
     expect(formatAgentTypeLabel('cursor')).toBe('Cursor')
-  })
-
-  it("maps 'hermes' to 'Hermes'", () => {
-    expect(formatAgentTypeLabel('hermes')).toBe('Hermes')
   })
 
   it("maps 'command-code' to 'Command Code'", () => {

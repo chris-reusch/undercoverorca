@@ -87,9 +87,6 @@ vi.mock('../grok/hook-service', () => ({
 vi.mock('../copilot/hook-service', () => ({
   copilotHookService: { getStatus: vi.fn(() => ({ agent: 'copilot', state: 'absent' })) }
 }))
-vi.mock('../hermes/hook-service', () => ({
-  hermesHookService: { getStatus: vi.fn(() => ({ agent: 'hermes', state: 'absent' })) }
-}))
 vi.mock('../devin/hook-service', () => ({
   devinHookService: { getStatus: vi.fn(() => ({ agent: 'devin', state: 'absent' })) }
 }))

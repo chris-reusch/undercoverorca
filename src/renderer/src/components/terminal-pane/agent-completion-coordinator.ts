@@ -197,9 +197,6 @@ export function createAgentCompletionCoordinator(
     if (/\bdroid\b/.test(normalized)) {
       return 'droid'
     }
-    if (/\bhermes\b/.test(normalized)) {
-      return 'hermes'
-    }
     if (/\baider\b/.test(normalized)) {
       return 'aider'
     }

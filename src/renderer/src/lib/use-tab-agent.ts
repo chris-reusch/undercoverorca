@@ -30,7 +30,6 @@ const TITLE_LABEL_TO_AGENT: Partial<Record<string, TuiAgent>> = {
   Aider: 'aider',
   Cursor: 'cursor',
   Droid: 'droid',
-  Hermes: 'hermes',
   Pi: 'pi'
 }
 

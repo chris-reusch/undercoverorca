@@ -30,7 +30,6 @@ export type WellKnownAgentType =
   | 'droid'
   | 'command-code'
   | 'grok'
-  | 'hermes'
   | 'devin'
   | 'ante'
   | 'unknown'

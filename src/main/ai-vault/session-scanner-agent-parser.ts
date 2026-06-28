@@ -14,7 +14,6 @@ import { parseCodexSessionFile } from './session-scanner-codex-parser'
 import {
   parseCopilotSessionFile,
   parseCursorSessionFile,
-  parseHermesSessionFile,
   parseOpenCodeSessionFile
 } from './session-scanner-secondary-parsers'
 import type { SessionFileCandidate } from './session-scanner-types'
@@ -59,8 +58,6 @@ export async function parseAgentSessionFile(
     }
     case 'grok':
       return parseGrokSessionFile(candidate.file, platform)
-    case 'hermes':
-      return parseHermesSessionFile(candidate.file, platform)
     case 'rovo':
       return parseRovoSessionFile(candidate.file, platform)
     case 'openclaw':

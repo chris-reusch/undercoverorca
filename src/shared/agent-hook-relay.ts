@@ -46,7 +46,6 @@ export type AgentHookSource =
   | 'command-code'
   | 'grok'
   | 'copilot'
-  | 'hermes'
   | 'devin'
   | 'kimi'
 

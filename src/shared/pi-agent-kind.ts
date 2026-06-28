@@ -26,7 +26,7 @@ const BOUNDARY_AFTER = `(?:$|[\\s;&|)'"\`])`
 const PATH_PREFIX = `(?:[^\\s;&|('"\`]*[\\\\/])?`
 
 function makeLaunchCmdRegex(launchCmd: string): RegExp {
-  // Why: launchCmd may be a multi-token string ("hermes --tui"); only the
+  // Why: launchCmd may be a multi-token string ("omp --tui"); only the
   // first token is the binary name. Use that for matching.
   const binary = getCommandTokenPathBasename(getFirstCommandToken(launchCmd))
   const escaped = binary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

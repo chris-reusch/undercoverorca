@@ -19,7 +19,6 @@ export type AiVaultScanOptions = {
   opencodeDbPaths?: readonly string[]
   grokSessionsDir?: string
   devinTranscriptsDir?: string
-  hermesSessionsDir?: string
   rovoSessionsDir?: string
   openclawStateDir?: string
   openclawLegacyStateDir?: string

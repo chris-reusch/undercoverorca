@@ -22,7 +22,6 @@ const GROK_SESSIONS_DIR = join(
   process.env.GROK_HOME?.trim() || join(homedir(), '.grok'),
   'sessions'
 )
-const HERMES_SESSIONS_DIR = join(homedir(), '.hermes', 'sessions')
 const ROVO_SESSIONS_DIR = join(homedir(), '.rovodev', 'sessions')
 const OPENCLAW_STATE_DIR = process.env.OPENCLAW_STATE_DIR?.trim() || join(homedir(), '.openclaw')
 const PI_SESSIONS_DIR = normalizePiSessionsDir(
@@ -112,7 +111,6 @@ function standardDiscoveries(
     ...cursorDiscoveries(options, wslHomeDirs, limit, issues),
     ...grokDiscoveries(options, wslHomeDirs, limit, issues),
     ...devinDiscoveries(options, wslHomeDirs, limit, issues),
-    ...hermesDiscoveries(options, wslHomeDirs, limit, issues),
     ...rovoDiscoveries(options, wslHomeDirs, limit, issues),
     ...piDiscoveries(options, wslHomeDirs, limit, issues)
   ]
@@ -177,26 +175,6 @@ function devinDiscoveries(
   )
 }
 
-function hermesDiscoveries(
-  options: AiVaultScanOptions,
-  wslHomeDirs: readonly string[],
-  limit: number,
-  issues: AiVaultScanIssue[]
-): Promise<SessionFileDiscovery>[] {
-  return sessionRootDirs(options.hermesSessionsDir ?? HERMES_SESSIONS_DIR, wslHomeDirs, [
-    '.hermes',
-    'sessions'
-  ]).map((rootDir) =>
-    discoverFiles({
-      rootDir,
-      limit,
-      agent: 'hermes',
-      issues,
-      extensions: ['.json'],
-      filePredicate: (path) => basename(path).startsWith('session_')
-    })
-  )
-}
 
 function rovoDiscoveries(
   options: AiVaultScanOptions,

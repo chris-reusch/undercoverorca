@@ -26,7 +26,6 @@ function isolatedScanRoots(root: string) {
     opencodeDbPaths: [] as readonly string[],
     grokSessionsDir: join(root, 'grok-sessions'),
     devinTranscriptsDir: join(root, 'devin-transcripts'),
-    hermesSessionsDir: join(root, 'hermes-sessions'),
     rovoSessionsDir: join(root, 'rovo-sessions'),
     openclawStateDir: join(root, 'openclaw-state'),
     openclawLegacyStateDir: join(root, 'openclaw-legacy-state'),
@@ -544,19 +543,6 @@ describe('scanAiVaultSessions', () => {
       ])
     )
 
-    await mkdir(roots.hermesSessionsDir, { recursive: true })
-    await writeFile(
-      join(roots.hermesSessionsDir, 'session_hermes-session.json'),
-      JSON.stringify({
-        session_id: 'hermes-session',
-        model: 'hermes-1',
-        cwd: '/tmp/hermes',
-        session_start: '2026-05-01T10:05:00.000Z',
-        last_updated: '2026-05-01T10:05:01.000Z',
-        messages: [{ role: 'user', content: 'Hermes title' }]
-      })
-    )
-
     await mkdir(join(roots.rovoSessionsDir, 'rovo-session'), { recursive: true })
     await writeFile(
       join(roots.rovoSessionsDir, 'rovo-session', 'metadata.json'),
@@ -736,9 +722,6 @@ describe('scanAiVaultSessions', () => {
       "cd '/tmp/opencode' && opencode --session 'opencode-session'"
     )
     expect(commandByAgent.get('grok')).toBe("cd '/tmp/grok' && grok --resume 'grok-session'")
-    expect(commandByAgent.get('hermes')).toBe(
-      "cd '/tmp/hermes' && hermes --resume 'hermes-session'"
-    )
     expect(commandByAgent.get('rovo')).toBe(
       "cd '/tmp/rovo' && acli rovodev run --restore 'rovo-session'"
     )

@@ -157,16 +157,6 @@ describe('agent process recognition', () => {
     expect(
       recognizeAgentProcessFromCommandLine('node /Users/dev/.nvm/versions/node/bin/gemini')
     ).toEqual({ agent: 'gemini', processName: 'gemini' })
-    expect(recognizeAgentProcessFromCommandLine('python3 /opt/homebrew/bin/hermes --tui')).toEqual({
-      agent: 'hermes',
-      processName: 'hermes'
-    })
-    expect(
-      recognizeAgentProcessFromCommandLine('python3.12 /opt/homebrew/bin/hermes --tui')
-    ).toEqual({
-      agent: 'hermes',
-      processName: 'hermes'
-    })
     expect(recognizeAgentProcessFromCommandLine('python -m aider')).toEqual({
       agent: 'aider',
       processName: 'aider'

@@ -23,7 +23,6 @@ import { droidHookService } from '../droid/hook-service'
 import { commandCodeHookService } from '../command-code/hook-service'
 import { grokHookService } from '../grok/hook-service'
 import { copilotHookService } from '../copilot/hook-service'
-import { hermesHookService } from '../hermes/hook-service'
 import { devinHookService } from '../devin/hook-service'
 import { kimiHookService } from '../kimi/hook-service'
 import { openClaudeHookService } from '../openclaude/hook-service'
@@ -82,7 +81,6 @@ export function registerAgentHookHandlers(runtime?: AgentStatusRuntimeEnrichment
   ipcMain.removeHandler('agentHooks:commandCodeStatus')
   ipcMain.removeHandler('agentHooks:grokStatus')
   ipcMain.removeHandler('agentHooks:copilotStatus')
-  ipcMain.removeHandler('agentHooks:hermesStatus')
   ipcMain.removeHandler('agentHooks:devinStatus')
   ipcMain.removeHandler('agentHooks:kimiStatus')
   ipcMain.removeHandler('agentStatus:getSnapshot')
@@ -280,19 +278,6 @@ export function registerAgentHookHandlers(runtime?: AgentStatusRuntimeEnrichment
     } catch (err) {
       return {
         agent: 'copilot',
-        state: 'error',
-        configPath: '',
-        managedHooksPresent: false,
-        detail: err instanceof Error ? err.message : String(err)
-      }
-    }
-  })
-  ipcMain.handle('agentHooks:hermesStatus', (): AgentHookInstallStatus => {
-    try {
-      return hermesHookService.getStatus()
-    } catch (err) {
-      return {
-        agent: 'hermes',
         state: 'error',
         configPath: '',
         managedHooksPresent: false,

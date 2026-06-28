@@ -269,13 +269,6 @@ export const getAgentCatalog = createLocalizedCatalog((): AgentCatalogEntry[] =>
       'https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/'
   },
   {
-    id: 'hermes',
-    label: translate('auto.lib.agent.catalog.8a9ba743cc', 'Hermes'),
-    cmd: 'hermes',
-    faviconDomain: 'nousresearch.com',
-    homepageUrl: 'https://hermes-agent.nousresearch.com/docs/'
-  },
-  {
     id: 'devin',
     label: translate('auto.lib.agent.catalog.fc80296033', 'Devin'),
     cmd: 'devin',

@@ -747,7 +747,7 @@ describe('registerNotificationHandlers', () => {
           source: 'agent-task-complete',
           worktreeId: 'repo::wt1',
           worktreeLabel: 'feat/notis',
-          agentType: 'hermes',
+          agentType: 'droid',
           agentState: 'done',
           agentPrompt: 'Summarize the diff',
           agentLastAssistantMessage: 'The diff updates notification formatting.'
@@ -758,7 +758,7 @@ describe('registerNotificationHandlers', () => {
     expect(dispatchMobileNotification).toHaveBeenCalledWith({
       type: 'notification',
       source: 'agent-task-complete',
-      title: 'feat/notis - Hermes finished',
+      title: 'feat/notis - Droid finished',
       body: 'The diff updates notification formatting.',
       worktreeId: 'repo::wt1'
     })

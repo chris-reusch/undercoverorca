@@ -112,7 +112,6 @@ describe('scanAiVaultSessions Codex worker sessions', () => {
       opencodeDbPaths: [],
       grokSessionsDir: join(root, 'grok-sessions'),
       devinTranscriptsDir: join(root, 'devin-transcripts'),
-      hermesSessionsDir: join(root, 'hermes-sessions'),
       rovoSessionsDir: join(root, 'rovo-sessions'),
       openclawStateDir: join(root, 'openclaw-state'),
       openclawLegacyStateDir: join(root, 'openclaw-legacy-state'),

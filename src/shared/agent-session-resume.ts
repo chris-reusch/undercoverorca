@@ -145,7 +145,6 @@ export function extractAgentProviderSession(
     case 'omp':
     case 'command-code':
     case 'copilot':
-    case 'hermes':
       return null
   }
 }

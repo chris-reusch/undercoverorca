@@ -15,7 +15,6 @@ export const AGENT_HOOK_TARGETS = [
   'command-code',
   'grok',
   'copilot',
-  'hermes',
   'devin',
   'kimi'
 ] as const

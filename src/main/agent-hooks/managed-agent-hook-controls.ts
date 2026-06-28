@@ -11,7 +11,6 @@ import { commandCodeHookService } from '../command-code/hook-service'
 import { geminiHookService } from '../gemini/hook-service'
 import { devinHookService } from '../devin/hook-service'
 import { grokHookService } from '../grok/hook-service'
-import { hermesHookService } from '../hermes/hook-service'
 import { kimiHookService } from '../kimi/hook-service'
 import { openClaudeHookService } from '../openclaude/hook-service'
 
@@ -31,7 +30,6 @@ export const MANAGED_AGENT_HOOK_INSTALLERS: readonly ManagedAgentHookInstaller[]
   ['command-code', () => commandCodeHookService.install()],
   ['grok', () => grokHookService.install()],
   ['copilot', () => copilotHookService.install()],
-  ['hermes', () => hermesHookService.install()],
   ['devin', () => devinHookService.install()],
   ['kimi', () => kimiHookService.install()]
 ]
@@ -48,7 +46,6 @@ const LOCAL_MANAGED_HOOK_REMOVERS: readonly ManagedHookRemover[] = [
   ['command-code', () => commandCodeHookService.remove()],
   ['grok', () => grokHookService.remove()],
   ['copilot', () => copilotHookService.remove()],
-  ['hermes', () => hermesHookService.remove()],
   ['devin', () => devinHookService.remove()],
   ['kimi', () => kimiHookService.remove()]
 ]
@@ -65,7 +62,6 @@ const LOCAL_MANAGED_HOOK_STATUS_READERS: readonly ManagedHookStatusReader[] = [
   ['grok', () => grokHookService.getStatus()],
   ['command-code', () => commandCodeHookService.getStatus()],
   ['copilot', () => copilotHookService.getStatus()],
-  ['hermes', () => hermesHookService.getStatus()],
   ['devin', () => devinHookService.getStatus()],
   ['kimi', () => kimiHookService.getStatus()]
 ]

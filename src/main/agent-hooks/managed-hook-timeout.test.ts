@@ -131,9 +131,9 @@ function createFakeSftp(initialFiles: Record<string, string> = {}): {
 
 const REMOTE_HOME = '/home/dev'
 
-// Each managed agent that ships an SSH-compatible JSON/TOML hook config. Amp and
-// Hermes are intentionally excluded: they are plugin systems with no hook config
-// entries, so their transport budgets live in plugin source (see design doc).
+// Each managed agent that ships an SSH-compatible JSON/TOML hook config. Amp is
+// intentionally excluded: it is a plugin system with no hook config entries, so
+// its transport budget lives in plugin source (see design doc).
 const JSON_INSTALLERS = [
   {
     agent: 'claude',

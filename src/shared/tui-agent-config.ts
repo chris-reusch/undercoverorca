@@ -290,14 +290,6 @@ export const TUI_AGENT_CONFIG: Record<TuiAgent, TuiAgentConfig> = {
     expectedProcess: 'rovo',
     promptInjectionMode: 'stdin-after-start'
   },
-  hermes: {
-    detectCmd: 'hermes',
-    // Why: bare `hermes` opens the classic REPL in recent Hermes releases;
-    // `--tui` starts the full-screen agent UI Orca is designed to host.
-    launchCmd: 'hermes --tui',
-    expectedProcess: 'hermes',
-    promptInjectionMode: 'stdin-after-start'
-  },
   openclaw: {
     detectCmd: 'openclaw',
     launchCmd: 'openclaw',

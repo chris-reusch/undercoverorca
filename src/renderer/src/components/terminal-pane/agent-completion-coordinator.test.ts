@@ -988,8 +988,7 @@ describe('agent completion coordinator', () => {
     'droid',
     'grok',
     'devin',
-    'copilot',
-    'hermes'
+    'copilot'
   ])('recognizes %s hook agent ids even when the binary name differs', (agentType) => {
     const dispatchCompletion = vi.fn()
     const coordinator = createAgentCompletionCoordinator({

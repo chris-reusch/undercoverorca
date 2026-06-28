@@ -115,8 +115,7 @@ describe('runtimePaneTitle → sortEpoch', () => {
     ['OpenCode', '⠋ OpenCode running tests', '⠙ OpenCode running tests'],
     ['Aider', '⠋ Aider running', '⠙ Aider running'],
     ['Cursor synthesized title', '⠋ Cursor Agent', '⠙ Cursor Agent'],
-    ['Droid synthesized title', '⠋ Droid', '⠙ Droid'],
-    ['Hermes synthesized title', '⠋ Hermes', '⠙ Hermes']
+    ['Droid synthesized title', '⠋ Droid', '⠙ Droid']
   ])('collapses spinner-only title changes for %s', (_label, firstTitle, nextTitle) => {
     const store = createTestStore()
     seedStore(store, {

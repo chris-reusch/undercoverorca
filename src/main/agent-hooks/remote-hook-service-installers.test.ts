@@ -17,7 +17,6 @@ import { AmpHookService } from '../amp/hook-service'
 import { ClaudeHookService } from '../claude/hook-service'
 import { GrokHookService } from '../grok/hook-service'
 import { CopilotHookService } from '../copilot/hook-service'
-import { HermesHookService } from '../hermes/hook-service'
 import { DevinHookService } from '../devin/hook-service'
 import { KimiHookService } from '../kimi/hook-service'
 import { openClaudeHookService } from '../openclaude/hook-service'
@@ -581,22 +580,6 @@ describe('remote hook service installers', () => {
     expect(config.disableAllHooks).toBeUndefined()
     expect(fs.files.get('/home/dev/.orca/agent-hooks/copilot-hook.sh')).toContain('#!/bin/sh')
     expect(fs.modes.get('/home/dev/.orca/agent-hooks/copilot-hook.sh')).toBe(0o755)
-  })
-
-  it('installs remote Hermes plugin files and enables the plugin', async () => {
-    const { sftp, fs } = createFakeSftp()
-
-    const status = await new HermesHookService().installRemote(sftp, '/home/dev')
-
-    expect(status.state).toBe('installed')
-    expect(status.configPath).toBe('/home/dev/.hermes/config.yaml')
-    expect(fs.files.get('/home/dev/.hermes/plugins/orca-status/plugin.yaml')).toContain(
-      'pre_llm_call'
-    )
-    expect(fs.files.get('/home/dev/.hermes/plugins/orca-status/__init__.py')).toContain(
-      '/hook/hermes'
-    )
-    expect(fs.files.get('/home/dev/.hermes/config.yaml')).toContain('orca-status')
   })
 
   it('does not overwrite a remote user-authored Amp plugin file', async () => {

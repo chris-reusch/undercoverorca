@@ -16,8 +16,7 @@ const AGENT_TYPE_LABELS: Readonly<Record<string, string>> = {
   pi: 'Pi',
   omp: 'OMP',
   droid: 'Droid',
-  grok: 'Grok',
-  hermes: 'Hermes'
+  grok: 'Grok'
 }
 
 export function buildNotificationOptions(args: NotificationDispatchRequest): {

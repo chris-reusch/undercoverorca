@@ -10,7 +10,6 @@
 import {
   AGY_AGENT_NAME_RE,
   DROID_AGENT_NAME_RE,
-  HERMES_AGENT_NAME_RE,
   titleHasAgentName,
   titleHasAnyLegacyAgentName
 } from './agent-name-token-match'
@@ -132,8 +131,7 @@ function containsAgentName(title: string): boolean {
   return (
     titleHasAnyLegacyAgentName(title) ||
     AGY_AGENT_NAME_RE.test(title) ||
-    DROID_AGENT_NAME_RE.test(title) ||
-    HERMES_AGENT_NAME_RE.test(title)
+    DROID_AGENT_NAME_RE.test(title)
   )
 }
 
@@ -381,11 +379,6 @@ export function getAgentLabel(title: string): string | null {
   if (DROID_AGENT_NAME_RE.test(title)) {
     return 'Droid'
   }
-  // Why: synthesized "⠋ Hermes" working titles need to be matched before
-  // Claude's generic braille-spinner heuristic.
-  if (HERMES_AGENT_NAME_RE.test(title)) {
-    return 'Hermes'
-  }
   if (isClaudeAgent(title)) {
     return 'Claude Code'
   }
@@ -449,10 +442,9 @@ export function detectAgentStatusFromTitle(title: string): AgentStatus | null {
   }
 
   const hasDroidAgentName = DROID_AGENT_NAME_RE.test(title)
-  const hasHermesAgentName = HERMES_AGENT_NAME_RE.test(title)
   const hasAgyAgentName = AGY_AGENT_NAME_RE.test(title)
   const hasLegacyAgentName = titleHasAnyLegacyAgentName(title)
-  if (hasLegacyAgentName || hasDroidAgentName || hasHermesAgentName || hasAgyAgentName) {
+  if (hasLegacyAgentName || hasDroidAgentName || hasAgyAgentName) {
     if (containsAny(title, ['action required', 'permission', 'waiting'])) {
       return 'permission'
     }

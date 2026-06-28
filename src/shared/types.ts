@@ -2253,7 +2253,6 @@ export type TuiAgent =
   | 'mistral-vibe' // Mistral Vibe
   | 'qwen-code' // Qwen Code
   | 'rovo' // Rovo Dev
-  | 'hermes' // Hermes Agent
   | 'openclaw' // OpenClaw
   | 'copilot' // GitHub Copilot CLI
   | 'grok' // xAI Grok CLI

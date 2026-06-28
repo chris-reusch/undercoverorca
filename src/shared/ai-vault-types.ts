@@ -4,7 +4,6 @@ import type { TuiAgent } from './types'
 export const AI_VAULT_AGENTS = [
   'claude',
   'codex',
-  'hermes',
   'pi',
   'cursor',
   'gemini',
@@ -26,7 +25,6 @@ export type AiVaultGroup = 'project' | 'folder' | 'agent'
 export const AI_VAULT_AGENT_LABELS = {
   claude: 'Claude',
   codex: 'Codex',
-  hermes: 'Hermes',
   pi: 'Pi',
   cursor: 'Cursor',
   gemini: 'Gemini',
@@ -131,9 +129,6 @@ function defaultAiVaultResumeCommandBase(agent: AiVaultAgent): string {
   if (agent === 'cursor') {
     return 'cursor-agent'
   }
-  if (agent === 'hermes') {
-    return 'hermes'
-  }
   if (agent === 'rovo') {
     return 'acli'
   }
@@ -163,7 +158,6 @@ function buildAgentResumeInvocation(
     case 'cursor':
     case 'gemini':
     case 'grok':
-    case 'hermes':
     case 'devin':
     case 'openclaw':
     case 'droid':

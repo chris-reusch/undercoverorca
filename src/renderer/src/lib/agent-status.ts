@@ -128,7 +128,6 @@ const WELL_KNOWN_LABELS: Record<string, string> = {
   droid: 'Droid',
   'command-code': 'Command Code',
   grok: 'Grok',
-  hermes: 'Hermes',
   devin: 'Devin',
   ante: 'Ante',
   kimi: 'Kimi'
@@ -184,7 +183,6 @@ const ICONABLE_AGENT_TYPES: Record<TuiAgent, true> = {
   'mistral-vibe': true,
   'qwen-code': true,
   rovo: true,
-  hermes: true,
   openclaw: true,
   copilot: true,
   grok: true,
