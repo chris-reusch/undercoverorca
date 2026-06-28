@@ -30,10 +30,7 @@ import {
   beginWebRuntimeWakeTerminalRespawn,
   endWebRuntimeWakeTerminalRespawn
 } from '@/runtime/web-runtime-wake-terminal-respawn'
-import {
-  setWorktreeNavActivator,
-  setWorktreeNavViewActivator
-} from '@/store/slices/worktree-nav-history'
+import { setWorktreeNavActivator } from '@/store/slices/worktree-nav-history'
 import {
   resolveTuiAgentLaunchArgs,
   resolveTuiAgentLaunchEnv
@@ -354,12 +351,6 @@ export function activateAndRevealWorktree(
   if (state.filterRepoIds.length > 0 && !state.filterRepoIds.includes(wt.repoId)) {
     state.setFilterRepoIds([])
   }
-  if (
-    state.hideAutomationGeneratedWorkspaces &&
-    wt.automationProvenance?.kind === 'created-by-automation'
-  ) {
-    state.setHideAutomationGeneratedWorkspaces(false)
-  }
 
   // 6. Reveal in sidebar
   if (opts?.revealInSidebar !== false) {
@@ -610,11 +601,4 @@ setWorktreeNavActivator((workspaceId) => {
     return activateAndRevealFolderWorkspace(workspaceScope.folderWorkspaceId)
   }
   return activateAndRevealWorktree(workspaceId)
-})
-
-// Why: page entries in nav history replay through setActiveView(...)
-// (not open*Page) so back/forward does not mutate previousViewBefore* or
-// append duplicate history. See navigateToIndex for the replay branch.
-setWorktreeNavViewActivator((entry) => {
-  useAppStore.getState().setActiveView(entry)
 })

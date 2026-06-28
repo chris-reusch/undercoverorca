@@ -11,8 +11,6 @@ import * as QRCode from 'qrcode'
 import { Store, initDataPath } from './persistence'
 import { applyAppIcon } from './app-icon'
 import { StatsCollector, initStatsPath } from './stats/collector'
-import { ClaudeUsageStore, initClaudeUsagePath } from './claude-usage/store'
-import { CodexUsageStore, initCodexUsagePath } from './codex-usage/store'
 import { killAllPty } from './ipc/pty'
 import { initDaemonPtyProvider, disconnectDaemon, shutdownDaemon } from './daemon/daemon-init'
 import { closeAllWatchers } from './ipc/filesystem-watcher'
@@ -101,9 +99,6 @@ import { browserManager } from './browser/browser-manager'
 import { OffscreenBrowserBackend } from './browser/offscreen-browser-backend'
 import { initializeBrowserSessionsForApp } from './browser/browser-session-startup'
 import { setUnreadDockBadgeCount } from './dock/unread-badge'
-import { AutomationService } from './automations/service'
-import { createHeadlessAutomationOutputSnapshotBuffer } from './automations/headless-dispatch'
-import { buildHeadlessAutomationWorktreeCreateArgs } from './automations/headless-workspace-create'
 import { AgentAwakeService } from './agent-awake-service'
 import {
   getCrashBreadcrumbSnapshot,
@@ -144,8 +139,6 @@ let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 let store: Store | null = null
 let stats: StatsCollector | null = null
-let claudeUsage: ClaudeUsageStore | null = null
-let codexUsage: CodexUsageStore | null = null
 let codexAccounts: CodexAccountService | null = null
 let codexRuntimeHome: CodexRuntimeHomeService | null = null
 let claudeAccounts: ClaudeAccountService | null = null
@@ -162,7 +155,6 @@ let crashReports: CrashReportStore | null = null
 let unsubscribeAgentAwakeStatusChanges: (() => void) | null = null
 let watcherShutdownPromise: Promise<void> | null = null
 let watcherShutdownDone = false
-let automations: AutomationService | null = null
 let keybindings: KeybindingService | null = null
 let expectedRendererReload: { webContentsId: number; until: number } | null = null
 let firstWindowStartupServicesReady: Promise<void> = Promise.resolve()
@@ -481,8 +473,6 @@ if (hasSingleInstanceLock) {
   // Why: same timing constraint as initDataPath — capture the userData path
   // before app.setName changes it. See persistence.ts:20-28.
   initStatsPath()
-  initClaudeUsagePath()
-  initCodexUsagePath()
   crashReports = CrashReportStore.fromUserData()
   recordCrashBreadcrumb('app_started', {
     packaged: app.isPackaged,
@@ -589,15 +579,6 @@ function openMainWindow(): BrowserWindow {
   if (!stats) {
     throw new Error('Stats must be initialized before opening the main window')
   }
-  if (!claudeUsage) {
-    throw new Error('Claude usage store must be initialized before opening the main window')
-  }
-  if (!codexUsage) {
-    throw new Error('Codex usage store must be initialized before opening the main window')
-  }
-  if (!automations) {
-    throw new Error('Automation service must be initialized before opening the main window')
-  }
   if (!codexAccounts) {
     throw new Error('Codex account service must be initialized before opening the main window')
   }
@@ -698,7 +679,6 @@ function openMainWindow(): BrowserWindow {
     codexAccounts,
     claudeAccounts,
     rendererWebContentsId,
-    automations,
     {
       prepareForCodexLaunch: prepareCodexRuntimeHomeForLaunch,
       prepareForClaudeLaunch: (target) => claudeRuntimeAuth!.prepareForClaudeLaunch(target)
@@ -715,8 +695,6 @@ function openMainWindow(): BrowserWindow {
       }
     }
   )
-  automations.setWebContents(window.webContents)
-  automations.start()
   attachMainWindowServices(
     window,
     store,
@@ -740,7 +718,6 @@ function openMainWindow(): BrowserWindow {
       mainWindow = null
     }
     clearExpectedRendererReload(rendererWebContentsId)
-    automations?.setWebContents(null)
     // Why: detach the agent hook listener on window close so the server
     // never fires into a destroyed webContents during the gap before
     // reopen (e.g. macOS dock re-activation). This also ensures the
@@ -1270,8 +1247,6 @@ app.whenReady().then(async () => {
   // ORCA_DIAGNOSTICS_DISABLED / CI internally.
   initObservability()
   stats = new StatsCollector()
-  claudeUsage = new ClaudeUsageStore(store)
-  codexUsage = new CodexUsageStore(store)
   codexRuntimeHome = new CodexRuntimeHomeService(store)
   codexAccounts = new CodexAccountService(store, codexRuntimeHome)
   claudeRuntimeAuth = new ClaudeRuntimeAuthService(store)
@@ -1297,100 +1272,6 @@ app.whenReady().then(async () => {
     getAgentStatusSnapshot: () => agentHookServer.getStatusSnapshot()
   })
   runtime = runtimeService
-  automations = new AutomationService(store, {
-    claudeUsage,
-    codexUsage,
-    // Why: desktop clients may mirror remote-host automations, but only a
-    // server process should execute schedules owned by `remote_host_service`.
-    allowRemoteHostScheduling: isServeMode,
-    headlessDispatcher: isServeMode
-      ? async ({ automation, run, target }) => {
-          const terminalSnapshotLimit = 2_000
-          let terminalHandle: string
-          let terminalSessionId: string | null = null
-          let terminalPaneKey: string | null = null
-          let terminalPtyId: string | null = null
-          let workspaceId: string
-          let workspaceDisplayName: string | null = null
-
-          if (automation.workspaceMode === 'new_per_run') {
-            const created = await runtimeService.createManagedWorktree({
-              ...buildHeadlessAutomationWorktreeCreateArgs({
-                automation,
-                run,
-                repo: target.repo
-              })
-            })
-            terminalHandle = created.startupTerminal?.handle ?? ''
-            terminalSessionId = created.startupTerminal?.tabId ?? null
-            terminalPaneKey = created.startupTerminal?.paneKey ?? null
-            terminalPtyId = created.startupTerminal?.ptyId ?? null
-            workspaceId = created.worktree.id
-            workspaceDisplayName = created.worktree.displayName ?? null
-            if (!terminalHandle) {
-              throw new Error(
-                created.warning ||
-                  'Automation workspace was created, but no agent terminal started.'
-              )
-            }
-          } else {
-            if (!automation.workspaceId) {
-              throw new Error('The target workspace is no longer available.')
-            }
-            const terminal = await runtimeService.launchAgentTerminal(
-              `id:${automation.workspaceId}`,
-              {
-                agent: automation.agentId,
-                prompt: automation.prompt,
-                title: run.title
-              }
-            )
-            terminalHandle = terminal.handle
-            terminalSessionId = terminal.tabId ?? null
-            terminalPaneKey = terminal.paneKey ?? null
-            terminalPtyId = terminal.ptyId ?? null
-            workspaceId = terminal.worktreeId
-            const worktree = await runtimeService.showManagedWorktree(`id:${workspaceId}`)
-            workspaceDisplayName = worktree.displayName ?? null
-          }
-
-          const completion = (async () => {
-            const wait = await runtimeService.waitForTerminal(terminalHandle, {
-              condition: 'tui-idle'
-            })
-            const read = await runtimeService.readTerminal(terminalHandle, {
-              limit: terminalSnapshotLimit
-            })
-            const snapshotBuffer = createHeadlessAutomationOutputSnapshotBuffer()
-            snapshotBuffer.append(read.tail.join('\n'))
-            if (wait.satisfied) {
-              return {
-                status: 'completed' as const,
-                outputSnapshot: snapshotBuffer.snapshot(),
-                error: null
-              }
-            }
-            return {
-              status: 'dispatch_failed' as const,
-              outputSnapshot: snapshotBuffer.snapshot(),
-              error: wait.blockedReason
-                ? `Automation agent is blocked: ${wait.blockedReason}.`
-                : 'Automation agent did not report completion.'
-            }
-          })()
-
-          return {
-            workspaceId,
-            workspaceDisplayName,
-            terminalSessionId,
-            terminalPaneKey,
-            terminalPtyId,
-            completion
-          }
-        }
-      : undefined
-  })
-  runtimeService.setAutomationService(automations)
   runtimeService.setAccountServices({ claudeAccounts, codexAccounts })
   runtimeService.setCommitMessageAgentEnvironmentResolvers({
     // Why: local Codex hooks and auth now live in Orca's managed runtime home
@@ -1511,7 +1392,6 @@ app.whenReady().then(async () => {
       const settings = store?.getSettings()
       const ui = store?.getUI()
       return {
-        showAutomationsButton: settings?.showAutomationsButton !== false,
         showMobileButton: settings?.showMobileButton !== false,
         showTitlebarAppName: settings?.showTitlebarAppName !== false,
         statusBarVisible: ui?.statusBarVisible !== false
@@ -1649,7 +1529,6 @@ app.on('will-quit', (e) => {
   // so without this ordering, running agents would produce orphaned
   // agent_start events with no matching stops.
   starNag?.stop()
-  automations?.stop()
   setUnreadDockBadgeCount(0)
   agentHookServer.stop()
   stats?.flush()

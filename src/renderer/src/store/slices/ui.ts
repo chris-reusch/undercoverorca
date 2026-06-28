@@ -2,7 +2,6 @@
 import type { StateCreator } from 'zustand'
 import type { AppState } from '../types'
 import { normalizeRightSidebarRoute } from '../right-sidebar-route'
-import { findPrevLiveWorktreeHistoryIndex } from './worktree-nav-history'
 import type {
   ChangelogData,
   CustomPet,
@@ -510,49 +509,12 @@ export type UISlice = {
   acknowledgedAgentsByPaneKey: Record<string, number>
   acknowledgeAgents: (paneKeys: string[]) => void
   unacknowledgeAgents: (paneKeys: string[]) => void
-  activeView: 'terminal' | 'settings' | 'activity' | 'automations' | 'space' | 'skills' | 'mobile'
-  previousViewBeforeSettings:
-    | 'terminal'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'mobile'
-  previousViewBeforeActivity:
-    | 'terminal'
-    | 'settings'
-    | 'automations'
-    | 'space'
-    | 'skills'
-    | 'mobile'
-  previousViewBeforeAutomations:
-    | 'terminal'
-    | 'settings'
-    | 'activity'
-    | 'space'
-    | 'skills'
-    | 'mobile'
-  previousViewBeforeSpace:
-    | 'terminal'
-    | 'settings'
-    | 'activity'
-    | 'automations'
-    | 'skills'
-    | 'mobile'
-  previousViewBeforeSkills:
-    | 'terminal'
-    | 'settings'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'mobile'
-  previousViewBeforeMobile:
-    | 'terminal'
-    | 'settings'
-    | 'activity'
-    | 'automations'
-    | 'space'
-    | 'skills'
+  activeView: 'terminal' | 'settings' | 'activity' | 'space' | 'skills' | 'mobile'
+  previousViewBeforeSettings: 'terminal' | 'activity' | 'space' | 'skills' | 'mobile'
+  previousViewBeforeActivity: 'terminal' | 'settings' | 'space' | 'skills' | 'mobile'
+  previousViewBeforeSpace: 'terminal' | 'settings' | 'activity' | 'skills' | 'mobile'
+  previousViewBeforeSkills: 'terminal' | 'settings' | 'activity' | 'space' | 'mobile'
+  previousViewBeforeMobile: 'terminal' | 'settings' | 'activity' | 'space' | 'skills'
   setActiveView: (view: UISlice['activeView']) => void
   taskResumeState: TaskResumeState | undefined
   setTaskResumeState: (updates: Partial<TaskResumeState>) => void
@@ -594,18 +556,6 @@ export type UISlice = {
   } | null
   openActivityPage: () => void
   closeActivityPage: () => void
-  selectedAutomationId: string | null
-  setSelectedAutomationId: (id: string | null) => void
-  pendingAutomationRunNavigation: {
-    automationId: string
-    runId: string | null
-    hostId?: ExecutionHostId
-  } | null
-  setPendingAutomationRunNavigation: (
-    navigation: { automationId: string; runId: string | null; hostId?: ExecutionHostId } | null
-  ) => void
-  openAutomationsPage: () => void
-  closeAutomationsPage: () => void
   openSpacePage: () => void
   closeSpacePage: () => void
   openSkillsPage: () => void
@@ -723,8 +673,6 @@ export type UISlice = {
   setWorkspaceHostOrder: (ids: WorkspaceHostOrder) => void
   hideDefaultBranchWorkspace: boolean
   setHideDefaultBranchWorkspace: (v: boolean) => void
-  hideAutomationGeneratedWorkspaces: boolean
-  setHideAutomationGeneratedWorkspaces: (v: boolean) => void
   showDotfilesByWorktree: Record<string, boolean>
   setShowDotfilesForWorktree: (worktreeId: string, showDotfiles: boolean) => void
   toggleShowDotfilesForWorktree: (worktreeId: string) => void
@@ -1049,7 +997,6 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
   activeView: 'terminal',
   previousViewBeforeSettings: 'terminal',
   previousViewBeforeActivity: 'terminal',
-  previousViewBeforeAutomations: 'terminal',
   previousViewBeforeSpace: 'terminal',
   previousViewBeforeSkills: 'terminal',
   previousViewBeforeMobile: 'terminal',
@@ -1076,34 +1023,6 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
     set((state) => ({
       activeView: state.previousViewBeforeActivity
     })),
-  selectedAutomationId: null,
-  setSelectedAutomationId: (id) => set({ selectedAutomationId: id }),
-  pendingAutomationRunNavigation: null,
-  setPendingAutomationRunNavigation: (navigation) =>
-    set({ pendingAutomationRunNavigation: navigation }),
-  openAutomationsPage: () => {
-    get().recordViewVisit('automations')
-    set((state) => ({
-      activeView: 'automations',
-      previousViewBeforeAutomations:
-        state.activeView === 'automations' ? state.previousViewBeforeAutomations : state.activeView
-    }))
-  },
-  closeAutomationsPage: () =>
-    set((state) => {
-      const currentEntry = state.worktreeNavHistory[state.worktreeNavHistoryIndex]
-      let nextHistoryIndex = state.worktreeNavHistoryIndex
-      if (currentEntry === 'automations') {
-        const prev = findPrevLiveWorktreeHistoryIndex(state)
-        if (prev !== null) {
-          nextHistoryIndex = prev
-        }
-      }
-      return {
-        activeView: state.previousViewBeforeAutomations,
-        worktreeNavHistoryIndex: nextHistoryIndex
-      }
-    }),
   openSpacePage: () => {
     get().recordFeatureInteraction?.('workspace-cleanup')
     set((state) => ({
@@ -1658,8 +1577,6 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
 
   hideDefaultBranchWorkspace: false,
   setHideDefaultBranchWorkspace: (v) => set({ hideDefaultBranchWorkspace: v }),
-  hideAutomationGeneratedWorkspaces: false,
-  setHideAutomationGeneratedWorkspaces: (v) => set({ hideAutomationGeneratedWorkspaces: v }),
 
   showDotfilesByWorktree: {},
   setShowDotfilesForWorktree: (worktreeId, showDotfiles) =>
@@ -1988,7 +1905,6 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
         visibleWorkspaceHostIds: normalizeHydratedVisibleWorkspaceHostIds(ui),
         workspaceHostOrder: normalizeExecutionHostOrder(ui.workspaceHostOrder),
         hideDefaultBranchWorkspace: ui.hideDefaultBranchWorkspace ?? false,
-        hideAutomationGeneratedWorkspaces: ui.hideAutomationGeneratedWorkspaces === true,
         showDotfilesByWorktree: sanitizeShowDotfilesByWorktree(ui.showDotfilesByWorktree),
         filterRepoIds: (ui.filterRepoIds ?? []).filter((repoId) => validRepoIds.has(repoId)),
         collapsedGroups: new Set(ui.collapsedGroups ?? []),

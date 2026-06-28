@@ -14,7 +14,6 @@ import { inspectSetupScriptImportCandidates } from '../../shared/setup-script-im
 import { getProjectHostSetupWorktreeMeta } from '../../shared/project-host-setup-projection'
 import { deleteWorktreeHistoryDir } from '../terminal-history'
 import type {
-  AutomationWorkspaceProvenance,
   CreateWorktreeArgs,
   CreateWorktreeResult,
   DetectedWorktree,
@@ -88,15 +87,6 @@ import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { killAllProcessesForWorktree } from '../runtime/worktree-teardown'
 import { clearProviderPtyState, getLocalPtyProvider } from './pty'
 import { removeWorktreeLinkedPaths } from './worktree-symlinks'
-import {
-  finishAutomationWorkspaceProvenanceRequest,
-  releaseAutomationWorkspaceProvenanceRequest,
-  resolveAutomationWorkspaceProvenance
-} from '../automations/workspace-provenance'
-
-type CreateWorktreeArgsWithSystemProvenance = CreateWorktreeArgs & {
-  automationProvenance?: AutomationWorkspaceProvenance
-}
 import { advertisedUrlWatcher } from '../ports/advertised-url-watcher'
 import {
   assertWorktreeDoesNotContainRegisteredWorktree,
@@ -731,9 +721,6 @@ function mergeFolderWorkspace(repo: Repo, worktreeId: string, meta: WorktreeMeta
     lastActivityAt: meta.lastActivityAt ?? 0,
     ...(meta.createdAt !== undefined ? { createdAt: meta.createdAt } : {}),
     ...(meta.createdWithAgent !== undefined ? { createdWithAgent: meta.createdWithAgent } : {}),
-    ...(meta.automationProvenance !== undefined
-      ? { automationProvenance: meta.automationProvenance }
-      : {}),
     ...(meta.priorWorktreeIds !== undefined ? { priorWorktreeIds: meta.priorWorktreeIds } : {}),
     workspaceStatus: meta.workspaceStatus ?? DEFAULT_WORKSPACE_STATUS_ID,
     diffComments: meta.diffComments,
@@ -806,7 +793,7 @@ function listVisibleFolderWorkspaces(store: Store, repo: Repo): Worktree[] {
 }
 
 function createFolderWorkspace(
-  args: CreateWorktreeArgsWithSystemProvenance,
+  args: CreateWorktreeArgs,
   repo: Repo,
   store: Store
 ): CreateWorktreeResult {
@@ -823,7 +810,6 @@ function createFolderWorkspace(
     createdAt: now,
     orcaCreatedAt: now,
     orcaCreationSource: 'desktop',
-    ...(args.automationProvenance ? { automationProvenance: args.automationProvenance } : {}),
     ...(args.createdWithAgent ? { createdWithAgent: args.createdWithAgent } : {}),
     ...(args.linkedIssue !== undefined ? { linkedIssue: args.linkedIssue } : {}),
     ...(args.linkedPR !== undefined ? { linkedPR: args.linkedPR } : {}),
@@ -1137,34 +1123,16 @@ export function registerWorktreeHandlers(
           throw new Error(`Repo not found: ${args.repoId}`)
         }
 
-        const automationProvenance = resolveAutomationWorkspaceProvenance({
-          authority: runtime,
-          repoSelector: args.repoId,
-          repo,
-          request: args.automationProvenanceRequest
-        })
-        const createArgs: CreateWorktreeArgsWithSystemProvenance = {
-          ...args,
-          automationProvenance
-        }
-
-        let result: CreateWorktreeResult
-        try {
-          // Why: only wrap the helpers themselves. The pre-validation throws
-          // above (`Repo not found`, `Folder mode does not support creating
-          // worktrees`) signal IPC-shape bugs, not the user-visible
-          // git/filesystem failures the funnel cares about — bucketing them
-          // into `unknown` would pollute the failure taxonomy.
-          result = isFolderRepo(repo)
-            ? createFolderWorkspace(createArgs, repo, store)
-            : repo.connectionId
-              ? await createRemoteWorktree(createArgs, repo, store, mainWindow)
-              : await createLocalWorktree(createArgs, repo, store, mainWindow, runtime)
-        } catch (error) {
-          releaseAutomationWorkspaceProvenanceRequest(args.automationProvenanceRequest)
-          throw error
-        }
-        finishAutomationWorkspaceProvenanceRequest(args.automationProvenanceRequest)
+        // Why: only wrap the helpers themselves. The pre-validation throws
+        // above (`Repo not found`, `Folder mode does not support creating
+        // worktrees`) signal IPC-shape bugs, not the user-visible
+        // git/filesystem failures the funnel cares about — bucketing them
+        // into `unknown` would pollute the failure taxonomy.
+        const result: CreateWorktreeResult = isFolderRepo(repo)
+          ? createFolderWorkspace(args, repo, store)
+          : repo.connectionId
+            ? await createRemoteWorktree(args, repo, store, mainWindow)
+            : await createLocalWorktree(args, repo, store, mainWindow, runtime)
 
         if (isFolderRepo(repo)) {
           notifyWorktreesChanged(mainWindow, repo.id)

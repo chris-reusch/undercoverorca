@@ -32,7 +32,6 @@ import { registerDiagnosticsHandlers } from './diagnostics'
 import { registerSkillsHandlers } from './skills'
 import { registerWorkspaceSpaceHandlers } from './workspace-space'
 import { registerWorkspacePortHandlers } from './workspace-ports'
-import { registerAutomationHandlers } from './automations'
 import { registerKeybindingHandlers } from './keybindings'
 import { registerBrowserHandlers } from './browser'
 import { registerShellHandlers } from './shell'
@@ -51,7 +50,6 @@ import {
 } from '../window/clipboard-ipc-handlers'
 import type { CodexAccountService } from '../codex-accounts/service'
 import type { ClaudeAccountService } from '../claude-accounts/service'
-import type { AutomationService } from '../automations/service'
 import type { AgentAwakeService } from '../agent-awake-service'
 import type { CrashReportStore } from '../crash-reporting/crash-report-store'
 import type { KeybindingService } from '../keybindings/keybinding-service'
@@ -70,7 +68,6 @@ export function registerCoreHandlers(
   codexAccounts: CodexAccountService,
   claudeAccounts: ClaudeAccountService,
   mainWindowWebContentsId: number | null = null,
-  automations?: AutomationService,
   commitMessageAgentEnv?: CommitMessageAgentEnvironmentResolvers,
   agentAwakeService?: AgentAwakeService,
   crashReports?: CrashReportStore,
@@ -119,9 +116,6 @@ export function registerCoreHandlers(
   registerComputerUsePermissionHandlers()
   registerSettingsHandlers(store, agentAwakeService)
   registerSkillsHandlers(store)
-  if (automations) {
-    registerAutomationHandlers(store, automations)
-  }
   if (keybindings) {
     registerKeybindingHandlers(keybindings)
   }

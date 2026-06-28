@@ -13,7 +13,6 @@ export const DEFAULT_WORKTREE_CARD_PROPERTIES: WorktreeCardProperty[] = [
   ...FIXED_WORKTREE_CARD_PROPERTIES,
   ...TASK_WORKTREE_CARD_PROPERTIES,
   'pr',
-  'automation',
   'comment',
   'ports',
   // Why: agent activity is the primary reason users opt into the feature, so
@@ -27,17 +26,6 @@ export const DEFAULT_WORKTREE_CARD_PROPERTIES: WorktreeCardProperty[] = [
 export const COMPACT_WORKTREE_CARD_PROPERTIES: WorktreeCardProperty[] = ['status']
 const NORMALIZED_COMPACT_WORKTREE_CARD_PROPERTIES: WorktreeCardProperty[] = ['status', 'unread']
 
-const LEGACY_COMPACT_WORKTREE_CARD_PROPERTIES_WITH_AUTOMATION: WorktreeCardProperty[] = [
-  'status',
-  'automation'
-]
-
-const LEGACY_NORMALIZED_COMPACT_WORKTREE_CARD_PROPERTIES_WITH_AUTOMATION: WorktreeCardProperty[] = [
-  'status',
-  'unread',
-  'automation'
-]
-
 const WORKTREE_CARD_PROPERTY_ORDER: WorktreeCardProperty[] = [
   'status',
   'unread',
@@ -46,7 +34,6 @@ const WORKTREE_CARD_PROPERTY_ORDER: WorktreeCardProperty[] = [
   'issue',
   'linear-issue',
   'pr',
-  'automation',
   'comment',
   'ports',
   'inline-agents'
@@ -89,15 +76,7 @@ export function isDefaultedCompactWorktreeCardProperties(
 ): boolean {
   return (
     matchesWorktreeCardProperties(properties, COMPACT_WORKTREE_CARD_PROPERTIES) ||
-    matchesWorktreeCardProperties(properties, NORMALIZED_COMPACT_WORKTREE_CARD_PROPERTIES) ||
-    matchesWorktreeCardProperties(
-      properties,
-      LEGACY_COMPACT_WORKTREE_CARD_PROPERTIES_WITH_AUTOMATION
-    ) ||
-    matchesWorktreeCardProperties(
-      properties,
-      LEGACY_NORMALIZED_COMPACT_WORKTREE_CARD_PROPERTIES_WITH_AUTOMATION
-    )
+    matchesWorktreeCardProperties(properties, NORMALIZED_COMPACT_WORKTREE_CARD_PROPERTIES)
   )
 }
 

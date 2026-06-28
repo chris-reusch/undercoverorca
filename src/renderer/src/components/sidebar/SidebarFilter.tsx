@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { Check, FolderPlus, GitBranch, ListFilter, Moon, Server, Workflow } from 'lucide-react'
+import { Check, FolderPlus, GitBranch, ListFilter, Moon, Server } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,10 +44,6 @@ const SidebarFilter = React.memo(function SidebarFilter({
   const sleepingShortcut = useShortcutLabel('sidebar.sleepingWorkspaces.toggle')
   const hideDefaultBranchWorkspace = useAppStore((s) => s.hideDefaultBranchWorkspace)
   const setHideDefaultBranchWorkspace = useAppStore((s) => s.setHideDefaultBranchWorkspace)
-  const hideAutomationGeneratedWorkspaces = useAppStore((s) => s.hideAutomationGeneratedWorkspaces)
-  const setHideAutomationGeneratedWorkspaces = useAppStore(
-    (s) => s.setHideAutomationGeneratedWorkspaces
-  )
   const filterRepoIds = useAppStore((s) => s.filterRepoIds)
   const setFilterRepoIds = useAppStore((s) => s.setFilterRepoIds)
   const repos = useAppStore((s) => s.repos)
@@ -94,16 +90,9 @@ const SidebarFilter = React.memo(function SidebarFilter({
   const selectedCount = selectedRepoIdSet.size
   const hasRepoFilter = selectedCount > 0
   const hasSleepingFilter = showSleepingWorkspaces !== DEFAULT_SHOW_SLEEPING_WORKSPACES
-  const hasAnyFilter =
-    hasSleepingFilter ||
-    hideDefaultBranchWorkspace ||
-    hideAutomationGeneratedWorkspaces ||
-    hasRepoFilter
+  const hasAnyFilter = hasSleepingFilter || hideDefaultBranchWorkspace || hasRepoFilter
   const activeFilterCount =
-    (hasSleepingFilter ? 1 : 0) +
-    (hideDefaultBranchWorkspace ? 1 : 0) +
-    (hideAutomationGeneratedWorkspaces ? 1 : 0) +
-    selectedCount
+    (hasSleepingFilter ? 1 : 0) + (hideDefaultBranchWorkspace ? 1 : 0) + selectedCount
 
   const filteredRepos = useMemo(() => searchRepos(repos, query), [repos, query])
   const commandValue =
@@ -115,14 +104,8 @@ const SidebarFilter = React.memo(function SidebarFilter({
   const clearAll = useCallback(() => {
     setShowSleepingWorkspaces(DEFAULT_SHOW_SLEEPING_WORKSPACES)
     setHideDefaultBranchWorkspace(false)
-    setHideAutomationGeneratedWorkspaces(false)
     setFilterRepoIds([])
-  }, [
-    setShowSleepingWorkspaces,
-    setHideDefaultBranchWorkspace,
-    setHideAutomationGeneratedWorkspaces,
-    setFilterRepoIds
-  ])
+  }, [setShowSleepingWorkspaces, setHideDefaultBranchWorkspace, setFilterRepoIds])
 
   // Why: derive ids from the live repos list at click time so a repo added
   // while the popover is open is included immediately.
@@ -198,15 +181,6 @@ const SidebarFilter = React.memo(function SidebarFilter({
           )}
           checked={hideDefaultBranchWorkspace}
           onChange={setHideDefaultBranchWorkspace}
-        />
-        <FilterToggleRow
-          icon={<Workflow className="size-3.5" />}
-          label={translate(
-            'auto.components.sidebar.SidebarFilter.automationCreated',
-            'Hide automation-created'
-          )}
-          checked={hideAutomationGeneratedWorkspaces}
-          onChange={setHideAutomationGeneratedWorkspaces}
         />
 
         {canFilterRepos && (

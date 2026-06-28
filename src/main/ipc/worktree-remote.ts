@@ -13,7 +13,6 @@ import { existsSync } from 'fs'
 import { randomUUID } from 'crypto'
 import type { Store } from '../persistence'
 import type {
-  AutomationWorkspaceProvenance,
   CreateWorktreeArgs,
   CreateWorktreeResult,
   GitPushTarget,
@@ -59,9 +58,6 @@ import { isWindowsAbsolutePathLike } from '../../shared/cross-platform-path'
 import { getSshGitUsername } from '../git/git-username'
 import { runWorktreeChangeInvalidators } from './worktree-change-invalidators'
 
-type CreateWorktreeArgsWithSystemProvenance = CreateWorktreeArgs & {
-  automationProvenance?: AutomationWorkspaceProvenance
-}
 import {
   sanitizeWorktreeName,
   sanitizeWorktreeDisplayName,
@@ -1352,7 +1348,7 @@ export function emitCreateWorktreeProgress(
 }
 
 export async function createRemoteWorktree(
-  args: CreateWorktreeArgsWithSystemProvenance,
+  args: CreateWorktreeArgs,
   repo: Repo,
   store: Store,
   mainWindow: BrowserWindow
@@ -1653,7 +1649,6 @@ export async function createRemoteWorktree(
     orcaCreatedAt: now,
     orcaCreationSource: 'ssh',
     orcaCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
-    ...(args.automationProvenance ? { automationProvenance: args.automationProvenance } : {}),
     baseRef: metadataBaseRef,
     ...(checkoutExistingBranch ? { preserveBranchOnDelete: true } : {}),
     ...(configuredPushTarget ? { pushTarget: configuredPushTarget } : {}),
@@ -1761,7 +1756,7 @@ export async function createRemoteWorktree(
 }
 
 export async function createLocalWorktree(
-  args: CreateWorktreeArgsWithSystemProvenance,
+  args: CreateWorktreeArgs,
   repo: Repo,
   store: Store,
   mainWindow: BrowserWindow,
@@ -2250,7 +2245,6 @@ export async function createLocalWorktree(
     orcaCreatedAt: now,
     orcaCreationSource: 'desktop',
     orcaCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
-    ...(args.automationProvenance ? { automationProvenance: args.automationProvenance } : {}),
     baseRef: metadataBaseRef,
     ...(checkoutExistingBranch ? { preserveBranchOnDelete: true } : {}),
     ...(configuredPushTarget ? { pushTarget: configuredPushTarget } : {}),

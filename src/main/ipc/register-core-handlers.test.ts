@@ -332,7 +332,6 @@ describe('registerCoreHandlers', () => {
       claudeAccounts as never,
       null,
       undefined,
-      undefined,
       agentAwakeService as never,
       undefined,
       undefined,

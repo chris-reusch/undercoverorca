@@ -39,7 +39,7 @@ describe('activateAndRevealWorktree created agent reopen', () => {
   it('records a visit when activating the same worktree changes the current view', () => {
     const worktree = makeWorktree()
     const { markWorktreeVisited, recordWorktreeVisit } = seedAlreadyActiveWorktree(worktree, {
-      activeView: 'automations'
+      activeView: 'space'
     })
 
     const result = activateAndRevealWorktree(worktree.id)

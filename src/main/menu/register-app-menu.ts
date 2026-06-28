@@ -8,7 +8,6 @@ import {
 import { translateMain } from '../i18n/main-i18n'
 
 export type AppearanceMenuState = {
-  showAutomationsButton: boolean
   showMobileButton: boolean
   showTitlebarAppName: boolean
   statusBarVisible: boolean
@@ -198,12 +197,6 @@ function buildAndApplyMenu(options: RegisterAppMenuOptions): void {
         click: () => onToggleAppearance('statusBarVisible')
       },
       { type: 'separator' },
-      {
-        label: translateMain('menu.showAutomationsButton', 'Show Automations Button'),
-        type: 'checkbox',
-        checked: appearance.showAutomationsButton,
-        click: () => onToggleAppearance('showAutomationsButton')
-      },
       {
         label: translateMain('menu.showMobileButton', 'Show Orca Mobile Button'),
         type: 'checkbox',

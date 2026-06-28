@@ -9,7 +9,6 @@ import type { GlobalSettings, Repo } from '../../../../shared/types'
 const mocks = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
   openTaskPage: vi.fn(),
-  openAutomationsPage: vi.fn(),
   openActivityPage: vi.fn(),
   openMobilePage: vi.fn(),
   openModal: vi.fn(),
@@ -73,7 +72,6 @@ vi.mock('@/components/ui/context-menu', () => ({
 import {
   getSetupGuideSidebarEntryReady,
   shouldShowAgentsButton,
-  shouldShowAutomationsButton,
   shouldShowMobileButton,
   shouldShowSetupGuideEntry
 } from './SidebarNav'
@@ -113,7 +111,6 @@ function setSidebarState({
     repos,
     activeView: 'worktrees',
     openTaskPage: mocks.openTaskPage,
-    openAutomationsPage: mocks.openAutomationsPage,
     openActivityPage: mocks.openActivityPage,
     openMobilePage: mocks.openMobilePage,
     openModal: mocks.openModal,
@@ -223,41 +220,6 @@ describe('SidebarNav', () => {
 
   it('hides the Mobile entry when the sidebar setting is off', () => {
     expect(shouldShowMobileButton({ showMobileButton: false })).toBe(false)
-  })
-
-  it('shows the Automations entry by default for older settings', () => {
-    expect(shouldShowAutomationsButton(null)).toBe(true)
-    expect(shouldShowAutomationsButton({})).toBe(true)
-  })
-
-  it('hides the Automations entry when the sidebar setting is off', () => {
-    expect(shouldShowAutomationsButton({ showAutomationsButton: false })).toBe(false)
-  })
-
-  it('omits the Automations row when the sidebar setting is off', async () => {
-    setSidebarState({
-      settings: {
-        ...getDefaultSettings('/tmp'),
-        showAutomationsButton: false
-      }
-    })
-
-    const container = await renderSidebarNav()
-
-    expect(queryButtonByText(container, 'Automations')).toBeNull()
-  })
-
-  it('hides Automations from its sidebar context menu', async () => {
-    const container = await renderSidebarNav()
-
-    const automationsMenu = getButtonByText(container, 'Automations').closest(
-      '[data-testid="context-menu"]'
-    )
-    expect(automationsMenu).not.toBeNull()
-
-    await clickButton(getHideButton(automationsMenu as HTMLElement))
-
-    expect(mocks.updateSettings).toHaveBeenCalledWith({ showAutomationsButton: false })
   })
 
   it('hides Mobile from its sidebar context menu', async () => {

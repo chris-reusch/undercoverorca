@@ -1168,8 +1168,7 @@ function createWorktreesApi(): NonNullable<Partial<PreloadApi>['worktrees']> {
           : {}),
         parentWorkspace: args.parentWorkspace,
         workspaceStatus: args.workspaceStatus,
-        manualOrder: args.manualOrder,
-        automationProvenanceRequest: args.automationProvenanceRequest
+        manualOrder: args.manualOrder
       })
     },
     // Why: the runtime create path emits no two-phase progress, so the web

@@ -2188,10 +2188,8 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
     linkedBitbucketPR,
     linkedAzureDevOpsPR,
     linkedGiteaPR,
-    compareBaseRef,
-    options
+    compareBaseRef
   ) => {
-    const automationProvenanceRequest = options?.automationProvenanceRequest
     const retryableConflictPatterns = [
       /already exists locally/i,
       /already exists on a remote/i,
@@ -2252,8 +2250,7 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
             ...(linkedAzureDevOpsPR !== undefined ? { linkedAzureDevOpsPR } : {}),
             ...(linkedGiteaPR !== undefined ? { linkedGiteaPR } : {}),
             ...(startup ? { startup } : {}),
-            ...(creationId ? { creationId } : {}),
-            ...(automationProvenanceRequest ? { automationProvenanceRequest } : {})
+            ...(creationId ? { creationId } : {})
           }
           const target = getActiveRuntimeTarget(settingsForRepoOwner(get(), repoId))
           const result =
@@ -2294,7 +2291,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
                     ...(linkedBitbucketPR !== undefined ? { linkedBitbucketPR } : {}),
                     ...(linkedAzureDevOpsPR !== undefined ? { linkedAzureDevOpsPR } : {}),
                     ...(linkedGiteaPR !== undefined ? { linkedGiteaPR } : {}),
-                    ...(automationProvenanceRequest ? { automationProvenanceRequest } : {}),
                     ...(startup
                       ? {
                           startupCommand: startup.command,
@@ -2465,19 +2461,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
             { timeoutMs: 60_000 }
           ))
 
-      const worktreeDisplayName = worktreeBeforeRemoval?.displayName?.trim()
-      if (worktreeDisplayName) {
-        try {
-          await window.api.automations?.snapshotWorkspaceName?.({
-            workspaceId: worktreeId,
-            displayName: worktreeDisplayName
-          })
-        } catch (error) {
-          // Why: preserving automation history labels is best-effort; a stale
-          // preload/test harness must not block worktree removal cleanup.
-          console.warn('Failed to snapshot automation workspace name:', error)
-        }
-      }
 
       // Why: backend delete paths now preflight and kill PTYs only after the
       // worktree is cleanly removable. Renderer state follows the successful

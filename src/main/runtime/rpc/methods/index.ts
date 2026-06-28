@@ -1,6 +1,5 @@
 import type { RpcAnyMethod } from '../core'
 import { STATUS_METHODS } from './status'
-import { AUTOMATION_METHODS } from './automations'
 import { REPO_METHODS } from './repo'
 import { WORKTREE_METHODS } from './worktree'
 import { TERMINAL_METHODS } from './terminal'
@@ -38,7 +37,6 @@ import { EMULATOR_METHODS } from './emulator'
 // auditing the security boundary or wiring new CLI commands.
 export const ALL_RPC_METHODS: readonly RpcAnyMethod[] = [
   ...STATUS_METHODS,
-  ...AUTOMATION_METHODS,
   ...REPO_METHODS,
   ...WORKTREE_METHODS,
   ...TERMINAL_METHODS,

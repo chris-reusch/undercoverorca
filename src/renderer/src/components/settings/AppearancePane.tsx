@@ -480,35 +480,6 @@ export function AppearancePane({
 
           <SearchableSetting
             title={translate(
-              'auto.components.settings.AppearancePane.511f270ebb',
-              'Show Automations Button'
-            )}
-            description={translate(
-              'auto.components.settings.AppearancePane.fa882a3e6b',
-              'Show the Automations button at the top of the left sidebar.'
-            )}
-            keywords={getSidebarEntries()[1]?.keywords ?? ['automations', 'automation', 'schedule']}
-          >
-            <SettingsSwitchRow
-              label={translate(
-                'auto.components.settings.AppearancePane.511f270ebb',
-                'Show Automations Button'
-              )}
-              description={translate(
-                'auto.components.settings.AppearancePane.fa882a3e6b',
-                'Show the Automations button at the top of the left sidebar.'
-              )}
-              checked={settings.showAutomationsButton !== false}
-              onChange={() =>
-                updateSettings({
-                  showAutomationsButton: !(settings.showAutomationsButton !== false)
-                })
-              }
-            />
-          </SearchableSetting>
-
-          <SearchableSetting
-            title={translate(
               'auto.components.settings.AppearancePane.9da1020447',
               'Show Orca Mobile Button'
             )}
@@ -516,7 +487,7 @@ export function AppearancePane({
               'auto.components.settings.AppearancePane.5db6ba961f',
               'Show the Orca Mobile button at the top of the left sidebar.'
             )}
-            keywords={getSidebarEntries()[2]?.keywords ?? ['mobile', 'phone', 'sidebar']}
+            keywords={getSidebarEntries()[0]?.keywords ?? ['mobile', 'phone', 'sidebar']}
           >
             <SettingsSwitchRow
               label={translate(

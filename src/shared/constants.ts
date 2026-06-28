@@ -271,7 +271,6 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     sourceControlViewMode: 'list',
     sourceControlGroupOrder: DEFAULT_SOURCE_CONTROL_GROUP_ORDER,
     showTitlebarAppName: true,
-    showAutomationsButton: true,
     // Privacy-hardened fork: mobile companion is turned off, so hide its entry point.
     showMobileButton: false,
     ctrlTabOrderMode: 'mru',
@@ -301,7 +300,6 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     claudeAgentTeamsDefaultDisabledMigrated: true,
     skipDeleteWorktreeConfirm: false,
     skipCloseTerminalWithRunningProcessConfirm: false,
-    skipDeleteAutomationConfirm: false,
     skipCodexRateLimitResetConfirm: false,
     defaultTaskViewPreset: 'all',
     defaultTaskSource: 'github',
@@ -425,8 +423,6 @@ export function getDefaultPersistedState(homedir: string): PersistedState {
     sshRemotePtyLeases: [],
     migrationUnsupportedPtyEntries: [],
     legacyPaneKeyAliasEntries: [],
-    automations: [],
-    automationRuns: [],
     onboarding: getDefaultOnboardingState(),
     featureInteractionTelemetryBuckets: {}
   }
@@ -452,7 +448,6 @@ export function getDefaultUIState(): PersistedUIState {
     workspaceHostOrder: [],
     showSleepingWorkspaces: DEFAULT_SHOW_SLEEPING_WORKSPACES,
     hideDefaultBranchWorkspace: false,
-    hideAutomationGeneratedWorkspaces: false,
     showDotfilesByWorktree: {},
     filterRepoIds: [],
     collapsedGroups: [],

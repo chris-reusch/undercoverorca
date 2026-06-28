@@ -9,14 +9,9 @@ import { parseWorkspaceKey } from '../../../../shared/workspace-scope'
 // linear skip-deleted scan in goBack/goForward stays trivially cheap.
 const MAX_HISTORY = 50
 
-// Why: entries are worktree IDs OR page sentinels for full-page visits.
-// The slice, selector, and action names retain the
-// "worktree"/"WorktreeHistory" prefix for call-site stability — renaming
-// across ~20 sites would churn for no behavior win. View entries are
-// always live (never skipped by findPrev/NextLiveWorktreeHistoryIndex).
-export type WorktreeNavHistorySimpleViewEntry = 'automations'
-export type WorktreeNavHistoryViewEntry = WorktreeNavHistorySimpleViewEntry
-export type WorktreeNavHistoryEntry = string | WorktreeNavHistoryViewEntry
+// Why: entries are worktree IDs (folder-workspace keys or worktree ids).
+// Page-view history entries were removed with the Tasks/Automations pages.
+export type WorktreeNavHistoryEntry = string
 
 export type WorktreeNavHistorySlice = {
   // Linear history, oldest -> newest.
@@ -31,46 +26,27 @@ export type WorktreeNavHistorySlice = {
   isNavigatingHistory: boolean
 
   recordWorktreeVisit: (worktreeId: string) => void
-  recordViewVisit: (entry: WorktreeNavHistoryViewEntry) => void
   goBackWorktree: () => void
   goForwardWorktree: () => void
 }
 
 type ActivateFn = (worktreeId: string) => unknown
-type ViewActivateFn = (entry: WorktreeNavHistoryViewEntry) => void
 
 // Why: the slice must call activateAndRevealWorktree from goBack/goForward, but
 // importing it directly would create a cycle (activation imports the store).
 // Install the reference at module init via setWorktreeNavActivator and keep
 // the slice itself unaware of the activation module.
 let activator: ActivateFn | null = null
-let viewActivator: ViewActivateFn | null = null
 
 export function setWorktreeNavActivator(fn: ActivateFn | null): void {
   activator = fn
 }
 
-// Why: installed by App-level init so the slice can dispatch page entries
-// to setActiveView(...) without importing the UI slice directly (the UI
-// slice already transitively depends on this module via the store creator).
-export function setWorktreeNavViewActivator(fn: ViewActivateFn | null): void {
-  viewActivator = fn
-}
-
-// Why: view entries short-circuit as live unconditionally — findWorktreeById
-// takes a worktree id and would always return undefined for page sentinels.
-function isViewEntry(entry: WorktreeNavHistoryEntry): entry is WorktreeNavHistoryViewEntry {
-  return entry === 'automations'
-}
-
 function getHistoryEntryKey(entry: WorktreeNavHistoryEntry): string {
-  return entry === 'automations' ? `view:${entry}` : `worktree:${entry}`
+  return `worktree:${entry}`
 }
 
 function isLiveEntry(entry: WorktreeNavHistoryEntry, state: AppState): boolean {
-  if (isViewEntry(entry)) {
-    return true
-  }
   const workspaceScope = parseWorkspaceKey(entry)
   if (workspaceScope?.type === 'folder') {
     return state.folderWorkspaces.some(
@@ -152,10 +128,6 @@ export const createWorktreeNavHistorySlice: StateCreator<
     set((s) => appendHistoryEntry(s, worktreeId))
   },
 
-  recordViewVisit: (entry) => {
-    set((s) => appendHistoryEntry(s, entry))
-  },
-
   goBackWorktree: () => {
     navigateToIndex(get, set, 'back')
   },
@@ -196,41 +168,23 @@ function navigateToIndex(
   const prevNavigating = get().isNavigatingHistory
   set({ isNavigatingHistory: true } as Partial<AppState>)
   try {
-    if (isViewEntry(targetEntry)) {
-      if (!viewActivator) {
-        // Why: a silent no-op would mean the back/forward chord lands on a
-        // page history entry and appears broken. See setWorktreeNavActivator
-        // rationale above.
-        console.warn(
-          `go${direction === 'back' ? 'Back' : 'Forward'}Worktree: view activator not registered`
-        )
-        return
-      }
-      // Why: dispatch via setActiveView (installed as viewActivator) rather
-      // than open*Page so we don't mutate previousViewBefore* or fire
-      // page-open side effects during replay. activateAndRevealWorktree on the
-      // other branch already switches activeView back to 'terminal'.
-      viewActivator(targetEntry)
+    if (!activator) {
+      // Why: a silent no-op here would mean the back/forward chord simply
+      // does nothing with no diagnostic. The activator is registered at
+      // module init by worktree-activation.ts, so a missing activator means
+      // either test setup forgot to install one or the production import
+      // graph regressed.
+      console.warn(
+        `go${direction === 'back' ? 'Back' : 'Forward'}Worktree called before worktree activator was registered`
+      )
+      return
+    }
+    // Why: activateAndRevealWorktree returns `ActivateAndRevealResult | false`;
+    // `false` is the only observable failure signal. Advance the index only on
+    // success so the slice stays consistent with what the user actually sees.
+    const result = activator(targetEntry)
+    if (result !== false) {
       set({ worktreeNavHistoryIndex: targetIndex } as Partial<AppState>)
-    } else {
-      if (!activator) {
-        // Why: a silent no-op here would mean the back/forward chord simply
-        // does nothing with no diagnostic. The activator is registered at
-        // module init by worktree-activation.ts, so a missing activator means
-        // either test setup forgot to install one or the production import
-        // graph regressed.
-        console.warn(
-          `go${direction === 'back' ? 'Back' : 'Forward'}Worktree called before worktree activator was registered`
-        )
-        return
-      }
-      // Why: activateAndRevealWorktree returns `ActivateAndRevealResult | false`;
-      // `false` is the only observable failure signal. Advance the index only on
-      // success so the slice stays consistent with what the user actually sees.
-      const result = activator(targetEntry)
-      if (result !== false) {
-        set({ worktreeNavHistoryIndex: targetIndex } as Partial<AppState>)
-      }
     }
   } finally {
     set({ isNavigatingHistory: prevNavigating } as Partial<AppState>)

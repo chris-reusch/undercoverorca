@@ -1,7 +1,6 @@
 /* eslint-disable max-lines */
 import type { ExecutionHostId } from './execution-host'
 import type { SshRemotePtyLease, SshTarget } from './ssh-types'
-import type { Automation, AutomationExecutionTargetType, AutomationRun } from './automations-types'
 import type { WorkspaceSource } from './workspace-source'
 import type { GitHubProjectSettings } from './github-project-types'
 import type {
@@ -498,29 +497,7 @@ export type Worktree = {
   workspaceStatus?: WorkspaceStatus
   diffComments?: DiffComment[]
   mobileDiffReview?: MobileDiffReviewState
-  automationProvenance?: AutomationWorkspaceProvenance
 } & GitWorktreeInfo
-
-export type AutomationWorkspaceProvenance = {
-  kind: 'created-by-automation'
-  automationId: string
-  automationNameSnapshot: string
-  automationRunId: string
-  automationRunTitleSnapshot: string
-  createdAt: number
-  executionTargetType: AutomationExecutionTargetType
-  executionTargetId: string
-  projectId: string
-  repoId?: string
-  hostId?: ExecutionHostId
-}
-
-export type AutomationWorkspaceProvenanceRequest = {
-  automationId: string
-  automationRunId: string
-  dispatchToken: string
-  createRequestId: string
-}
 
 export type GitPushTarget = {
   remoteName: string
@@ -608,8 +585,6 @@ export type WorktreeMeta = {
    *  them. Self-prunes when the worktree is deleted. */
   priorWorktreeIds?: string[]
   mobileDiffReview?: MobileDiffReviewState
-  /** System-owned provenance for workspaces created by automation new-per-run dispatches. */
-  automationProvenance?: AutomationWorkspaceProvenance
 }
 
 export type WorktreeOwnership = 'orca-managed' | 'external' | 'unknown-legacy'
@@ -2030,8 +2005,6 @@ export type CreateWorktreeArgs = {
    *  creation in the renderer, so concurrent background creates each drive
    *  their own status surface. Omitted by synchronous callers. */
   creationId?: string
-  /** Authorizes the host to mint system-owned automation provenance. */
-  automationProvenanceRequest?: AutomationWorkspaceProvenanceRequest
 }
 
 export type CreateWorktreeResult = {
@@ -2554,9 +2527,6 @@ export type GlobalSettings = {
   sourceControlGroupOrder: SourceControlGroupOrder
   /** Whether to show the Orca app name in the titlebar. */
   showTitlebarAppName: boolean
-  /** Why: Automations can be restored from Settings or the View menu, so this
-   *  only controls whether the top-level sidebar shortcut is shown. */
-  showAutomationsButton?: boolean
   /** Why: Orca Mobile remains reachable from the toolbox; this only controls
    *  whether the top-level sidebar shortcut is shown. */
   showMobileButton?: boolean
@@ -2638,10 +2608,6 @@ export type GlobalSettings = {
    *  this separate from other destructive confirmations so power users can speed
    *  up terminal cleanup without weakening workspace or automation safeguards. */
   skipCloseTerminalWithRunningProcessConfirm: boolean
-  /** Why: deleting an automation also deletes its run history. Keep this
-   *  separate from worktree deletion so skipping one destructive confirmation
-   *  does not silently skip the other. */
-  skipDeleteAutomationConfirm: boolean
   /** Why: Codex rate-limit resets consume a scarce reset credit and immediately
    *  affect the signed-in account, so keep the skip preference explicit and
    *  separate from local destructive-action confirmations. */
@@ -2966,7 +2932,6 @@ export type WorktreeCardProperty =
   | 'issue'
   | 'linear-issue'
   | 'pr'
-  | 'automation'
   | 'comment'
   | 'ports'
   // Why: inline list of agent activity rendered directly inside each
@@ -3056,8 +3021,6 @@ export type PersistedUIState = {
    *  the predicate in visible-worktrees.ts excludes worktrees with an empty
    *  branch. */
   hideDefaultBranchWorkspace: boolean
-  /** Hide workspaces created by automation new-per-run dispatches. */
-  hideAutomationGeneratedWorkspaces?: boolean
   /** Per-worktree Explorer dotfile visibility. Missing entries inherit the default: show. */
   showDotfilesByWorktree?: Record<string, boolean>
   filterRepoIds: string[]
@@ -3347,8 +3310,6 @@ export type PersistedState = {
   sshRemotePtyLeases: SshRemotePtyLease[]
   migrationUnsupportedPtyEntries: MigrationUnsupportedPtyEntry[]
   legacyPaneKeyAliasEntries: LegacyPaneKeyAliasEntry[]
-  automations: Automation[]
-  automationRuns: AutomationRun[]
   onboarding: OnboardingState
   /** Main-owned telemetry de-dupe marker; never exposed through PersistedUIState. */
   featureInteractionTelemetryBuckets?: FeatureInteractionTelemetryBucketState
