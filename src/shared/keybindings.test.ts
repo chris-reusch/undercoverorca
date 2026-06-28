@@ -970,28 +970,28 @@ describe('keybindings', () => {
     expect(keybindingMatchesAction('terminal.focusNextPane', jisRightBracket, 'darwin')).toBe(true)
 
     expect(
-      keybindingMatchesAction('tab.previousAllTypes', { ...jisLeftBracket, alt: true }, 'darwin')
+      keybindingMatchesAction('tab.previousSameType', { ...jisLeftBracket, alt: true }, 'darwin')
     ).toBe(true)
     expect(
-      keybindingMatchesAction('tab.nextAllTypes', { ...jisRightBracket, alt: true }, 'darwin')
+      keybindingMatchesAction('tab.nextSameType', { ...jisRightBracket, alt: true }, 'darwin')
     ).toBe(true)
     expect(
       keybindingMatchesAction(
-        'tab.previousAllTypes',
+        'tab.previousSameType',
         { ...jisLeftBracket, control: true, meta: false, alt: true },
         'linux'
       )
     ).toBe(true)
     expect(
       keybindingMatchesAction(
-        'tab.nextAllTypes',
+        'tab.nextSameType',
         { ...jisLeftBracket, control: true, meta: false, alt: true },
         'linux'
       )
     ).toBe(false)
     expect(
       keybindingMatchesAction(
-        'tab.nextAllTypes',
+        'tab.nextSameType',
         { ...jisRightBracket, control: true, meta: false, alt: true },
         'linux'
       )
@@ -1021,7 +1021,7 @@ describe('keybindings', () => {
 
     expect(
       keybindingMatchesAction(
-        'tab.previousAllTypes',
+        'tab.previousSameType',
         {
           key: '[',
           code: 'Digit8',
@@ -1035,7 +1035,7 @@ describe('keybindings', () => {
     ).toBe(false)
     expect(
       keybindingMatchesAction(
-        'tab.previousAllTypes',
+        'tab.previousSameType',
         {
           key: 'Dead',
           code: 'BracketLeft',
@@ -1138,7 +1138,7 @@ describe('keybindings', () => {
     expect(formatKeybindingList(['DoubleTap+Shift'], 'linux')).toBe('Shift Shift')
   })
 
-  it('matches macOS Option-composed bracket shortcuts for all-type tab switching', () => {
+  it('matches macOS Option-composed bracket shortcuts for same-type tab switching', () => {
     const macOptionLeftBracket = {
       key: '\u201c',
       code: 'BracketLeft',
@@ -1156,12 +1156,12 @@ describe('keybindings', () => {
       shift: false
     }
 
-    expect(keybindingMatchesAction('tab.previousAllTypes', macOptionLeftBracket, 'darwin')).toBe(
+    expect(keybindingMatchesAction('tab.previousSameType', macOptionLeftBracket, 'darwin')).toBe(
       true
     )
-    expect(keybindingMatchesAction('tab.nextAllTypes', macOptionLeftBracket, 'darwin')).toBe(false)
-    expect(keybindingMatchesAction('tab.nextAllTypes', macOptionRightBracket, 'darwin')).toBe(true)
-    expect(keybindingMatchesAction('tab.previousAllTypes', macOptionRightBracket, 'darwin')).toBe(
+    expect(keybindingMatchesAction('tab.nextSameType', macOptionLeftBracket, 'darwin')).toBe(false)
+    expect(keybindingMatchesAction('tab.nextSameType', macOptionRightBracket, 'darwin')).toBe(true)
+    expect(keybindingMatchesAction('tab.previousSameType', macOptionRightBracket, 'darwin')).toBe(
       false
     )
   })

@@ -629,7 +629,7 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'next', 'switch', 'cycle'],
-    defaultBindings: platformBindings(['Mod+Shift+BracketRight'])
+    defaultBindings: platformBindings(['Mod+Alt+BracketRight'])
   },
   {
     id: 'tab.previousSameType',
@@ -637,7 +637,7 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'previous', 'switch', 'cycle'],
-    defaultBindings: platformBindings(['Mod+Shift+BracketLeft'])
+    defaultBindings: platformBindings(['Mod+Alt+BracketLeft'])
   },
   {
     id: 'tab.nextAllTypes',
@@ -645,7 +645,9 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'next', 'switch', 'cycle', 'all', 'any'],
-    defaultBindings: platformBindings(['Mod+Alt+BracketRight'])
+    // Privacy-hardened fork: Cmd/Ctrl+Shift+] cycles across ALL tab types so it
+    // moves between e.g. a terminal tab and a markdown (editor) tab.
+    defaultBindings: platformBindings(['Mod+Shift+BracketRight'])
   },
   {
     id: 'tab.previousAllTypes',
@@ -653,7 +655,8 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     group: 'Tab Navigation',
     scope: 'tabs',
     searchKeywords: ['shortcut', 'tab', 'previous', 'switch', 'cycle', 'all', 'any'],
-    defaultBindings: platformBindings(['Mod+Alt+BracketLeft'])
+    // Privacy-hardened fork: Cmd/Ctrl+Shift+[ cycles across ALL tab types.
+    defaultBindings: platformBindings(['Mod+Shift+BracketLeft'])
   },
   {
     id: 'tab.previousRecent',
