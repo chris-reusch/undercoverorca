@@ -20,6 +20,10 @@
   Run Codex, ClaudeCode, OpenCode or Pi side-by-side — each in its own worktree, tracked in one place.
 </p>
 
+> [!NOTE]
+> **This is a privacy-hardened build of Orca: no telemetry, all mobile sessions turned off.**
+> The product-analytics / telemetry code is *removed* from this fork (not merely disabled) — there is no PostHog client, no event schemas, no install ID, and nothing is sent to any analytics or diagnostics endpoint. The mobile companion / phone-pairing feature is turned off entirely: the desktop never starts a WebSocket relay, never registers paired devices, and exposes no pairing UI. It tracks upstream Orca otherwise. See [`docs/disable-telemetry-and-mobile-plan.md`](docs/disable-telemetry-and-mobile-plan.md) for exactly what changed.
+
 <h3 align="center"><a href="https://onorca.dev/download"><ins>Download Orca</ins></a></h3>
 
 <p align="center">
