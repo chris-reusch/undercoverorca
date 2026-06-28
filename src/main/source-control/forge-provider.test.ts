@@ -37,9 +37,12 @@ vi.mock('../gitlab/merge-request-creation', () => ({
 }))
 
 vi.mock('../github/client', () => ({
-  createGitHubPullRequest: createGitHubPullRequestMock,
   getRepoSlug: getRepoSlugMock,
   getPRForBranch: getPRForBranchMock
+}))
+
+vi.mock('../github/create-pr', () => ({
+  createGitHubPullRequest: createGitHubPullRequestMock
 }))
 
 vi.mock('../bitbucket/client', () => ({

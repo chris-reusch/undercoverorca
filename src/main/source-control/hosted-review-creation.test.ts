@@ -40,9 +40,12 @@ const {
 }))
 
 vi.mock('../github/client', () => ({
-  createGitHubPullRequest: createGitHubPullRequestMock,
   getRepoSlug: getRepoSlugMock,
   getPRForBranch: vi.fn()
+}))
+
+vi.mock('../github/create-pr', () => ({
+  createGitHubPullRequest: createGitHubPullRequestMock
 }))
 
 vi.mock('../gitlab/client', () => ({

@@ -89,7 +89,10 @@ vi.mock('../git/repo', () => ({
 }))
 
 vi.mock('../github/client', () => ({
-  getPRForBranch: getPRForBranchMock,
+  getPRForBranch: getPRForBranchMock
+}))
+
+vi.mock('../github/create-pr', () => ({
   createGitHubPullRequest: createGitHubPullRequestMock
 }))
 

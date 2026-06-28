@@ -21,7 +21,8 @@ import {
   getGiteaRepoSlug
 } from '../gitea/client'
 import { createGiteaPullRequest } from '../gitea/pull-request-creation'
-import { createGitHubPullRequest, getPRForBranch, getRepoSlug } from '../github/client'
+import { getPRForBranch, getRepoSlug } from '../github/client'
+import { createGitHubPullRequest } from '../github/create-pr'
 import { getMergeRequest, getMergeRequestForBranch, getProjectSlug } from '../gitlab/client'
 import { createGitLabMergeRequest } from '../gitlab/merge-request-creation'
 import {

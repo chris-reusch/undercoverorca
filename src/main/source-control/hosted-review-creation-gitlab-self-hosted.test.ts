@@ -30,9 +30,12 @@ vi.mock('../git/runner', () => ({
 }))
 
 vi.mock('../github/client', () => ({
-  createGitHubPullRequest: vi.fn(),
   getRepoSlug: getRepoSlugMock,
   getPRForBranch: vi.fn()
+}))
+
+vi.mock('../github/create-pr', () => ({
+  createGitHubPullRequest: vi.fn()
 }))
 
 vi.mock('../bitbucket/client', () => ({

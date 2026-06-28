@@ -32,7 +32,10 @@ vi.mock('../gitlab/client', () => ({
 
 vi.mock('../github/client', () => ({
   getRepoSlug: getRepoSlugMock,
-  getPRForBranch: getPRForBranchMock,
+  getPRForBranch: getPRForBranchMock
+}))
+
+vi.mock('../github/create-pr', () => ({
   createGitHubPullRequest: vi.fn()
 }))
 
