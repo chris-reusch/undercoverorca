@@ -2404,15 +2404,8 @@ export class Store {
           visibleTaskProviders: parsed.settings?.visibleTaskProviders,
           defaultTaskSource: parsed.settings?.defaultTaskSource
         })
-        const visibleTaskProvidersDefaultedForJira =
-          parsed.settings?.visibleTaskProvidersDefaultedForJira === true
-        const migratedVisibleTaskProviders = visibleTaskProvidersDefaultedForJira
-          ? rawTaskProviderSettings.visibleTaskProviders
-          : rawTaskProviderSettings.visibleTaskProviders.includes('jira')
-            ? rawTaskProviderSettings.visibleTaskProviders
-            : [...rawTaskProviderSettings.visibleTaskProviders, 'jira' as const]
         const taskProviderSettings = normalizeTaskProviderSettings({
-          visibleTaskProviders: migratedVisibleTaskProviders,
+          visibleTaskProviders: rawTaskProviderSettings.visibleTaskProviders,
           defaultTaskSource: rawTaskProviderSettings.defaultTaskSource
         })
         const primarySelectionDefaultedForLinux =
@@ -2429,9 +2422,6 @@ export class Store {
         const stampPrimarySelectionTerminalDefaults =
           primarySelectionPlatformDefaultEnabled && !primarySelectionDefaultedForTerminalDefaults
         if (migratePrimarySelectionPlatformDefault || stampPrimarySelectionTerminalDefaults) {
-          this.loadNeedsSave = true
-        }
-        if (!visibleTaskProvidersDefaultedForJira) {
           this.loadNeedsSave = true
         }
         const claudeAgentTeamsDefaultDisabledMigrated =
@@ -2566,7 +2556,6 @@ export class Store {
             uiLanguage: normalizeUiLanguage(parsed.settings?.uiLanguage),
             defaultTaskSource: taskProviderSettings.defaultTaskSource,
             visibleTaskProviders: taskProviderSettings.visibleTaskProviders,
-            visibleTaskProvidersDefaultedForJira: true,
             terminalShortcutPolicy: normalizeTerminalShortcutPolicy(
               parsed.settings?.terminalShortcutPolicy
             ),
@@ -4060,9 +4049,6 @@ export class Store {
       })
       sanitizedUpdates.defaultTaskSource = taskProviderSettings.defaultTaskSource
       sanitizedUpdates.visibleTaskProviders = taskProviderSettings.visibleTaskProviders
-      if ('visibleTaskProviders' in updates) {
-        sanitizedUpdates.visibleTaskProvidersDefaultedForJira = true
-      }
     }
     if ('autoRenameBranchFromWork' in updates || 'autoRenameBranchFromWorkDefaultedOn' in updates) {
       sanitizedUpdates.autoRenameBranchFromWorkDefaultedOn = true

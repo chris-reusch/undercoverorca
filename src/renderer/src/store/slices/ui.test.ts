@@ -1060,7 +1060,10 @@ describe('createUISlice hydratePersistedUI', () => {
 
     store.getState().hydratePersistedUI(
       makePersistedUI({
-        statusBarItems: ['claude', 'resource-usage'] as unknown as PersistedUIState['statusBarItems'],
+        statusBarItems: [
+          'claude',
+          'resource-usage'
+        ] as unknown as PersistedUIState['statusBarItems'],
         _portsStatusBarDefaultAdded: false
       })
     )
@@ -1080,7 +1083,10 @@ describe('createUISlice hydratePersistedUI', () => {
 
     store.getState().hydratePersistedUI(
       makePersistedUI({
-        statusBarItems: ['claude', 'resource-usage'] as unknown as PersistedUIState['statusBarItems'],
+        statusBarItems: [
+          'claude',
+          'resource-usage'
+        ] as unknown as PersistedUIState['statusBarItems'],
         _portsStatusBarDefaultAdded: true,
         _kimiStatusBarDefaultAdded: true
       })
@@ -1217,9 +1223,7 @@ describe('createUISlice hydratePersistedUI', () => {
           githubItemsPreset: 'invalid',
           githubItemsQuery: 42,
           linearPreset: 'completed',
-          linearQuery: 'label:bug',
-          jiraPreset: 'reported',
-          jiraQuery: 99
+          linearQuery: 'label:bug'
         } as unknown as PersistedUIState['taskResumeState']
       })
     )
@@ -1227,8 +1231,7 @@ describe('createUISlice hydratePersistedUI', () => {
     expect(store.getState().taskResumeState).toEqual({
       githubMode: 'project',
       linearPreset: 'completed',
-      linearQuery: 'label:bug',
-      jiraPreset: 'reported'
+      linearQuery: 'label:bug'
     })
   })
 

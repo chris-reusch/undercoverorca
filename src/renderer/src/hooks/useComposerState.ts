@@ -474,7 +474,7 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
   const draftProjectHostSetupId = persistDraft
     ? (newWorkspaceDraft?.projectHostSetupId ?? null)
     : null
-  // Why: Tasks can start work from Linear/Jira source contexts that are not
+  // Why: Tasks can start work from Linear source contexts that are not
   // repo-backed. Seed the run target from the logical project/source host so
   // the modal does not silently fall back to the ambient active repo.
   const initialRunSeed = resolveInitialWorkspaceRunSeed({
@@ -2256,7 +2256,7 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
         setLinkedGitLabIssue(null)
         setLinkedGitLabMR(null)
         const linkedProvider = linkedWorkItem ? getLinkedWorkItemProvider(linkedWorkItem) : null
-        if (linkedWorkItem && linkedProvider !== 'linear' && linkedProvider !== 'jira') {
+        if (linkedWorkItem && linkedProvider !== 'linear') {
           setLinkedWorkItem(null)
         }
         setSparseEnabled(false)
@@ -2742,19 +2742,17 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
       const isLinear = provider === 'linear'
       const kind: SmartWorkspaceNameSelection['kind'] = isLinear
         ? 'linear'
-        : provider === 'jira'
-          ? 'jira'
-          : provider === 'gitlab'
-            ? linkedWorkItem.type === 'mr'
-              ? 'gitlab-mr'
-              : 'gitlab-issue'
-            : linkedWorkItem.type === 'pr'
-              ? 'github-pr'
-              : 'github-issue'
+        : provider === 'gitlab'
+          ? linkedWorkItem.type === 'mr'
+            ? 'gitlab-mr'
+            : 'gitlab-issue'
+          : linkedWorkItem.type === 'pr'
+            ? 'github-pr'
+            : 'github-issue'
       return {
         kind,
         label:
-          isLinear || provider === 'jira' || linkedWorkItem.number === 0
+          isLinear || linkedWorkItem.number === 0
             ? linkedWorkItem.title
             : `#${linkedWorkItem.number} ${linkedWorkItem.title}`,
         url: linkedWorkItem.url

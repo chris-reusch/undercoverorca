@@ -108,7 +108,6 @@ vi.mock('./git/repo', () => ({
   getGitUsername: vi.fn().mockReturnValue('testuser')
 }))
 
-
 /** Reset modules and dynamically import Store so the data-file path picks up the current testState.dir */
 async function createStore() {
   vi.resetModules()
@@ -467,7 +466,7 @@ describe('Store', () => {
     expect(settings.terminalTuiScrollSensitivity).toBe(3)
     expect(settings.terminalUseSeparateLightTheme).toBe(true)
     expect(settings.rightSidebarOpenByDefault).toBe(true)
-    expect(settings.visibleTaskProviders).toEqual(['github', 'gitlab', 'linear', 'jira'])
+    expect(settings.visibleTaskProviders).toEqual(['github', 'gitlab', 'linear'])
     expect(settings.openInApplications).toEqual([
       { id: 'vscode', label: 'VS Code', command: 'code' }
     ])
@@ -1324,7 +1323,7 @@ describe('Store', () => {
     expect(store.getSettings().sourceControlViewMode).toBe('list')
     expect(store.getSettings().showGitIgnoredFiles).toBe(true)
     expect(store.getSettings().combinedDiffFileTreeVisibleByDefault).toBe(false)
-    expect(store.getSettings().visibleTaskProviders).toEqual(['github', 'gitlab', 'linear', 'jira'])
+    expect(store.getSettings().visibleTaskProviders).toEqual(['github', 'gitlab', 'linear'])
     expect(store.getSettings().experimentalActivity).toBe(false)
     expect(store.getSettings().experimentalActivityDefaultedOffForAllUsers).toBe(true)
     expect(store.getSettings().experimentalTerminalAttention).toBe(false)
@@ -1640,24 +1639,6 @@ describe('Store', () => {
     })
 
     const store = await createStore()
-    expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab', 'jira'])
-  })
-
-  it('preserves a deliberate Jira provider opt-out after migration', async () => {
-    writeDataFile({
-      schemaVersion: 1,
-      repos: [],
-      worktreeMeta: {},
-      settings: {
-        visibleTaskProviders: ['gitlab'],
-        visibleTaskProvidersDefaultedForJira: true
-      },
-      ui: {},
-      githubCache: { pr: {}, issue: {} },
-      workspaceSession: {}
-    })
-
-    const store = await createStore()
     expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab'])
   })
 
@@ -1704,7 +1685,7 @@ describe('Store', () => {
 
     const store = await createStore()
     expect(store.getSettings().defaultTaskSource).toBe('github')
-    expect(store.getSettings().visibleTaskProviders).toEqual(['github', 'linear', 'jira'])
+    expect(store.getSettings().visibleTaskProviders).toEqual(['github', 'linear'])
   })
 
   it('normalizes invalid task provider defaults on load', async () => {
@@ -1720,7 +1701,7 @@ describe('Store', () => {
 
     const store = await createStore()
     expect(store.getSettings().defaultTaskSource).toBe('gitlab')
-    expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab', 'jira'])
+    expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab'])
   })
 
   it('normalizes persisted open-in applications on load', async () => {
@@ -7561,7 +7542,6 @@ describe('Store', () => {
       }
     })
   })
-
 })
 
 describe('Store.migrateWorktreeIdentity', () => {

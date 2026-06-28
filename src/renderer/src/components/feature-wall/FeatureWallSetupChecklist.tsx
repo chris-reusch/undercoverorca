@@ -226,21 +226,14 @@ function NotificationAction(): React.JSX.Element {
 
 function TaskSourcesAction(): React.JSX.Element {
   const refreshPreflightStatus = useAppStore((s) => s.refreshPreflightStatus)
-  const checkJiraConnection = useAppStore((s) => s.checkJiraConnection)
   const checkLinearConnection = useAppStore((s) => s.checkLinearConnection)
   const settings = useAppStore((s) => s.settings)
   const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
 
   useEffect(() => {
     void refreshPreflightStatus()
-    void checkJiraConnection()
     void checkLinearConnection()
-  }, [
-    refreshPreflightStatus,
-    checkJiraConnection,
-    checkLinearConnection,
-    providerRuntimeContextKey
-  ])
+  }, [refreshPreflightStatus, checkLinearConnection, providerRuntimeContextKey])
 
   return (
     <div className="space-y-5">

@@ -353,13 +353,13 @@ describe('useComposerState host-context boundaries', () => {
     expect(cardProps).toContain('allowSmartNameAddProject: !isProjectGroupTarget')
   })
 
-  it('preserves Jira linked items when switching from repo target to folder target', () => {
+  it('preserves Linear linked items when switching from repo target to folder target', () => {
     const section = sourceBetween(
       HOOK_SOURCE,
       'const handleProjectChange = useCallback',
       'const handleSmartGitHubItemSelect'
     )
-    expect(section).toContain("linkedProvider !== 'linear' && linkedProvider !== 'jira'")
+    expect(section).toContain("linkedProvider !== 'linear'")
   })
 
   it('resolves quick-create base refs through the worktree-create precedence helper', () => {

@@ -70,10 +70,10 @@ describe('getLinkedWorkItemWorkspaceName', () => {
     expect(
       getLinkedWorkItemWorkspaceName({
         type: 'issue',
-        provider: 'jira',
+        provider: 'linear',
         number: 0,
         title: 'PROJ-7 Fix flaky import',
-        jiraIdentifier: 'PROJ-7'
+        linearIdentifier: 'PROJ-7'
       })
     ).toEqual({
       displayName: 'PROJ-7 Fix flaky import',
@@ -213,10 +213,10 @@ describe('getWorkspaceIntentName', () => {
       getWorkspaceIntentName({
         workItem: {
           type: 'issue',
-          provider: 'jira',
+          provider: 'linear',
           number: 0,
           title: 'PROJ-7 Fix flaky import',
-          jiraIdentifier: 'PROJ-7'
+          linearIdentifier: 'PROJ-7'
         }
       })
     ).toEqual({

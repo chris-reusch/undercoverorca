@@ -56,10 +56,6 @@ export function useSetupGuideProgress(
   const linearStatusChecked = useAppStore((s) => s.linearStatusChecked)
   const linearStatusContextKey = useAppStore((s) => s.linearStatusContextKey)
   const checkLinearConnection = useAppStore((s) => s.checkLinearConnection)
-  const jiraStatus = useAppStore((s) => s.jiraStatus)
-  const jiraStatusChecked = useAppStore((s) => s.jiraStatusChecked)
-  const jiraStatusContextKey = useAppStore((s) => s.jiraStatusContextKey)
-  const checkJiraConnection = useAppStore((s) => s.checkJiraConnection)
   const repos = useAppStore((s) => s.repos)
   const activeRepoId = useAppStore((s) => s.activeRepoId)
   const expectedPreflightContextKey = useAppStore((s) =>
@@ -96,7 +92,6 @@ export function useSetupGuideProgress(
   })
   const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
   const linearStatusCurrent = linearStatusContextKey === providerRuntimeContextKey
-  const jiraStatusCurrent = jiraStatusContextKey === providerRuntimeContextKey
   const preflightStatusCurrent = preflightStatusContextKey === expectedPreflightContextKey
 
   useEffect(() => {
@@ -109,15 +104,8 @@ export function useSetupGuideProgress(
     if (!linearStatusCurrent || !linearStatusChecked) {
       void checkLinearConnection()
     }
-    if (!jiraStatusCurrent || !jiraStatusChecked) {
-      void checkJiraConnection()
-    }
   }, [
-    checkJiraConnection,
     checkLinearConnection,
-    jiraStatusCurrent,
-    jiraStatusChecked,
-    jiraStatusContextKey,
     linearStatusCurrent,
     linearStatusChecked,
     linearStatusContextKey,
@@ -245,9 +233,6 @@ export function useSetupGuideProgress(
     linearStatus,
     linearStatusChecked,
     linearStatusContextKey,
-    jiraStatus,
-    jiraStatusChecked,
-    jiraStatusContextKey,
     providerRuntimeContextKey
   })
   const hasConnectedTaskSource = taskSourceStatus.trackerConnected
@@ -269,7 +254,6 @@ export function useSetupGuideProgress(
     // usable, unrelated stale provider checks should not hide setup progress.
     preflightStatusChecked: !taskSourceStatus.checking,
     linearStatusChecked: true,
-    jiraStatusChecked: true,
     browserUseSkillDiscoveryLoading: detectedBrowserUseSkillLoading,
     computerUseSkillDiscoveryLoading: computerUseSkillLoading,
     orchestrationSkillDiscoveryLoading: detectedOrchestrationSkillLoading,

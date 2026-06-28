@@ -100,14 +100,14 @@ describe('client UI RPC methods', () => {
     vi.mocked(runtime.updateClientSettings).mockClear()
     await dispatcher.dispatch(
       makeRequest('settings.update', {
-        defaultTaskSource: 'jira',
-        visibleTaskProviders: ['github', 'jira']
+        defaultTaskSource: 'linear',
+        visibleTaskProviders: ['github', 'linear']
       })
     )
 
     expect(runtime.updateClientSettings).toHaveBeenCalledWith({
-      defaultTaskSource: 'jira',
-      visibleTaskProviders: ['github', 'jira']
+      defaultTaskSource: 'linear',
+      visibleTaskProviders: ['github', 'linear']
     })
   })
 

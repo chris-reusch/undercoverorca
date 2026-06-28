@@ -272,7 +272,7 @@ describe('task source context summary', () => {
     })
   })
 
-  it('shows account-backed Linear and Jira sources', () => {
+  it('shows account-backed Linear sources', () => {
     expect(
       getTaskSourceContextSummary({
         provider: 'linear',
@@ -281,15 +281,6 @@ describe('task source context summary', () => {
         linearWorkspaceName: 'Stably'
       }).label
     ).toBe(`Linear · ${LOCAL_HOST_LABEL} · Stably`)
-
-    expect(
-      getTaskSourceContextSummary({
-        provider: 'jira',
-        providerLabel: 'Jira',
-        accountHostId: 'runtime:server',
-        jiraSiteName: 'Stably Jira'
-      }).label
-    ).toBe('Jira · server · Stably Jira')
   })
 
   it('shows account-backed source host availability', () => {

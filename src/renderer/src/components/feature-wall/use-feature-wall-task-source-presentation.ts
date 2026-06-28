@@ -28,17 +28,12 @@ export function useFeatureWallTaskSourcePresentation(
   const linearStatusChecked = useAppStore((s) => s.linearStatusChecked)
   const linearStatusContextKey = useAppStore((s) => s.linearStatusContextKey)
   const checkLinearConnection = useAppStore((s) => s.checkLinearConnection)
-  const jiraStatus = useAppStore((s) => s.jiraStatus)
-  const jiraStatusChecked = useAppStore((s) => s.jiraStatusChecked)
-  const jiraStatusContextKey = useAppStore((s) => s.jiraStatusContextKey)
-  const checkJiraConnection = useAppStore((s) => s.checkJiraConnection)
   const settings = useAppStore((s) => s.settings)
   const expectedPreflightContextKey = useAppStore((s) =>
     localPreflightContextKey(getLocalPreflightContext(s))
   )
   const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
   const linearStatusCurrent = linearStatusContextKey === providerRuntimeContextKey
-  const jiraStatusCurrent = jiraStatusContextKey === providerRuntimeContextKey
   const preflightStatusCurrent = preflightStatusContextKey === expectedPreflightContextKey
 
   useEffect(() => {
@@ -53,17 +48,10 @@ export function useFeatureWallTaskSourcePresentation(
     if (!linearStatusCurrent || !linearStatusChecked) {
       void checkLinearConnection()
     }
-    if (!jiraStatusCurrent || !jiraStatusChecked) {
-      void checkJiraConnection()
-    }
   }, [
-    checkJiraConnection,
     checkLinearConnection,
     expectedPreflightContextKey,
     isOpen,
-    jiraStatusCurrent,
-    jiraStatusChecked,
-    jiraStatusContextKey,
     linearStatusCurrent,
     linearStatusChecked,
     linearStatusContextKey,
@@ -84,9 +72,6 @@ export function useFeatureWallTaskSourcePresentation(
     linearStatus,
     linearStatusChecked,
     linearStatusContextKey,
-    jiraStatus,
-    jiraStatusChecked,
-    jiraStatusContextKey,
     providerRuntimeContextKey
   })
 

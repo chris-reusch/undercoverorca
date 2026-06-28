@@ -16,12 +16,7 @@ export function normalizeFolderWorkspaceLinkedTask(
     return null
   }
   const raw = value as Partial<FolderWorkspaceLinkedTask>
-  if (
-    raw.provider !== 'github' &&
-    raw.provider !== 'gitlab' &&
-    raw.provider !== 'linear' &&
-    raw.provider !== 'jira'
-  ) {
+  if (raw.provider !== 'github' && raw.provider !== 'gitlab' && raw.provider !== 'linear') {
     return null
   }
   if (raw.type !== 'issue' && raw.type !== 'pr' && raw.type !== 'mr') {
@@ -45,9 +40,6 @@ export function normalizeFolderWorkspaceLinkedTask(
     url: raw.url.trim(),
     ...(typeof raw.linearIdentifier === 'string' && raw.linearIdentifier.trim().length > 0
       ? { linearIdentifier: raw.linearIdentifier.trim() }
-      : {}),
-    ...(typeof raw.jiraIdentifier === 'string' && raw.jiraIdentifier.trim().length > 0
-      ? { jiraIdentifier: raw.jiraIdentifier.trim() }
       : {}),
     ...(typeof raw.repoId === 'string' && raw.repoId.trim().length > 0
       ? { repoId: raw.repoId.trim() }

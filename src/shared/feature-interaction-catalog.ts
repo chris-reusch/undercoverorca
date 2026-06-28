@@ -14,7 +14,6 @@ export type FeatureInteractionId =
   | 'github-tasks'
   | 'gitlab-tasks'
   | 'linear-tasks'
-  | 'jira-tasks'
   | 'browser-annotations'
   | 'browser-annotations-sent-to-agent'
   | 'browser-grab'
@@ -79,7 +78,6 @@ export const FEATURE_INTERACTIONS = [
   { id: 'github-tasks', interaction: 'GitHub task item workflow used' },
   { id: 'gitlab-tasks', interaction: 'GitLab task item workflow used' },
   { id: 'linear-tasks', interaction: 'Linear task item workflow used' },
-  { id: 'jira-tasks', interaction: 'Jira task item workflow used' },
   { id: 'browser-annotations', interaction: 'browser annotation added, copied, or cleared' },
   {
     id: 'browser-annotations-sent-to-agent',

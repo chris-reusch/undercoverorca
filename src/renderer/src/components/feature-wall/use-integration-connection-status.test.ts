@@ -35,9 +35,6 @@ function statusFacts(overrides: Partial<StatusFacts> = {}): StatusFacts {
     linearStatus: { connected: false },
     linearStatusChecked: true,
     linearStatusContextKey: 'local#0',
-    jiraStatus: { connected: false },
-    jiraStatusChecked: true,
-    jiraStatusContextKey: 'local#0',
     providerRuntimeContextKey: 'local#0',
     ...overrides
   }
@@ -99,7 +96,7 @@ describe('deriveIntegrationStepStates', () => {
   })
 
   it('marks tasks done if a tracker is already connected before a code host', () => {
-    // A pre-existing Linear/Jira connection is a real, truthful task source even
+    // A pre-existing Linear connection is a real, truthful task source even
     // if the user has not yet connected a code host for review.
     expect(
       deriveIntegrationStepStates({
@@ -169,15 +166,15 @@ describe('deriveIntegrationConnectionStatus', () => {
     })
   })
 
-  it('does not expose cached Linear or Jira tracker readiness while checks are stale', () => {
+  it('does not expose cached Linear tracker readiness while checks are stale', () => {
     const staleTrackerFacts: Partial<StatusFacts>[] = [
       {
         linearStatus: { connected: true },
         linearStatusContextKey: 'runtime:old#0'
       },
       {
-        jiraStatus: { connected: true },
-        jiraStatusChecked: false
+        linearStatus: { connected: true },
+        linearStatusChecked: false
       }
     ]
 
@@ -189,12 +186,11 @@ describe('deriveIntegrationConnectionStatus', () => {
     }
   })
 
-  it('keeps a current connected tracker usable when the other tracker is stale', () => {
+  it('keeps a current connected Linear tracker usable', () => {
     expect(
       deriveIntegrationConnectionStatus(
         statusFacts({
-          linearStatus: { connected: true },
-          jiraStatusContextKey: 'runtime:old#0'
+          linearStatus: { connected: true }
         })
       )
     ).toMatchObject({
@@ -257,12 +253,11 @@ describe('deriveIntegrationConnectionStatus', () => {
             gh: { installed: true, authenticated: true },
             glab: { installed: true, authenticated: true }
           },
-          linearStatus: { connected: true },
-          jiraStatus: { connected: true }
+          linearStatus: { connected: true }
         })
       )
     ).toMatchObject({
-      taskSourceNames: ['Linear', 'Jira', 'GitHub', 'GitLab']
+      taskSourceNames: ['Linear', 'GitHub', 'GitLab']
     })
 
     expect(
@@ -453,7 +448,7 @@ describe('deriveIntegrationFlowState', () => {
     expect(
       deriveIntegrationFlowState({
         reviewConnected: false,
-        trackerProviderName: 'Jira',
+        trackerProviderName: 'Linear',
         codeHostTaskProviderName: null,
         trackerChecking: false
       })

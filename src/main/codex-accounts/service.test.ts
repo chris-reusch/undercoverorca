@@ -122,8 +122,7 @@ function createSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings
     skipCodexRateLimitResetConfirm: false,
     defaultTaskViewPreset: 'all',
     defaultTaskSource: 'github',
-    visibleTaskProviders: ['github', 'gitlab', 'linear', 'jira'],
-    visibleTaskProvidersDefaultedForJira: true,
+    visibleTaskProviders: ['github', 'gitlab', 'linear'],
     defaultRepoSelection: null,
     defaultLinearTeamSelection: null,
     opencodeSessionCookie: '',
@@ -385,10 +384,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     writeFileSync(join(managedHomePath, 'config.toml'), 'approval_policy = "untrusted"\n', 'utf-8')
 
@@ -426,9 +422,7 @@ describe('CodexAccountService config sync', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { CodexAccountService } = await import('./service')
 
-    expect(
-      () => new CodexAccountService(store as never, runtimeHome as never)
-    ).not.toThrow()
+    expect(() => new CodexAccountService(store as never, runtimeHome as never)).not.toThrow()
     expect(readFileSync(join(managedHomePath, 'config.toml'), 'utf-8')).toBe(
       'approval_policy = "on-request"\n'
     )
@@ -488,10 +482,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     await service.addAccount()
 
@@ -561,10 +552,7 @@ describe('CodexAccountService config sync', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     const result = await service.reauthenticateAccount('account-1')
 
@@ -614,10 +602,7 @@ describe('CodexAccountService config sync', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     await expect(service.reauthenticateAccount('account-1')).rejects.toThrow(
       'Managed Codex home directory does not exist on disk.'
@@ -658,10 +643,7 @@ describe('CodexAccountService config sync', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     await expect(service.reauthenticateAccount('account-1')).rejects.toThrow(
       'Managed Codex home is missing Orca ownership marker.'
@@ -752,10 +734,7 @@ describe('CodexAccountService config sync', () => {
 
     try {
       const { CodexAccountService } = await import('./service')
-      const service = new CodexAccountService(
-        store as never,
-        runtimeHome as never
-      )
+      const service = new CodexAccountService(store as never, runtimeHome as never)
 
       const result = await service.addAccount({ runtime: 'wsl', wslDistro: 'Debian' })
 
@@ -828,10 +807,7 @@ describe('CodexAccountService config sync', () => {
 
     try {
       const { CodexAccountService } = await import('./service')
-      const service = new CodexAccountService(
-        store as never,
-        runtimeHome as never
-      )
+      const service = new CodexAccountService(store as never, runtimeHome as never)
 
       await expect(service.addAccount({ runtime: 'wsl', wslDistro: 'Debian' })).rejects.toThrow(
         'Codex CLI is not available in WSL Debian'
@@ -946,10 +922,7 @@ describe('CodexAccountService config sync', () => {
 
     try {
       const { CodexAccountService } = await import('./service')
-      const service = new CodexAccountService(
-        store as never,
-        runtimeHome as never
-      )
+      const service = new CodexAccountService(store as never, runtimeHome as never)
 
       const result = await service.reauthenticateAccount('account-1')
 
@@ -1057,10 +1030,7 @@ describe('CodexAccountService config sync', () => {
 
     try {
       const { CodexAccountService } = await import('./service')
-      const service = new CodexAccountService(
-        store as never,
-        runtimeHome as never
-      )
+      const service = new CodexAccountService(store as never, runtimeHome as never)
 
       const result = await service.reauthenticateAccount('account-1')
 
@@ -1136,10 +1106,7 @@ describe('CodexAccountService config sync', () => {
 
     try {
       const { CodexAccountService } = await import('./service')
-      const service = new CodexAccountService(
-        store as never,
-        runtimeHome as never
-      )
+      const service = new CodexAccountService(store as never, runtimeHome as never)
 
       const result = await service.removeAccount('account-1')
 
@@ -1181,10 +1148,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     const result = await service.selectAccount(null)
 
@@ -1242,10 +1206,7 @@ describe('CodexAccountService config sync', () => {
     expect(readFileSync(runtimeAuthPath, 'utf-8')).toBe(firstAuth)
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     await service.selectAccount('account-2')
 
@@ -1304,10 +1265,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     const result = await service.selectAccountForTarget('wsl-account', {
       runtime: 'wsl',
@@ -1353,10 +1311,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     const result = await service.removeAccount('account-1')
 
@@ -1393,10 +1348,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     const result = service.listAccounts()
 
@@ -1410,10 +1362,7 @@ describe('CodexAccountService config sync', () => {
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      runtimeHome as never
-    )
+    const service = new CodexAccountService(store as never, runtimeHome as never)
 
     await expect(service.removeAccount('nonexistent')).rejects.toThrow('no longer exists')
   })
@@ -1443,10 +1392,7 @@ describe('CodexAccountService config sync', () => {
       const store = createStore(settings)
       const runtimeHome = createRuntimeHome()
       const { CodexAccountService } = await import('./service')
-      const service = new CodexAccountService(
-        store as never,
-        runtimeHome as never
-      )
+      const service = new CodexAccountService(store as never, runtimeHome as never)
       const loginPromise = (
         service as unknown as {
           runCodexLogin(managedHomePath: string): Promise<void>

@@ -71,7 +71,6 @@ export function toFolderWorkspaceLinkedTask(
     title: item.title,
     url: item.url,
     ...(item.linearIdentifier ? { linearIdentifier: item.linearIdentifier } : {}),
-    ...(item.jiraIdentifier ? { jiraIdentifier: item.jiraIdentifier } : {}),
     ...(item.repoId ? { repoId: item.repoId } : {})
   }
 }
@@ -86,19 +85,17 @@ export function getSmartNameSelection(
   const kind: SmartWorkspaceNameSelection['kind'] =
     provider === 'linear'
       ? 'linear'
-      : provider === 'jira'
-        ? 'jira'
-        : provider === 'gitlab'
-          ? linkedWorkItem.type === 'mr'
-            ? 'gitlab-mr'
-            : 'gitlab-issue'
-          : linkedWorkItem.type === 'pr'
-            ? 'github-pr'
-            : 'github-issue'
+      : provider === 'gitlab'
+        ? linkedWorkItem.type === 'mr'
+          ? 'gitlab-mr'
+          : 'gitlab-issue'
+        : linkedWorkItem.type === 'pr'
+          ? 'github-pr'
+          : 'github-issue'
   return {
     kind,
     label:
-      provider === 'linear' || provider === 'jira' || linkedWorkItem.number === 0
+      provider === 'linear' || linkedWorkItem.number === 0
         ? linkedWorkItem.title
         : `#${linkedWorkItem.number} ${linkedWorkItem.title}`,
     url: linkedWorkItem.url

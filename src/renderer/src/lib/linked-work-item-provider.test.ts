@@ -7,23 +7,13 @@ describe('getLinkedWorkItemProvider', () => {
       'explicit provider metadata',
       {
         type: 'issue',
-        provider: 'jira',
+        provider: 'linear',
         number: 0,
-        title: 'ORCA-123 Fix Jira',
-        url: 'https://example.atlassian.net/browse/ORCA-123',
-        jiraIdentifier: 'ORCA-123'
+        title: 'ENG-123 Fix Linear',
+        url: 'https://linear.app/team/issue/ENG-123/fix-linear',
+        linearIdentifier: 'ENG-123'
       },
-      'jira'
-    ],
-    [
-      'Jira issue URL with no numeric issue id',
-      {
-        type: 'issue',
-        number: 0,
-        title: 'ORCA-123 Fix Jira',
-        url: 'https://example.atlassian.net/browse/ORCA-123'
-      },
-      'jira'
+      'linear'
     ],
     [
       'legacy Linear linked issue',

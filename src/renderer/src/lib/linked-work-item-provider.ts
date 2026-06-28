@@ -9,18 +9,6 @@ export function isGitLabIssueUrl(url: string): boolean {
   }
 }
 
-function isJiraIssueUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url)
-    return (
-      /\.atlassian\.net$/i.test(parsed.hostname) ||
-      /\/browse\/[A-Z][A-Z0-9]+-\d+/i.test(parsed.pathname)
-    )
-  } catch {
-    return false
-  }
-}
-
 export function getLinkedWorkItemProvider(
   item: LinkedWorkItemSummary
 ): NonNullable<LinkedWorkItemSummary['provider']> {
@@ -29,9 +17,6 @@ export function getLinkedWorkItemProvider(
   }
   if (item.linearIdentifier) {
     return 'linear'
-  }
-  if (item.jiraIdentifier || isJiraIssueUrl(item.url)) {
-    return 'jira'
   }
   if (item.type === 'mr') {
     return 'gitlab'

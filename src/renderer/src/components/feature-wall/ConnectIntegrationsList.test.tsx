@@ -23,12 +23,6 @@ type StoreState = {
   testLinearConnection: () => Promise<{ ok: boolean; error?: string }>
   disconnectLinear: () => Promise<void>
   disconnectLinearWorkspace: () => Promise<void>
-  jiraStatus: { connected: boolean; sites?: unknown[] }
-  jiraStatusChecked: boolean
-  jiraStatusContextKey: string | null
-  checkJiraConnection: () => Promise<void>
-  testJiraConnection: () => Promise<{ ok: boolean; error?: string }>
-  disconnectJira: () => Promise<void>
 }
 
 const { storeState } = vi.hoisted(() => ({
@@ -46,10 +40,6 @@ vi.mock('@/store', () => ({
 
 vi.mock('@/components/linear-api-key-dialog', () => ({
   LinearApiKeyDialog: () => null
-}))
-
-vi.mock('@/components/jira-connect-dialog', () => ({
-  JiraConnectDialog: () => null
 }))
 
 function makePreflightStatus(overrides: Partial<PreflightStatus> = {}): PreflightStatus {
@@ -101,13 +91,7 @@ function installStore(preflightStatus: PreflightStatus): void {
     checkLinearConnection: vi.fn(async () => {}),
     testLinearConnection: vi.fn(async () => ({ ok: true })),
     disconnectLinear: vi.fn(async () => {}),
-    disconnectLinearWorkspace: vi.fn(async () => {}),
-    jiraStatus: { connected: false, sites: [] },
-    jiraStatusChecked: true,
-    jiraStatusContextKey: providerContextKey,
-    checkJiraConnection: vi.fn(async () => {}),
-    testJiraConnection: vi.fn(async () => ({ ok: true })),
-    disconnectJira: vi.fn(async () => {})
+    disconnectLinearWorkspace: vi.fn(async () => {})
   }
 }
 
@@ -169,7 +153,6 @@ describe('ConnectIntegrationsList', () => {
     const { markup } = await renderConnectIntegrationsList()
 
     expect(markup).toContain('connected for tasks')
-    expect(markup).not.toContain('Connect Jira')
   })
 
   it('auto-resolves the task step from a connected code host but keeps it open for trackers', async () => {
@@ -179,12 +162,10 @@ describe('ConnectIntegrationsList', () => {
 
     expect(markup).toContain('GitHub')
     expect(markup).toContain('issues available as tasks')
-    expect(markup).toContain('add Linear or Jira if your team plans work there')
     expect(markup).not.toContain('Use GitHub issues')
-    // The step is done but stays expanded so Linear/Jira remain discoverable
+    // The step is done but stays expanded so Linear remains discoverable
     // for teams that plan work in a dedicated tracker.
     expect(markup).toContain('Add Linear access')
-    expect(markup).toContain('Connect Jira')
   })
 
   it('offers GitHub and GitLab as task sources when review came from a non-task provider', async () => {
@@ -202,7 +183,6 @@ describe('ConnectIntegrationsList', () => {
     expect(markup).toContain('gh auth login')
     expect(markup).toContain('glab auth login')
     expect(markup).toContain('Linear')
-    expect(markup).toContain('Jira')
   })
 
   it('lists the code host alongside a connected tracker in the task summary', async () => {
@@ -218,7 +198,5 @@ describe('ConnectIntegrationsList', () => {
     expect(markup).toContain('GitHub')
     expect(markup).toContain('connected for tasks')
     expect(markup).toContain(' and ')
-    // A connected tracker collapses the step to its summary.
-    expect(markup).not.toContain('Connect Jira')
   })
 })

@@ -9468,7 +9468,7 @@
           "c767ab7061": "Skill setup"
         },
         "IntegrationsStep": {
-          "277f30eb34": "Linear, GitLab, Bitbucket, Azure DevOps, Gitea, and Jira live in Settings > Integrations.",
+          "277f30eb34": "Linear, GitLab, Bitbucket, Azure DevOps, and Gitea live in Settings > Integrations.",
           "3a3e360289": "More task sources",
           "80e3ce0bc9": "Re-check",
           "04ef416712": "Add Linear access",
@@ -10293,7 +10293,7 @@
             "list_end": ", and ",
             "list_pair": " and ",
             "list_mid": ", ",
-            "code_host_tasks_summary": "issues available as tasks · add Linear or Jira if your team plans work there",
+            "code_host_tasks_summary": "issues available as tasks · add Linear if your team plans work there",
             "code_host_tasks_caption": "Your code host's issues also work as tasks.",
             "review_step_title": "See PR status while agents work",
             "review_step_description": "Connect a review provider so Orca can show PR or MR status, checks, and reviews.",

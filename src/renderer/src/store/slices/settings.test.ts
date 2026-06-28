@@ -247,8 +247,7 @@ describe('createSettingsSlice runtime switching', () => {
       showDotfilesByWorktree: { 'repo-env-1::/env-1/repo': false },
       gitIgnoredPathsByWorktree: { 'repo-env-1::/env-1/repo': ['dist/'] },
       prCache: { '/env-1/repo::main': { data: null, fetchedAt: Date.now() } },
-      linearIssueCache: { 'LIN-1': { data: { id: 'LIN-1' } as never, fetchedAt: Date.now() } },
-      jiraIssueCache: { 'JIRA-1': { data: { key: 'JIRA-1' } as never, fetchedAt: Date.now() } }
+      linearIssueCache: { 'LIN-1': { data: { id: 'LIN-1' } as never, fetchedAt: Date.now() } }
     })
 
     await expect(store.getState().switchRuntimeEnvironment('env-2')).resolves.toBe(true)
@@ -316,9 +315,6 @@ describe('createSettingsSlice runtime switching', () => {
     })
     expect(store.getState().linearIssueCache).toEqual({
       'LIN-1': expect.objectContaining({ data: { id: 'LIN-1' } })
-    })
-    expect(store.getState().jiraIssueCache).toEqual({
-      'JIRA-1': expect.objectContaining({ data: { key: 'JIRA-1' } })
     })
   })
 

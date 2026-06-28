@@ -100,7 +100,7 @@ describe('task source context', () => {
     expect(local).not.toBe(differentRepo)
   })
 
-  it('serializes provider identities for GitLab, Linear, and Jira cache scopes', () => {
+  it('serializes provider identities for GitLab and Linear cache scopes', () => {
     const base = {
       projectId: 'project-1',
       hostId: LOCAL_EXECUTION_HOST_ID,
@@ -121,17 +121,6 @@ describe('task source context', () => {
         providerIdentity: { provider: 'linear', workspaceId: 'workspace-1', teamKey: 'ENG' }
       })
     ).toContain(encodeURIComponent('workspace-1/ENG'))
-    expect(
-      getTaskSourceCacheScope({
-        ...base,
-        provider: 'jira',
-        providerIdentity: {
-          provider: 'jira',
-          siteUrl: 'https://example.atlassian.net',
-          projectKey: 'OPS'
-        }
-      })
-    ).toContain(encodeURIComponent('https://example.atlassian.net/OPS'))
   })
 
   it('drops provider identities that do not match the source provider', () => {

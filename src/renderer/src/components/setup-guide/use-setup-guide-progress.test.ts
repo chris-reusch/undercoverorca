@@ -149,7 +149,6 @@ describe('getSetupGuideProgressReady', () => {
     settingsLoaded: true,
     preflightStatusChecked: true,
     linearStatusChecked: true,
-    jiraStatusChecked: true,
     browserUseSkillDiscoveryLoading: false,
     computerUseSkillDiscoveryLoading: false,
     orchestrationSkillDiscoveryLoading: false,
@@ -207,10 +206,9 @@ describe('getSetupGuideProgressReady', () => {
     ).toBe(false)
   })
 
-  it('waits for preflight, Linear, and Jira checks', () => {
+  it('waits for preflight and Linear checks', () => {
     expect(getSetupGuideProgressReady({ ...readyInput, preflightStatusChecked: false })).toBe(false)
     expect(getSetupGuideProgressReady({ ...readyInput, linearStatusChecked: false })).toBe(false)
-    expect(getSetupGuideProgressReady({ ...readyInput, jiraStatusChecked: false })).toBe(false)
   })
 })
 
