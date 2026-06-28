@@ -5,9 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   registerCliHandlersMock,
   registerPreflightHandlersMock,
-  registerClaudeUsageHandlersMock,
-  registerCodexUsageHandlersMock,
-  registerOpenCodeUsageHandlersMock,
   registerGitHubHandlersMock,
   registerFeedbackHandlersMock,
   registerStatsHandlersMock,
@@ -35,7 +32,6 @@ const {
   registerClipboardHandlersMock,
   setTrustedClipboardRendererWebContentsIdMock,
   registerUpdaterHandlersMock,
-  registerRateLimitHandlersMock,
   registerBrowserHandlersMock,
   setAgentBrowserBridgeRefMock,
   setTrustedBrowserRendererWebContentsIdMock,
@@ -55,9 +51,6 @@ const {
 } = vi.hoisted(() => ({
   registerCliHandlersMock: vi.fn(),
   registerPreflightHandlersMock: vi.fn(),
-  registerClaudeUsageHandlersMock: vi.fn(),
-  registerCodexUsageHandlersMock: vi.fn(),
-  registerOpenCodeUsageHandlersMock: vi.fn(),
   registerGitHubHandlersMock: vi.fn(),
   registerFeedbackHandlersMock: vi.fn(),
   registerStatsHandlersMock: vi.fn(),
@@ -85,7 +78,6 @@ const {
   registerClipboardHandlersMock: vi.fn(),
   setTrustedClipboardRendererWebContentsIdMock: vi.fn(),
   registerUpdaterHandlersMock: vi.fn(),
-  registerRateLimitHandlersMock: vi.fn(),
   registerBrowserHandlersMock: vi.fn(),
   setAgentBrowserBridgeRefMock: vi.fn(),
   setTrustedBrowserRendererWebContentsIdMock: vi.fn(),
@@ -118,18 +110,6 @@ vi.mock('./cli', () => ({
 
 vi.mock('./preflight', () => ({
   registerPreflightHandlers: registerPreflightHandlersMock
-}))
-
-vi.mock('./claude-usage', () => ({
-  registerClaudeUsageHandlers: registerClaudeUsageHandlersMock
-}))
-
-vi.mock('./codex-usage', () => ({
-  registerCodexUsageHandlers: registerCodexUsageHandlersMock
-}))
-
-vi.mock('./opencode-usage', () => ({
-  registerOpenCodeUsageHandlers: registerOpenCodeUsageHandlersMock
 }))
 
 vi.mock('./github', () => ({
@@ -221,10 +201,6 @@ vi.mock('./filesystem-watcher', () => ({
   registerFilesystemWatcherHandlers: registerFilesystemWatcherHandlersMock
 }))
 
-vi.mock('./rate-limits', () => ({
-  registerRateLimitHandlers: registerRateLimitHandlersMock
-}))
-
 vi.mock('./runtime', () => ({
   registerRuntimeHandlers: registerRuntimeHandlersMock
 }))
@@ -294,9 +270,6 @@ describe('registerCoreHandlers', () => {
   beforeEach(() => {
     registerCliHandlersMock.mockReset()
     registerPreflightHandlersMock.mockReset()
-    registerClaudeUsageHandlersMock.mockReset()
-    registerCodexUsageHandlersMock.mockReset()
-    registerOpenCodeUsageHandlersMock.mockReset()
     registerGitHubHandlersMock.mockReset()
     registerFeedbackHandlersMock.mockReset()
     registerStatsHandlersMock.mockReset()
@@ -324,7 +297,6 @@ describe('registerCoreHandlers', () => {
     registerClipboardHandlersMock.mockReset()
     setTrustedClipboardRendererWebContentsIdMock.mockReset()
     registerUpdaterHandlersMock.mockReset()
-    registerRateLimitHandlersMock.mockReset()
     registerBrowserHandlersMock.mockReset()
     setAgentBrowserBridgeRefMock.mockReset()
     setTrustedBrowserRendererWebContentsIdMock.mockReset()
@@ -346,12 +318,8 @@ describe('registerCoreHandlers', () => {
     const store = { marker: 'store' }
     const runtime = { marker: 'runtime', getAgentBrowserBridge: () => null }
     const stats = { marker: 'stats' }
-    const claudeUsage = { marker: 'claudeUsage' }
-    const codexUsage = { marker: 'codexUsage' }
-    const openCodeUsage = { marker: 'openCodeUsage' }
     const codexAccounts = { marker: 'codexAccounts' }
     const claudeAccounts = { marker: 'claudeAccounts' }
-    const rateLimits = { marker: 'rateLimits' }
     const agentAwakeService = { marker: 'agentAwakeService' }
     const onBeforeRelaunch = vi.fn()
     const getAdditionalAiVaultCodexHomePaths = vi.fn(() => ['/runtime/codex/home'])
@@ -360,12 +328,8 @@ describe('registerCoreHandlers', () => {
       store as never,
       runtime as never,
       stats as never,
-      claudeUsage as never,
-      codexUsage as never,
-      openCodeUsage as never,
       codexAccounts as never,
       claudeAccounts as never,
-      rateLimits as never,
       null,
       undefined,
       undefined,
@@ -375,15 +339,11 @@ describe('registerCoreHandlers', () => {
       { getAdditionalAiVaultCodexHomePaths, onBeforeRelaunch }
     )
 
-    expect(registerClaudeUsageHandlersMock).toHaveBeenCalledWith(claudeUsage)
-    expect(registerCodexUsageHandlersMock).toHaveBeenCalledWith(codexUsage)
-    expect(registerOpenCodeUsageHandlersMock).toHaveBeenCalledWith(openCodeUsage)
     expect(registerAppHandlersMock).toHaveBeenCalledWith(store, { onBeforeRelaunch })
     expect(registerCodexAccountHandlersMock).toHaveBeenCalledWith(codexAccounts)
     expect(registerAgentHookHandlersMock).toHaveBeenCalledWith(runtime)
     expect(registerPetHandlersMock).toHaveBeenCalled()
     expect(registerClaudeAccountHandlersMock).toHaveBeenCalledWith(claudeAccounts)
-    expect(registerRateLimitHandlersMock).toHaveBeenCalledWith(rateLimits)
     expect(registerGitHubHandlersMock).toHaveBeenCalledWith(store, stats)
     expect(registerLinearHandlersMock).toHaveBeenCalled()
     expect(registerJiraHandlersMock).toHaveBeenCalled()
@@ -428,23 +388,15 @@ describe('registerCoreHandlers', () => {
     const store2 = { marker: 'store2' }
     const runtime2 = { marker: 'runtime2', getAgentBrowserBridge: () => null }
     const stats2 = { marker: 'stats2' }
-    const claudeUsage2 = { marker: 'claudeUsage2' }
-    const codexUsage2 = { marker: 'codexUsage2' }
-    const openCodeUsage2 = { marker: 'openCodeUsage2' }
     const codexAccounts2 = { marker: 'codexAccounts2' }
     const claudeAccounts2 = { marker: 'claudeAccounts2' }
-    const rateLimits2 = { marker: 'rateLimits2' }
 
     registerCoreHandlers(
       store2 as never,
       runtime2 as never,
       stats2 as never,
-      claudeUsage2 as never,
-      codexUsage2 as never,
-      openCodeUsage2 as never,
       codexAccounts2 as never,
       claudeAccounts2 as never,
-      rateLimits2 as never,
       42
     )
 

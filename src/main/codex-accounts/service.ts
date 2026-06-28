@@ -17,13 +17,11 @@ import type { CodexRuntimeHomeService } from './runtime-home-service'
 import { writeFileAtomically } from './fs-utils'
 import { resolveCodexCommand } from '../codex-cli/command'
 import type { Store } from '../persistence'
-import type { RateLimitService } from '../rate-limits/service'
 import { parseWslUncPath } from '../../shared/wsl-paths'
 import { toWindowsWslPath } from '../wsl'
 import { buildEncodedWslBashCommand } from '../wsl-bash-command'
 import {
   getCodexSelectionTargetForAccount,
-  getSelectedCodexAccountIdForTarget,
   normalizeCodexAccountSelectionTarget,
   normalizeCodexRuntimeSelection,
   pruneInvalidCodexRuntimeSelection,
@@ -64,14 +62,13 @@ function shellQuote(value: string): string {
 }
 
 export class CodexAccountService {
-  // Why: account mutations read settings, do async work (login, rate-limit
-  // refresh), then write settings. Without serialization, overlapping calls
-  // (e.g. double-click "Add Account") can cause lost updates.
+  // Why: account mutations read settings, do async work (login), then write
+  // settings. Without serialization, overlapping calls (e.g. double-click
+  // "Add Account") can cause lost updates.
   private mutationQueue: Promise<unknown> = Promise.resolve()
 
   constructor(
     private readonly store: Store,
-    private readonly rateLimits: RateLimitService,
     private readonly runtimeHome: CodexRuntimeHomeService
   ) {
     this.safeSyncCanonicalConfigToManagedHomes()
@@ -156,11 +153,6 @@ export class CodexAccountService {
       this.safeSyncCanonicalConfigToManagedHomes()
       this.runtimeHome.clearLastWrittenAuthJson(account.id)
       this.runtimeHome.syncForCurrentSelection()
-
-      // Why: the new account becomes active, so the previous active account is
-      // now inactive and its last-known usage should be cached for the switcher.
-      const outgoingAccountId = getSelectedCodexAccountIdForTarget(settings, targetSelection)
-      await this.rateLimits.refreshForCodexAccountChange(outgoingAccountId, targetSelection)
       return this.getSnapshot()
     } catch (error) {
       this.safeRemoveManagedHome(managedHomePath)
@@ -201,14 +193,6 @@ export class CodexAccountService {
     this.safeSyncCanonicalConfigToManagedHomes()
     this.runtimeHome.clearLastWrittenAuthJson(accountId)
     this.runtimeHome.syncForCurrentSelection(getCodexSelectionTargetForAccount(account))
-
-    // Why: re-auth can change which actual Codex identity the managed home
-    // points at. Force a fresh read immediately so the status bar cannot keep
-    // showing the previous account's quota under the updated label.
-    await this.rateLimits.refreshForCodexAccountChange(
-      undefined,
-      getCodexSelectionTargetForAccount(account)
-    )
     return this.getSnapshot()
   }
 
@@ -231,16 +215,6 @@ export class CodexAccountService {
     this.runtimeHome.syncForCurrentSelection()
 
     this.safeRemoveManagedHome(account.managedHomePath)
-    // Why: a removed account can no longer appear in the switcher dropdown,
-    // so purge its cached usage to avoid stale entries.
-    this.rateLimits.evictInactiveCodexCache(accountId)
-    await this.rateLimits.refreshForCodexAccountChange(
-      getSelectedCodexAccountIdForTarget(settings, getCodexSelectionTargetForAccount(account)) ===
-        accountId
-        ? accountId
-        : undefined,
-      getCodexSelectionTargetForAccount(account)
-    )
     return this.getSnapshot()
   }
 
@@ -266,7 +240,6 @@ export class CodexAccountService {
 
     const previousSettings = this.store.getSettings()
     const selection = normalizeCodexRuntimeSelection(previousSettings)
-    const outgoingAccountId = getSelectedCodexAccountIdForTarget(previousSettings, effectiveTarget)
     const nextSelection = setSelectedCodexAccountIdForTarget(selection, accountId, effectiveTarget)
 
     this.store.updateSettings({
@@ -276,8 +249,6 @@ export class CodexAccountService {
     })
     this.safeSyncCanonicalConfigToManagedHomes()
     this.runtimeHome.syncForCurrentSelection(effectiveTarget)
-
-    await this.rateLimits.refreshForCodexAccountChange(outgoingAccountId, effectiveTarget)
     return this.getSnapshot()
   }
 

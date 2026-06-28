@@ -245,24 +245,24 @@ function presetToQuery(presetId: TaskViewPresetId | null): string {
   }
 }
 
-// Why: persisted UI state pre-dated the consolidation of `memory` + `sessions`
-// into a single `resource-usage` entry. Rewrite legacy ids in place and
-// de-duplicate. We leave unknown ids alone so a downgrade→upgrade cycle
-// doesn't strip a newer build's ids out of the user's settings.
+// Why: provider usage / rate-limit and resource-manager status-bar items were
+// removed; only 'ssh' and 'ports' remain. Drop any legacy ids and de-duplicate
+// so an old profile cannot resurrect a status-bar surface that no longer exists.
+const SUPPORTED_STATUS_BAR_ITEMS: readonly StatusBarItem[] = ['ssh', 'ports']
+
 function migrateStatusBarItems(items: readonly string[] | undefined): StatusBarItem[] {
   const source = items ?? DEFAULT_STATUS_BAR_ITEMS
-  const out: string[] = []
+  const out: StatusBarItem[] = []
   for (const id of source) {
-    const mapped = id === 'memory' || id === 'sessions' ? 'resource-usage' : id
-    if (!out.includes(mapped)) {
-      out.push(mapped)
+    const supported = SUPPORTED_STATUS_BAR_ITEMS.find((item) => item === id)
+    if (supported && !out.includes(supported)) {
+      out.push(supported)
     }
   }
-  return out as StatusBarItem[]
+  return out
 }
 
 const DEFAULT_ON_PORTS_STATUS_BAR_ITEM: StatusBarItem = 'ports'
-const DEFAULT_ON_KIMI_STATUS_BAR_ITEM: StatusBarItem = 'kimi'
 
 function normalizeHydratedVisibleWorkspaceHostIds(ui: PersistedUIState): VisibleWorkspaceHostIds {
   const visibleHostIds = normalizeVisibleExecutionHostIds(ui.visibleWorkspaceHostIds)
@@ -2205,23 +2205,15 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
       //     'recent' sort keep it across restarts.
       const sortBy = ui.sortBy
       const migratedStatusBarItems = migrateStatusBarItems(ui.statusBarItems)
-      const statusBarItemsWithPorts =
+      const statusBarItems =
         ui._portsStatusBarDefaultAdded || migratedStatusBarItems.includes('ports')
           ? migratedStatusBarItems
           : [...migratedStatusBarItems, DEFAULT_ON_PORTS_STATUS_BAR_ITEM]
-      const statusBarItems =
-        ui._kimiStatusBarDefaultAdded || statusBarItemsWithPorts.includes('kimi')
-          ? statusBarItemsWithPorts
-          : [...statusBarItemsWithPorts, DEFAULT_ON_KIMI_STATUS_BAR_ITEM]
-      if (
-        (!ui._portsStatusBarDefaultAdded || !ui._kimiStatusBarDefaultAdded) &&
-        typeof window !== 'undefined'
-      ) {
+      if (!ui._portsStatusBarDefaultAdded && typeof window !== 'undefined') {
         window.api.ui
           .set({
             statusBarItems,
-            _portsStatusBarDefaultAdded: true,
-            _kimiStatusBarDefaultAdded: true
+            _portsStatusBarDefaultAdded: true
           })
           .catch(console.error)
       }

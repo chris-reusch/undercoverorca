@@ -7,7 +7,6 @@ export const FEATURE_WALL_TOUR_DEPTH_STEPS = [
   'workspaces',
   'tasks',
   'agents_statuses',
-  'agents_usage',
   'agents_orchestration',
   'workbench_terminal',
   'workbench_editor',
@@ -50,7 +49,6 @@ const DEPTH_STEP_RANK = new Map<FeatureWallTourDepthStep, number>(
 
 const AGENT_DEPTH_STEP: Record<AgentsStepId, FeatureWallTourDepthStep> = {
   statuses: 'agents_statuses',
-  usage: 'agents_usage',
   orchestration: 'agents_orchestration'
 }
 

@@ -15,11 +15,7 @@ import type { EditorSlice } from './slices/editor'
 import type { StatsSlice } from './slices/stats'
 import type { MemorySlice } from './slices/memory'
 import type { WorkspaceSpaceSlice } from './slices/workspace-space'
-import type { ClaudeUsageSlice } from './slices/claude-usage'
-import type { CodexUsageSlice } from './slices/codex-usage'
-import type { OpenCodeUsageSlice } from './slices/opencode-usage'
 import type { BrowserSlice } from './slices/browser'
-import type { RateLimitSlice } from './slices/rate-limits'
 import type { SshSlice } from './slices/ssh'
 import type { AgentStatusSlice } from './slices/agent-status'
 import type { DiffCommentsSlice } from './slices/diffComments'
@@ -49,11 +45,7 @@ export type AppState = RepoSlice &
   StatsSlice &
   MemorySlice &
   WorkspaceSpaceSlice &
-  ClaudeUsageSlice &
-  CodexUsageSlice &
-  OpenCodeUsageSlice &
   BrowserSlice &
-  RateLimitSlice &
   SshSlice &
   AgentStatusSlice &
   DiffCommentsSlice &

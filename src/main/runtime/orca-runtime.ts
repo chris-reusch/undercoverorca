@@ -651,9 +651,7 @@ import { enrichMissingRepoGitRemoteIdentities } from '../repo-git-remote-identit
 import { githubAvatarIcon } from '../../shared/repo-icon'
 import type { ClaudeAccountService } from '../claude-accounts/service'
 import type { CodexAccountService } from '../codex-accounts/service'
-import type { RateLimitService } from '../rate-limits/service'
 import type { ClaudeRateLimitAccountsState, CodexRateLimitAccountsState } from '../../shared/types'
-import type { RateLimitState } from '../../shared/rate-limit-types'
 import type { VoiceSettings } from '../../shared/speech-types'
 import { getSpeechModelManager, getSpeechSttService } from '../speech/speech-runtime-service'
 import { getCatalogModel, isLocalSpeechModel, SPEECH_MODEL_CATALOG } from '../speech/model-catalog'
@@ -677,7 +675,6 @@ function sanitizeNestedRepoRuntimeImportError(context: string, error: unknown): 
 type RuntimeAccountServices = {
   claudeAccounts: ClaudeAccountService
   codexAccounts: CodexAccountService
-  rateLimits: RateLimitService
 }
 
 export type RemoteFetchResult = { ok: true } | { ok: false; errorKind: 'git_error' }
@@ -692,7 +689,6 @@ export type RemoteTrackingBase = {
 export type AccountsSnapshot = {
   claude: ClaudeRateLimitAccountsState
   codex: CodexRateLimitAccountsState
-  rateLimits: RateLimitState
 }
 
 type RuntimeStore = {
@@ -6129,26 +6125,18 @@ export class OrcaRuntimeService {
   }
 
   getAccountsSnapshot(): AccountsSnapshot {
-    const { claudeAccounts, codexAccounts, rateLimits } = this.requireAccountServices()
+    const { claudeAccounts, codexAccounts } = this.requireAccountServices()
     return {
       claude: claudeAccounts.listAccounts(),
-      codex: codexAccounts.listAccounts(),
-      rateLimits: rateLimits.getState()
+      codex: codexAccounts.listAccounts()
     }
   }
 
-  // Why: RateLimitService polls only when the Electron window is visible AND
-  // focused, and the inactive-account caches fill lazily when the user opens
-  // the desktop AccountsPane. Mobile has neither trigger, so without this the
-  // phone shows 0% / "—" against a backgrounded desktop. Errors swallowed
-  // because partial usage is still useful for the rest of the snapshot.
+  // Why: usage/rate-limit tracking was removed from this fork, so the account
+  // snapshot is now always current (listAccounts is synchronous). Retained as
+  // a no-op to preserve the mobile accounts RPC contract used by callers.
   async refreshAccountsForMobile(): Promise<void> {
-    const { rateLimits } = this.requireAccountServices()
-    await Promise.allSettled([
-      rateLimits.refresh(),
-      rateLimits.fetchInactiveClaudeAccountsOnOpen(),
-      rateLimits.fetchInactiveCodexAccountsOnOpen()
-    ])
+    this.requireAccountServices()
   }
 
   selectClaudeAccount(accountId: string | null): Promise<ClaudeRateLimitAccountsState> {
@@ -6167,19 +6155,13 @@ export class OrcaRuntimeService {
     return this.requireAccountServices().codexAccounts.removeAccount(accountId)
   }
 
-  // Why: rate-limit polling fires every 5 minutes and on account switch.
-  // Mobile clients subscribe to receive a fresh AccountsSnapshot whenever
-  // RateLimitService pushes new usage data, mirroring the existing
-  // `rateLimits:update` IPC channel desktop already uses.
-  onAccountsChanged(listener: (snapshot: AccountsSnapshot) => void): () => void {
-    const services = this.requireAccountServices()
-    return services.rateLimits.onStateChange(() => {
-      listener({
-        claude: services.claudeAccounts.listAccounts(),
-        codex: services.codexAccounts.listAccounts(),
-        rateLimits: services.rateLimits.getState()
-      })
-    })
+  // Why: usage/rate-limit tracking was removed from this fork, which was the
+  // only push source for live account-snapshot updates. Retained as a no-op
+  // subscription so the mobile `accounts.subscribe` RPC still delivers its
+  // initial snapshot and unsubscribes cleanly.
+  onAccountsChanged(_listener: (snapshot: AccountsSnapshot) => void): () => void {
+    this.requireAccountServices()
+    return () => {}
   }
 
   // ─── Mobile Fit Override Management ─────────────────────────

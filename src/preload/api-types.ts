@@ -298,22 +298,6 @@ import type {
   ComputerUsePermissionStatusResult
 } from '../shared/computer-use-permissions-types'
 import type {
-  ClaudeUsageBreakdownKind,
-  ClaudeUsageBreakdownRow,
-  ClaudeUsageDailyPoint,
-  ClaudeUsageRange,
-  ClaudeUsageScanState,
-  ClaudeUsageScope,
-  ClaudeUsageSessionRow,
-  ClaudeUsageSnapshot,
-  ClaudeUsageSummary
-} from '../shared/claude-usage-types'
-import type {
-  CodexRateLimitResetResult,
-  RateLimitRuntimeTarget,
-  RateLimitState
-} from '../shared/rate-limit-types'
-import type {
   SpeechErrorEvent,
   SpeechLifecycleEvent,
   SpeechModelManifest,
@@ -338,28 +322,6 @@ import type {
   PortForwardEntry,
   EnrichedDetectedPort
 } from '../shared/ssh-types'
-import type {
-  CodexUsageBreakdownKind,
-  CodexUsageBreakdownRow,
-  CodexUsageDailyPoint,
-  CodexUsageRange,
-  CodexUsageScanState,
-  CodexUsageScope,
-  CodexUsageSessionRow,
-  CodexUsageSnapshot,
-  CodexUsageSummary
-} from '../shared/codex-usage-types'
-import type {
-  OpenCodeUsageBreakdownKind,
-  OpenCodeUsageBreakdownRow,
-  OpenCodeUsageDailyPoint,
-  OpenCodeUsageRange,
-  OpenCodeUsageScanState,
-  OpenCodeUsageScope,
-  OpenCodeUsageSessionRow,
-  OpenCodeUsageSnapshot,
-  OpenCodeUsageSummary
-} from '../shared/opencode-usage-types'
 import type { AiVaultListArgs, AiVaultListResult } from '../shared/ai-vault-types'
 import type { AppStarSource } from '../shared/gh-star-source'
 import type {
@@ -616,93 +578,6 @@ export type DiagnosticsUploadPayload =
 
 export type MemoryApi = {
   getSnapshot: () => Promise<MemorySnapshot>
-}
-
-export type ClaudeUsageApi = {
-  getScanState: () => Promise<ClaudeUsageScanState>
-  setEnabled: (args: { enabled: boolean }) => Promise<ClaudeUsageScanState>
-  refresh: (args?: { force?: boolean }) => Promise<ClaudeUsageScanState>
-  getSnapshot: (args: {
-    scope: ClaudeUsageScope
-    range: ClaudeUsageRange
-    limit?: number
-  }) => Promise<ClaudeUsageSnapshot>
-  getSummary: (args: {
-    scope: ClaudeUsageScope
-    range: ClaudeUsageRange
-  }) => Promise<ClaudeUsageSummary>
-  getDaily: (args: {
-    scope: ClaudeUsageScope
-    range: ClaudeUsageRange
-  }) => Promise<ClaudeUsageDailyPoint[]>
-  getBreakdown: (args: {
-    scope: ClaudeUsageScope
-    range: ClaudeUsageRange
-    kind: ClaudeUsageBreakdownKind
-  }) => Promise<ClaudeUsageBreakdownRow[]>
-  getRecentSessions: (args: {
-    scope: ClaudeUsageScope
-    range: ClaudeUsageRange
-    limit?: number
-  }) => Promise<ClaudeUsageSessionRow[]>
-}
-
-export type CodexUsageApi = {
-  getScanState: () => Promise<CodexUsageScanState>
-  setEnabled: (args: { enabled: boolean }) => Promise<CodexUsageScanState>
-  refresh: (args?: { force?: boolean }) => Promise<CodexUsageScanState>
-  getSnapshot: (args: {
-    scope: CodexUsageScope
-    range: CodexUsageRange
-    limit?: number
-  }) => Promise<CodexUsageSnapshot>
-  getSummary: (args: {
-    scope: CodexUsageScope
-    range: CodexUsageRange
-  }) => Promise<CodexUsageSummary>
-  getDaily: (args: {
-    scope: CodexUsageScope
-    range: CodexUsageRange
-  }) => Promise<CodexUsageDailyPoint[]>
-  getBreakdown: (args: {
-    scope: CodexUsageScope
-    range: CodexUsageRange
-    kind: CodexUsageBreakdownKind
-  }) => Promise<CodexUsageBreakdownRow[]>
-  getRecentSessions: (args: {
-    scope: CodexUsageScope
-    range: CodexUsageRange
-    limit?: number
-  }) => Promise<CodexUsageSessionRow[]>
-}
-
-export type OpenCodeUsageApi = {
-  getScanState: () => Promise<OpenCodeUsageScanState>
-  setEnabled: (args: { enabled: boolean }) => Promise<OpenCodeUsageScanState>
-  refresh: (args?: { force?: boolean }) => Promise<OpenCodeUsageScanState>
-  getSnapshot: (args: {
-    scope: OpenCodeUsageScope
-    range: OpenCodeUsageRange
-    limit?: number
-  }) => Promise<OpenCodeUsageSnapshot>
-  getSummary: (args: {
-    scope: OpenCodeUsageScope
-    range: OpenCodeUsageRange
-  }) => Promise<OpenCodeUsageSummary>
-  getDaily: (args: {
-    scope: OpenCodeUsageScope
-    range: OpenCodeUsageRange
-  }) => Promise<OpenCodeUsageDailyPoint[]>
-  getBreakdown: (args: {
-    scope: OpenCodeUsageScope
-    range: OpenCodeUsageRange
-    kind: OpenCodeUsageBreakdownKind
-  }) => Promise<OpenCodeUsageBreakdownRow[]>
-  getRecentSessions: (args: {
-    scope: OpenCodeUsageScope
-    range: OpenCodeUsageRange
-    limit?: number
-  }) => Promise<OpenCodeUsageSessionRow[]>
 }
 
 export type AiVaultApi = {
@@ -1964,9 +1839,6 @@ export type PreloadApi = {
   }
   stats: StatsApi
   memory: MemoryApi
-  claudeUsage: ClaudeUsageApi
-  codexUsage: CodexUsageApi
-  openCodeUsage: OpenCodeUsageApi
   aiVault: AiVaultApi
   fs: {
     readDir: (args: { dirPath: string; connectionId?: string }) => Promise<DirEntry[]>
@@ -2569,17 +2441,6 @@ export type PreloadApi = {
         onClose?: () => void
       }
     ) => Promise<RuntimeEnvironmentSubscriptionHandle>
-  }
-  rateLimits: {
-    get: () => Promise<RateLimitState>
-    refresh: () => Promise<RateLimitState>
-    refreshCodexForTarget: (target: RateLimitRuntimeTarget) => Promise<RateLimitState>
-    consumeCodexResetCredit: () => Promise<CodexRateLimitResetResult>
-    refreshClaudeForTarget: (target: RateLimitRuntimeTarget) => Promise<RateLimitState>
-    setPollingInterval: (ms: number) => Promise<void>
-    fetchInactiveClaudeAccounts: () => Promise<void>
-    fetchInactiveCodexAccounts: () => Promise<void>
-    onUpdate: (callback: (state: RateLimitState) => void) => () => void
   }
   ssh: {
     listTargets: () => Promise<SshTarget[]>

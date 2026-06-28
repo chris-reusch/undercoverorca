@@ -11,7 +11,6 @@ import type {
   ClaudeRateLimitAccountsState
 } from '../../shared/types'
 import type { Store } from '../persistence'
-import type { RateLimitService } from '../rate-limits/service'
 import { resolveClaudeCommand } from '../codex-cli/command'
 import type { ClaudeRuntimeAuthService } from './runtime-auth-service'
 import {
@@ -86,7 +85,6 @@ export class ClaudeAccountService {
 
   constructor(
     private readonly store: Store,
-    private readonly rateLimits: RateLimitService,
     private readonly runtimeAuth: ClaudeRuntimeAuthService
   ) {}
 
@@ -162,7 +160,6 @@ export class ClaudeAccountService {
         activeClaudeManagedAccountIdsByRuntime: selection
       })
       this.runtimeAuth.clearLastWrittenCredentialsJson(accountId)
-      this.rateLimits.evictInactiveClaudeCache(accountId)
       return this.getSnapshot()
     } catch (error) {
       this.restoreClaudeSettings(previousSettings)
@@ -208,12 +205,7 @@ export class ClaudeAccountService {
       wroteManagedCredentials = true
       this.store.updateSettings({ claudeManagedAccounts: reauthenticatedAccounts })
       this.runtimeAuth.clearLastWrittenCredentialsJson(accountId)
-      this.rateLimits.evictInactiveClaudeCache(accountId)
       await this.syncRuntimeAuthWithLivePtyGate(getClaudeSelectionTargetForAccount(account))
-      await this.rateLimits.refreshForClaudeAccountChange(
-        undefined,
-        getClaudeSelectionTargetForAccount(account)
-      )
       return this.getSnapshot()
     } catch (error) {
       let restoredManagedCredentials = false
@@ -285,16 +277,6 @@ export class ClaudeAccountService {
         await this.syncRuntimeAuthWithLivePtyGate(getClaudeSelectionTargetForAccount(account))
       }
       await this.safeRemoveManagedAuth(accountId, account.managedAuthPath)
-      this.rateLimits.evictInactiveClaudeCache(accountId)
-      await this.rateLimits.refreshForClaudeAccountChange(
-        getSelectedClaudeAccountIdForTarget(
-          settings,
-          getClaudeSelectionTargetForAccount(account)
-        ) === accountId
-          ? accountId
-          : undefined,
-        getClaudeSelectionTargetForAccount(account)
-      )
       return this.getSnapshot()
     } catch (error) {
       this.restoreClaudeSettings(settings)
@@ -324,7 +306,6 @@ export class ClaudeAccountService {
     }
     const previousSettings = this.store.getSettings()
     const selection = normalizeClaudeRuntimeSelection(previousSettings)
-    const outgoingAccountId = getSelectedClaudeAccountIdForTarget(previousSettings, effectiveTarget)
     const nextSelection = setSelectedClaudeAccountIdForTarget(selection, accountId, effectiveTarget)
     this.store.updateSettings({
       activeClaudeManagedAccountId:
@@ -333,7 +314,6 @@ export class ClaudeAccountService {
     })
     try {
       await this.syncRuntimeAuthWithLivePtyGate(effectiveTarget)
-      await this.rateLimits.refreshForClaudeAccountChange(outgoingAccountId, effectiveTarget)
       return this.getSnapshot()
     } catch (error) {
       this.restoreClaudeSettings(previousSettings)

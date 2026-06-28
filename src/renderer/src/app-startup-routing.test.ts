@@ -183,11 +183,9 @@ describe('renderer startup runtime routing', () => {
       'utf8'
     )
 
-    expect(source).toContain("import('./ResourceUsageStatusSegment').then")
     expect(source).toContain("import('./PortsStatusSegment').then")
     expect(source).toContain("import('./SshStatusSegment').then")
     expect(source).toContain("import('./PetStatusSegment').then")
-    expect(source).not.toContain("from './ResourceUsageStatusSegment'")
     expect(source).not.toContain("from './PortsStatusSegment'")
     expect(source).not.toContain("from './SshStatusSegment'")
     expect(source).not.toContain("from './PetStatusSegment'")

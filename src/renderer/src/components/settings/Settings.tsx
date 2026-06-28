@@ -37,7 +37,6 @@ import { ExperimentalPane } from './ExperimentalPane'
 import { AgentsPane } from './AgentsPane'
 import { OrchestrationPane } from './OrchestrationPane'
 import { AccountsPane } from './AccountsPane'
-import { StatsPane } from '../stats/StatsPane'
 import { IntegrationsPane } from './IntegrationsPane'
 import { TasksPane } from './TasksPane'
 import { QuickCommandsPane } from './QuickCommandsPane'
@@ -1445,18 +1444,6 @@ function Settings(): React.JSX.Element {
                   }
                 >
                   {isSectionMounted('shortcuts') ? <ShortcutsPane /> : null}
-                </SettingsSection>
-
-                <SettingsSection
-                  id="stats"
-                  title={translate('auto.components.settings.Settings.954a8f5aef', 'Stats & Usage')}
-                  description={translate(
-                    'auto.components.settings.Settings.8acf3f22e0',
-                    'Orca stats plus Claude, Codex, and OpenCode usage analytics.'
-                  )}
-                  searchEntries={getSectionSearchEntries('stats')}
-                >
-                  {isSectionMounted('stats') ? <StatsPane /> : null}
                 </SettingsSection>
 
                 <SettingsSection

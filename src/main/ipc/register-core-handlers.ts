@@ -7,9 +7,6 @@ import type { StatsCollector } from '../stats/collector'
 import { registerFilesystemHandlers } from './filesystem'
 import type { CommitMessageAgentEnvironmentResolvers } from '../text-generation/commit-message-agent-environment'
 import { registerFilesystemWatcherHandlers } from './filesystem-watcher'
-import { registerClaudeUsageHandlers } from './claude-usage'
-import { registerCodexUsageHandlers } from './codex-usage'
-import { registerOpenCodeUsageHandlers } from './opencode-usage'
 import { registerGitHubHandlers } from './github'
 import { registerGitLabHandlers } from './gitlab'
 import { registerHostedReviewHandlers } from './hosted-review'
@@ -20,7 +17,6 @@ import { registerCrashReportingHandlers } from './crash-reporting'
 import { registerExportHandlers } from './export'
 import { registerStatsHandlers } from './stats'
 import { registerMemoryHandlers } from './memory'
-import { registerRateLimitHandlers } from './rate-limits'
 import { registerRuntimeHandlers } from './runtime'
 import { registerRuntimeEnvironmentHandlers } from './runtime-environments'
 import { registerAiVaultHandlers } from './ai-vault'
@@ -53,10 +49,6 @@ import {
   registerClipboardHandlers,
   setTrustedClipboardRendererWebContentsId
 } from '../window/clipboard-ipc-handlers'
-import type { ClaudeUsageStore } from '../claude-usage/store'
-import type { CodexUsageStore } from '../codex-usage/store'
-import type { OpenCodeUsageStore } from '../opencode-usage/store'
-import type { RateLimitService } from '../rate-limits/service'
 import type { CodexAccountService } from '../codex-accounts/service'
 import type { ClaudeAccountService } from '../claude-accounts/service'
 import type { AutomationService } from '../automations/service'
@@ -75,12 +67,8 @@ export function registerCoreHandlers(
   store: Store,
   runtime: OrcaRuntimeService,
   stats: StatsCollector,
-  claudeUsage: ClaudeUsageStore,
-  codexUsage: CodexUsageStore,
-  openCodeUsage: OpenCodeUsageStore,
   codexAccounts: CodexAccountService,
   claudeAccounts: ClaudeAccountService,
-  rateLimits: RateLimitService,
   mainWindowWebContentsId: number | null = null,
   automations?: AutomationService,
   commitMessageAgentEnv?: CommitMessageAgentEnvironmentResolvers,
@@ -105,14 +93,10 @@ export function registerCoreHandlers(
   registerAppHandlers(store, { onBeforeRelaunch: lifecycleOptions.onBeforeRelaunch })
   registerCliHandlers()
   registerPreflightHandlers()
-  registerClaudeUsageHandlers(claudeUsage)
-  registerCodexUsageHandlers(codexUsage)
-  registerOpenCodeUsageHandlers(openCodeUsage)
   registerCodexAccountHandlers(codexAccounts)
   registerAgentHookHandlers(runtime)
   registerAgentTrustHandlers()
   registerClaudeAccountHandlers(claudeAccounts)
-  registerRateLimitHandlers(rateLimits)
   registerGitHubHandlers(store, stats)
   registerGitLabHandlers(store)
   registerHostedReviewHandlers(store, stats)

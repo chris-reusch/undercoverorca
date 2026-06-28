@@ -13,7 +13,6 @@ import { applyAppIcon } from './app-icon'
 import { StatsCollector, initStatsPath } from './stats/collector'
 import { ClaudeUsageStore, initClaudeUsagePath } from './claude-usage/store'
 import { CodexUsageStore, initCodexUsagePath } from './codex-usage/store'
-import { OpenCodeUsageStore, initOpenCodeUsagePath } from './opencode-usage/store'
 import { killAllPty } from './ipc/pty'
 import { initDaemonPtyProvider, disconnectDaemon, shutdownDaemon } from './daemon/daemon-init'
 import { closeAllWatchers } from './ipc/filesystem-watcher'
@@ -69,20 +68,13 @@ import {
 import { startEventLoopStallProbe } from './startup/event-loop-stall-probe'
 import { isStartupDiagnosticsEnabled, logStartupDiagnostic } from './startup/startup-diagnostics'
 import { ensureWindowsUserDataAclGrant } from './startup/windows-user-data-acl'
-import { RateLimitService } from './rate-limits/service'
-import { getInitialClaudeRateLimitTarget } from './rate-limits/claude-rate-limit-target'
-import { getInitialCodexRateLimitTarget } from './rate-limits/codex-rate-limit-target'
 import { attachMainWindowServices } from './window/attach-main-window-services'
 import { createMainWindow, loadMainWindow } from './window/createMainWindow'
 import { createSystemTray, destroySystemTray } from './tray/system-tray'
 import { focusExistingMainWindow } from './window/focus-existing-window'
 import { CodexAccountService } from './codex-accounts/service'
 import { CodexRuntimeHomeService } from './codex-accounts/runtime-home-service'
-import {
-  normalizeCodexRuntimeSelection,
-  type CodexAccountSelectionTarget
-} from './codex-accounts/runtime-selection'
-import { normalizeClaudeRuntimeSelection } from './claude-accounts/runtime-selection'
+import { type CodexAccountSelectionTarget } from './codex-accounts/runtime-selection'
 import { codexHookService } from './codex/hook-service'
 import { ClaudeAccountService } from './claude-accounts/service'
 import { ClaudeRuntimeAuthService } from './claude-accounts/runtime-auth-service'
@@ -153,13 +145,11 @@ let store: Store | null = null
 let stats: StatsCollector | null = null
 let claudeUsage: ClaudeUsageStore | null = null
 let codexUsage: CodexUsageStore | null = null
-let openCodeUsage: OpenCodeUsageStore | null = null
 let codexAccounts: CodexAccountService | null = null
 let codexRuntimeHome: CodexRuntimeHomeService | null = null
 let claudeAccounts: ClaudeAccountService | null = null
 let claudeRuntimeAuth: ClaudeRuntimeAuthService | null = null
 let runtime: OrcaRuntimeService | null = null
-let rateLimits: RateLimitService | null = null
 let runtimeRpc: OrcaRuntimeRpcServer | null = null
 // Why: set during early startup; gates whether headless serve installs the
 // offscreen browser backend (and thus advertises browser pane support).
@@ -480,7 +470,6 @@ if (hasSingleInstanceLock) {
   initStatsPath()
   initClaudeUsagePath()
   initCodexUsagePath()
-  initOpenCodeUsagePath()
   crashReports = CrashReportStore.fromUserData()
   recordCrashBreadcrumb('app_started', {
     packaged: app.isPackaged,
@@ -593,12 +582,6 @@ function openMainWindow(): BrowserWindow {
   if (!codexUsage) {
     throw new Error('Codex usage store must be initialized before opening the main window')
   }
-  if (!openCodeUsage) {
-    throw new Error('OpenCode usage store must be initialized before opening the main window')
-  }
-  if (!rateLimits) {
-    throw new Error('Rate limit service must be initialized before opening the main window')
-  }
   if (!automations) {
     throw new Error('Automation service must be initialized before opening the main window')
   }
@@ -699,12 +682,8 @@ function openMainWindow(): BrowserWindow {
     store,
     runtime,
     stats,
-    claudeUsage,
-    codexUsage,
-    openCodeUsage,
     codexAccounts,
     claudeAccounts,
-    rateLimits,
     rendererWebContentsId,
     automations,
     {
@@ -743,11 +722,6 @@ function openMainWindow(): BrowserWindow {
         preserveAgentAuthBeforeRestart({ codexRuntimeHome, claudeRuntimeAuth, store })
     }
   )
-  rateLimits.attach(window)
-  // Why: quota probes can spawn CLIs and hit network. The attached show/focus
-  // listeners refresh as soon as the window can present quota UI, so do not
-  // compete with first paint.
-  rateLimits.start({ fetchImmediately: false })
   window.on('closed', () => {
     if (mainWindow === window) {
       mainWindow = null
@@ -1285,63 +1259,15 @@ app.whenReady().then(async () => {
   stats = new StatsCollector()
   claudeUsage = new ClaudeUsageStore(store)
   codexUsage = new CodexUsageStore(store)
-  openCodeUsage = new OpenCodeUsageStore(store)
-  rateLimits = new RateLimitService()
   codexRuntimeHome = new CodexRuntimeHomeService(store)
-  codexAccounts = new CodexAccountService(store, rateLimits, codexRuntimeHome)
+  codexAccounts = new CodexAccountService(store, codexRuntimeHome)
   claudeRuntimeAuth = new ClaudeRuntimeAuthService(store)
-  claudeAccounts = new ClaudeAccountService(store, rateLimits, claudeRuntimeAuth)
-  rateLimits.setCodexHomePathResolver((target) =>
-    codexRuntimeHome!.prepareForRateLimitFetch(target)
-  )
-  rateLimits.setCodexFetchTarget(getInitialCodexRateLimitTarget(store.getSettings()))
-  rateLimits.setClaudeFetchTarget(getInitialClaudeRateLimitTarget(store.getSettings()))
-  rateLimits.setClaudeAuthPreparationResolver((target) =>
-    claudeRuntimeAuth!.prepareForRateLimitFetch(target)
-  )
-  rateLimits.setOpenCodeGoConfigResolver(() => {
-    const settings = store!.getSettings()
-    return {
-      sessionCookie: settings.opencodeSessionCookie,
-      workspaceIdOverride: settings.opencodeWorkspaceId
-    }
-  })
-  rateLimits.setGeminiCliOAuthEnabledResolver(() => store!.getSettings().geminiCliOAuthEnabled)
+  claudeAccounts = new ClaudeAccountService(store, claudeRuntimeAuth)
   keybindings = new KeybindingService({
     homePath: app.getPath('home'),
     getLegacyOverrides: () => store!.getSettings().keybindings
   })
   browserManager.setSettingsResolver(() => ({ keybindings: keybindings?.getOverrides() }))
-  rateLimits.setInactiveClaudeAccountsResolver(() => {
-    const settings = store!.getSettings()
-    const activeIds = new Set(
-      [
-        normalizeClaudeRuntimeSelection(settings).host,
-        ...Object.values(normalizeClaudeRuntimeSelection(settings).wsl)
-      ].filter(Boolean)
-    )
-    return settings.claudeManagedAccounts
-      .filter((account) => !activeIds.has(account.id))
-      .map((account) => ({
-        id: account.id,
-        managedAuthPath: account.managedAuthPath,
-        managedAuthRuntime: account.managedAuthRuntime,
-        wslDistro: account.wslDistro,
-        wslLinuxAuthPath: account.wslLinuxAuthPath
-      }))
-  })
-  rateLimits.setInactiveCodexAccountsResolver(() => {
-    const settings = store!.getSettings()
-    const activeIds = new Set(
-      [
-        normalizeCodexRuntimeSelection(settings).host,
-        ...Object.values(normalizeCodexRuntimeSelection(settings).wsl)
-      ].filter(Boolean)
-    )
-    return settings.codexManagedAccounts
-      .filter((account) => !activeIds.has(account.id))
-      .map((account) => ({ id: account.id, managedHomePath: account.managedHomePath }))
-  })
   const runtimeService = new OrcaRuntimeService(store, stats, {
     // Why: resolve the PTY provider lazily. initDaemonPtyProvider() runs later
     // inside attachMainWindowServices and calls setLocalPtyProvider(routedAdapter)
@@ -1452,7 +1378,7 @@ app.whenReady().then(async () => {
       : undefined
   })
   runtimeService.setAutomationService(automations)
-  runtimeService.setAccountServices({ claudeAccounts, codexAccounts, rateLimits })
+  runtimeService.setAccountServices({ claudeAccounts, codexAccounts })
   runtimeService.setCommitMessageAgentEnvironmentResolvers({
     // Why: local Codex hooks and auth now live in Orca's managed runtime home
     // even for the system-default path, so every Orca-launched Codex process
@@ -1694,7 +1620,6 @@ app.on('before-quit', () => {
   // unmount TerminalPane components (removing their capture callbacks).
   // The window close handler passes isQuitting to the renderer so it skips the
   // child-process confirmation dialog and proceeds directly to buffer capture.
-  rateLimits?.stop()
 })
 
 // Why: will-quit fires twice when daemon disconnect needs an async flush.

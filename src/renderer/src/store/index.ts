@@ -17,11 +17,7 @@ import { createEditorSlice } from './slices/editor'
 import { createStatsSlice } from './slices/stats'
 import { createMemorySlice } from './slices/memory'
 import { createWorkspaceSpaceSlice } from './slices/workspace-space'
-import { createClaudeUsageSlice } from './slices/claude-usage'
-import { createCodexUsageSlice } from './slices/codex-usage'
-import { createOpenCodeUsageSlice } from './slices/opencode-usage'
 import { createBrowserSlice } from './slices/browser'
-import { createRateLimitSlice } from './slices/rate-limits'
 import { createSshSlice } from './slices/ssh'
 import { createAgentStatusSlice } from './slices/agent-status'
 import { createDiffCommentsSlice } from './slices/diffComments'
@@ -54,11 +50,7 @@ export const useAppStore = create<AppState>()((...a) => ({
   ...createStatsSlice(...a),
   ...createMemorySlice(...a),
   ...createWorkspaceSpaceSlice(...a),
-  ...createClaudeUsageSlice(...a),
-  ...createCodexUsageSlice(...a),
-  ...createOpenCodeUsageSlice(...a),
   ...createBrowserSlice(...a),
-  ...createRateLimitSlice(...a),
   ...createSshSlice(...a),
   ...createAgentStatusSlice(...a),
   ...createDiffCommentsSlice(...a),

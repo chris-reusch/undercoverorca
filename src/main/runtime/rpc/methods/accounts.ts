@@ -24,20 +24,18 @@ const AccountsUnsubscribeParams = z.object({
     .pipe(z.string().min(1, 'Missing subscriptionId'))
 })
 
-// Why: bridges the desktop ClaudeAccountService / CodexAccountService /
-// RateLimitService into the mobile WebSocket RPC. Read + switch + remove
-// only — interactive add/re-auth flows spawn `claude login` / `codex login`
-// PTYs that need a desktop browser, so they intentionally remain
-// desktop-only. See plan in spec doc for issue #1438.
+// Why: bridges the desktop ClaudeAccountService / CodexAccountService into the
+// mobile WebSocket RPC. Read + switch + remove only — interactive add/re-auth
+// flows spawn `claude login` / `codex login` PTYs that need a desktop browser,
+// so they intentionally remain desktop-only. See plan in spec doc for issue
+// #1438.
 export const ACCOUNT_METHODS: readonly RpcAnyMethod[] = [
   defineMethod({
     name: 'accounts.list',
     params: null,
     handler: async (_params, { runtime }) => {
-      // Why: ensure the snapshot reflects the latest provider state before
-      // returning. Desktop polling pauses when the window is unfocused and
-      // inactive-account caches only fill on AccountsPane open, so without
-      // this the mobile UI would render stale nulls / zeroes.
+      // Why: refresh is a no-op since usage tracking was removed, but the call
+      // is kept so the snapshot path stays uniform with accounts.subscribe.
       await runtime.refreshAccountsForMobile()
       return runtime.getAccountsSnapshot()
     }
@@ -62,9 +60,10 @@ export const ACCOUNT_METHODS: readonly RpcAnyMethod[] = [
     params: RemoveAccountParams,
     handler: async (params, { runtime }) => runtime.removeCodexAccount(params.accountId)
   }),
-  // Why: streaming counterpart so mobile usage bars refresh in place when the
-  // desktop's 5-minute rate-limit poll completes or when the user switches
-  // accounts on either side. Mirrors the notifications.subscribe pattern.
+  // Why: streaming counterpart that delivers the current accounts snapshot to
+  // mobile clients. Live push updates were tied to usage tracking (removed), so
+  // this now emits the initial snapshot and holds the subscription open.
+  // Mirrors the notifications.subscribe pattern.
   defineStreamingMethod({
     name: 'accounts.subscribe',
     params: null,

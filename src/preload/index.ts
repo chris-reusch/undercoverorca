@@ -72,11 +72,6 @@ import type {
   RuntimeMobileMarkdownRequest,
   RuntimeMobileMarkdownResponse
 } from '../shared/mobile-markdown-document'
-import type {
-  CodexRateLimitResetResult,
-  RateLimitRuntimeTarget,
-  RateLimitState
-} from '../shared/rate-limit-types'
 import type { WorkspaceSpaceScanProgress } from '../shared/workspace-space-types'
 import type { WorkspacePortAdvertisedUrlChangedEvent } from '../shared/workspace-ports'
 import type { GhAuthDiagnostic } from '../shared/github-auth-types'
@@ -3376,60 +3371,6 @@ const api = {
     getSnapshot: (): Promise<MemorySnapshot> => ipcRenderer.invoke('memory:getSnapshot')
   },
 
-  claudeUsage: {
-    getScanState: (): Promise<unknown> => ipcRenderer.invoke('claudeUsage:getScanState'),
-    setEnabled: (args: { enabled: boolean }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:setEnabled', args),
-    refresh: (args?: { force?: boolean }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:refresh', args),
-    getSnapshot: (args: { scope: string; range: string; limit?: number }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:getSnapshot', args),
-    getSummary: (args: { scope: string; range: string }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:getSummary', args),
-    getDaily: (args: { scope: string; range: string }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:getDaily', args),
-    getBreakdown: (args: { scope: string; range: string; kind: string }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:getBreakdown', args),
-    getRecentSessions: (args: { scope: string; range: string; limit?: number }): Promise<unknown> =>
-      ipcRenderer.invoke('claudeUsage:getRecentSessions', args)
-  },
-
-  codexUsage: {
-    getScanState: (): Promise<unknown> => ipcRenderer.invoke('codexUsage:getScanState'),
-    setEnabled: (args: { enabled: boolean }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:setEnabled', args),
-    refresh: (args?: { force?: boolean }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:refresh', args),
-    getSnapshot: (args: { scope: string; range: string; limit?: number }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:getSnapshot', args),
-    getSummary: (args: { scope: string; range: string }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:getSummary', args),
-    getDaily: (args: { scope: string; range: string }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:getDaily', args),
-    getBreakdown: (args: { scope: string; range: string; kind: string }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:getBreakdown', args),
-    getRecentSessions: (args: { scope: string; range: string; limit?: number }): Promise<unknown> =>
-      ipcRenderer.invoke('codexUsage:getRecentSessions', args)
-  },
-
-  openCodeUsage: {
-    getScanState: (): Promise<unknown> => ipcRenderer.invoke('openCodeUsage:getScanState'),
-    setEnabled: (args: { enabled: boolean }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:setEnabled', args),
-    refresh: (args?: { force?: boolean }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:refresh', args),
-    getSnapshot: (args: { scope: string; range: string; limit?: number }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:getSnapshot', args),
-    getSummary: (args: { scope: string; range: string }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:getSummary', args),
-    getDaily: (args: { scope: string; range: string }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:getDaily', args),
-    getBreakdown: (args: { scope: string; range: string; kind: string }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:getBreakdown', args),
-    getRecentSessions: (args: { scope: string; range: string; limit?: number }): Promise<unknown> =>
-      ipcRenderer.invoke('openCodeUsage:getRecentSessions', args)
-  },
-
   aiVault: {
     listSessions: (args?: AiVaultListArgs): Promise<unknown> =>
       ipcRenderer.invoke('aiVault:listSessions', args)
@@ -3546,28 +3487,6 @@ const api = {
       }
     ): Promise<RuntimeEnvironmentSubscriptionHandle> =>
       subscribeRuntimeEnvironmentFromPreload(ipcRenderer, args, callbacks)
-  },
-
-  rateLimits: {
-    get: (): Promise<RateLimitState> => ipcRenderer.invoke('rateLimits:get'),
-    refresh: (): Promise<RateLimitState> => ipcRenderer.invoke('rateLimits:refresh'),
-    refreshCodexForTarget: (target: RateLimitRuntimeTarget): Promise<RateLimitState> =>
-      ipcRenderer.invoke('rateLimits:refreshCodexForTarget', target),
-    consumeCodexResetCredit: (): Promise<CodexRateLimitResetResult> =>
-      ipcRenderer.invoke('rateLimits:consumeCodexResetCredit'),
-    refreshClaudeForTarget: (target: RateLimitRuntimeTarget): Promise<RateLimitState> =>
-      ipcRenderer.invoke('rateLimits:refreshClaudeForTarget', target),
-    setPollingInterval: (ms: number): Promise<void> =>
-      ipcRenderer.invoke('rateLimits:setPollingInterval', ms),
-    fetchInactiveClaudeAccounts: (): Promise<void> =>
-      ipcRenderer.invoke('rateLimits:fetchInactiveClaudeAccounts'),
-    fetchInactiveCodexAccounts: (): Promise<void> =>
-      ipcRenderer.invoke('rateLimits:fetchInactiveCodexAccounts'),
-    onUpdate: (callback: (state: RateLimitState) => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, state: RateLimitState) => callback(state)
-      ipcRenderer.on('rateLimits:update', listener)
-      return () => ipcRenderer.removeListener('rateLimits:update', listener)
-    }
   },
 
   ssh: {

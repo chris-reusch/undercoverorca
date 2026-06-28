@@ -50,7 +50,6 @@ import { normalizeAutoRenameBranchFromWorkDefaultOn } from '../../../shared/auto
 import { normalizeTerminalCursorStyleDefault } from '../../../shared/terminal-cursor-style-settings'
 import { normalizeTerminalCustomThemes } from '../../../shared/terminal-custom-themes'
 import { normalizeUiLanguage } from '../../../shared/ui-language'
-import type { RateLimitState } from '../../../shared/rate-limit-types'
 import type { RuntimeStatus, RuntimeSyncWindowGraph } from '../../../shared/runtime-types'
 import {
   findKeybindingConflicts,
@@ -625,7 +624,6 @@ function createWebPreloadApi(): Partial<PreloadApi> {
     },
     preflight: createPreflightApi(),
     notifications: createNotificationsApi(),
-    rateLimits: createRateLimitsApi(),
     codexAccounts: createAccountsApi(),
     claudeAccounts: createAccountsApi(),
     cli: createCliApi(),
@@ -2329,33 +2327,6 @@ function createNotificationsApi(): NonNullable<Partial<PreloadApi>['notification
     requestPermission: () =>
       Promise.resolve({ supported: false, platform: getBrowserPlatform(), requested: false }),
     playSound: () => Promise.resolve({ played: false, reason: 'missing-path' })
-  }
-}
-
-function createRateLimitsApi(): NonNullable<Partial<PreloadApi>['rateLimits']> {
-  const empty: RateLimitState = {
-    claude: null,
-    codex: null,
-    gemini: null,
-    opencodeGo: null,
-    kimi: null,
-    claudeTarget: { runtime: 'host', wslDistro: null },
-    codexTarget: { runtime: 'host', wslDistro: null },
-    inactiveClaudeAccounts: [],
-    inactiveCodexAccounts: []
-  }
-  return {
-    get: () => Promise.resolve(empty),
-    refresh: () => Promise.resolve(empty),
-    refreshCodexForTarget: () => Promise.resolve(empty),
-    // Why: web clients do not own local Codex auth, so reset-credit
-    // redemption remains desktop-only and reports the safe no-credit outcome.
-    consumeCodexResetCredit: () => Promise.resolve({ outcome: 'noCredit', state: empty }),
-    refreshClaudeForTarget: () => Promise.resolve(empty),
-    setPollingInterval: () => Promise.resolve(),
-    fetchInactiveClaudeAccounts: () => Promise.resolve(),
-    fetchInactiveCodexAccounts: () => Promise.resolve(),
-    onUpdate: () => noopUnsubscribe
   }
 }
 

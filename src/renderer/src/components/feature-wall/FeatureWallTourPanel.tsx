@@ -141,7 +141,6 @@ export function FeatureWallTourPanel(props: {
               reviewActiveStep={props.reviewActiveStep}
               orchestrationSkill={props.orchestrationSkill}
               browserUseSkill={props.browserUseSkill}
-              onUsageAccountStateChange={props.completion.refreshUsageAccountState}
               settings={props.settings}
               updateSettings={props.updateSettings}
             />

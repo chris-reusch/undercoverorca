@@ -39,7 +39,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '../ui/dialog'
-import { getCodexAccountAuthWarning } from './codex-account-auth-warning'
 import { translate } from '@/i18n/i18n'
 
 export { getAccountsPaneSearchEntries }
@@ -248,8 +247,6 @@ export function AccountsPane({
   wslCapabilitiesLoading = false
 }: AccountsPaneProps): React.JSX.Element {
   const searchQuery = useAppStore((s) => s.settingsSearchQuery)
-  const codexRateLimits = useAppStore((s) => s.rateLimits.codex)
-  const codexRateLimitTarget = useAppStore((s) => s.rateLimits.codexTarget)
   const recordFeatureInteraction = useAppStore((s) => s.recordFeatureInteraction)
   const fetchSettings = useAppStore((s) => s.fetchSettings)
   const recordedOpenCodeSettingEditsRef = useRef<Set<'cookie' | 'workspaceId'>>(new Set())
@@ -266,7 +263,7 @@ export function AccountsPane({
     activeAccountId: null,
     activeAccountIdsByRuntime: { host: null, wsl: {} }
   })
-  const [codexAccountsLoaded, setCodexAccountsLoaded] = useState(false)
+  const [, setCodexAccountsLoaded] = useState(false)
   const [codexAction, setCodexAction] = useState<
     'idle' | 'adding' | `reauth:${string}` | `remove:${string}` | `select:${string | 'system'}`
   >('idle')
@@ -288,15 +285,9 @@ export function AccountsPane({
   )
   const activeCodexAccountId = getActiveCodexAccountIdForRuntime(codexAccounts, accountRuntime)
   const activeClaudeAccountId = getActiveClaudeAccountIdForRuntime(claudeAccounts, accountRuntime)
-  const activeCodexAuthWarning = codexAccountsLoaded
-    ? getCodexAccountAuthWarning({
-        limits: codexRateLimits,
-        target: codexRateLimitTarget,
-        runtime: accountRuntime,
-        activeAccountId: activeCodexAccountId,
-        accountId: activeCodexAccountId
-      })
-    : null
+  // Why: Codex auth warnings were derived from rate-limit/usage polling, which
+  // this build no longer performs; account auth still works without it.
+  const activeCodexAuthWarning: string | null = null
   const systemCodexNeedsReauthentication =
     activeCodexAccountId === null && Boolean(activeCodexAuthWarning)
   const accountRuntimeUnavailable =
@@ -965,14 +956,7 @@ export function AccountsPane({
             ) : (
               visibleCodexAccounts.map((account) => {
                 const isActive = activeCodexAccountId === account.id
-                const accountAuthWarning = getCodexAccountAuthWarning({
-                  limits: codexRateLimits,
-                  target: codexRateLimitTarget,
-                  runtime: accountRuntime,
-                  activeAccountId: activeCodexAccountId,
-                  accountId: account.id
-                })
-                const needsReauthentication = Boolean(accountAuthWarning)
+                const needsReauthentication = false
                 const isReauthing = codexAction === `reauth:${account.id}`
                 const isRemoving = codexAction === `remove:${account.id}`
                 const isBusy = codexAction !== 'idle' || accountRuntimeUnavailable

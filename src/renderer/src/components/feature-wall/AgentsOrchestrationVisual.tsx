@@ -2,7 +2,6 @@ import type { JSX } from 'react'
 import { cn } from '@/lib/utils'
 import type { AgentsStepId } from '../../../../shared/agents-orchestration-steps'
 import { StatusesPage } from './agents-orchestration/StatusesPage'
-import { UsagePage } from './agents-orchestration/UsagePage'
 import { OrchestrationPage } from './agents-orchestration/OrchestrationPage'
 
 const PANEL_HEIGHT_PX = 392
@@ -35,9 +34,6 @@ export function AgentsOrchestrationVisual(props: {
     >
       <Page active={activeStepId === 'statuses'}>
         <StatusesPage active={activeStepId === 'statuses'} reducedMotion={reducedMotion} />
-      </Page>
-      <Page active={activeStepId === 'usage'}>
-        <UsagePage active={activeStepId === 'usage'} reducedMotion={reducedMotion} />
       </Page>
       <Page active={activeStepId === 'orchestration'}>
         <OrchestrationPage

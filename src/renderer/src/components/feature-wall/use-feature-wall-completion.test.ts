@@ -21,7 +21,6 @@ function completionInput(overrides: Partial<CompletionInput> = {}): CompletionIn
     visitedReviewSteps: new Set<ReviewStepId>(),
     hasConnectedTaskSource: false,
     isCheckingTaskSources: false,
-    hasUsageAccount: false,
     orchestrationSkillInstalled: false,
     browserUseSkillInstalled: false,
     githubConfigured: false,
@@ -35,7 +34,6 @@ describe('getFeatureWallCompletionProgress', () => {
     const progress = getFeatureWallCompletionProgress(
       completionInput({
         hasConnectedTaskSource: true,
-        hasUsageAccount: true,
         orchestrationSkillInstalled: true,
         browserUseSkillInstalled: true,
         githubConfigured: true,
@@ -47,7 +45,6 @@ describe('getFeatureWallCompletionProgress', () => {
     expect(progress.workflowDone['agents-orchestration']).toBe(false)
     expect(progress.workflowDone.workbench).toBe(false)
     expect(progress.workflowDone.review).toBe(false)
-    expect(progress.agentStepDone.usage).toBe(false)
     expect(progress.workbenchStepDone.browser).toBe(false)
     expect(progress.reviewStepDone['pr-view']).toBe(false)
     expect(progress.reviewStepDone.ship).toBe(false)
@@ -125,8 +122,7 @@ describe('getFeatureWallCompletionProgress', () => {
   it('keeps the agents workflow incomplete until the orchestration skill is detected', () => {
     const otherwiseComplete = completionInput({
       visitedWorkflows: new Set<FeatureWallWorkflowId>(['agents-orchestration']),
-      visitedAgentSteps: new Set<AgentsStepId>(['statuses', 'usage', 'orchestration']),
-      hasUsageAccount: true
+      visitedAgentSteps: new Set<AgentsStepId>(['statuses', 'orchestration'])
     })
 
     expect(
@@ -145,8 +141,7 @@ describe('getFeatureWallCompletionProgress', () => {
       getFeatureWallCompletionProgress(
         completionInput({
           visitedWorkflows: new Set<FeatureWallWorkflowId>(['agents-orchestration']),
-          visitedAgentSteps: new Set<AgentsStepId>(['statuses', 'usage', 'orchestration']),
-          hasUsageAccount: true,
+          visitedAgentSteps: new Set<AgentsStepId>(['statuses', 'orchestration']),
           orchestrationSkillInstalled: true
         })
       ).workflowDone['agents-orchestration']
@@ -216,12 +211,11 @@ describe('normalizeFeatureWallVisitedAgentSteps', () => {
       normalizeFeatureWallVisitedAgentSteps([
         'statuses',
         'orchestration',
-        'usage',
         'orchestration',
         'notifications',
         'bogus'
       ])
-    ).toEqual(['statuses', 'orchestration', 'usage'])
+    ).toEqual(['statuses', 'orchestration'])
   })
 })
 

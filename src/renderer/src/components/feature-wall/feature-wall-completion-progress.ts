@@ -3,11 +3,7 @@ import type { FeatureWallWorkflowId } from '../../../../shared/feature-wall-work
 import type { ReviewStepId } from '../../../../shared/review-steps'
 import type { WorkbenchStepId } from '../../../../shared/workbench-steps'
 
-export const FEATURE_WALL_AGENT_STEP_IDS: readonly AgentsStepId[] = [
-  'statuses',
-  'usage',
-  'orchestration'
-]
+export const FEATURE_WALL_AGENT_STEP_IDS: readonly AgentsStepId[] = ['statuses', 'orchestration']
 export const FEATURE_WALL_WORKBENCH_STEP_IDS: readonly WorkbenchStepId[] = [
   'terminal',
   'editor',
@@ -33,7 +29,6 @@ export type FeatureWallCompletionProgressInput = {
   completedReviewSteps?: ReadonlySet<ReviewStepId>
   hasConnectedTaskSource: boolean
   isCheckingTaskSources: boolean
-  hasUsageAccount: boolean
   orchestrationSkillInstalled: boolean
   browserUseSkillInstalled: boolean
   githubConfigured: boolean
@@ -53,9 +48,6 @@ export function getFeatureWallCompletionProgress(
   const tasksDone =
     input.completedWorkflows?.has('tasks') === true ||
     (tasksVisited && !input.isCheckingTaskSources && input.hasConnectedTaskSource)
-  const usageDone =
-    input.completedAgentSteps?.has('usage') === true ||
-    (input.visitedAgentSteps.has('usage') && input.hasUsageAccount)
   const orchestrationDone =
     input.completedAgentSteps?.has('orchestration') === true ||
     (input.visitedAgentSteps.has('orchestration') && input.orchestrationSkillInstalled)
@@ -66,7 +58,7 @@ export function getFeatureWallCompletionProgress(
 
   const agentsWorkflowDone =
     input.completedWorkflows?.has('agents-orchestration') === true ||
-    (agentsVisited && usageDone && orchestrationDone && statusesDone)
+    (agentsVisited && orchestrationDone && statusesDone)
   const workbenchTerminalDone =
     input.completedWorkbenchSteps?.has('terminal') === true ||
     input.visitedWorkbenchSteps.has('terminal')
@@ -101,7 +93,6 @@ export function getFeatureWallCompletionProgress(
     },
     agentStepDone: {
       statuses: statusesDone,
-      usage: usageDone,
       orchestration: orchestrationDone
     },
     workbenchStepDone: {

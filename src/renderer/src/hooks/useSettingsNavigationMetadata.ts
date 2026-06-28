@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 // Cmd+J and Settings visibility cannot drift. Keep it free of Settings pane UI
 // imports; the boundary is enforced by a focused architecture test.
 import {
-  BarChart3,
   Bell,
   Blocks,
   Bot,
@@ -67,7 +66,6 @@ import { getDeveloperPermissionsPaneSearchEntries } from '@/components/settings/
 import { getPrivacyPaneSearchEntries } from '@/components/settings/privacy-search'
 import { getAdvancedPaneSearchEntries } from '@/components/settings/advanced-search'
 import { getShortcutsPaneSearchEntries } from '@/components/settings/shortcuts-search'
-import { getStatsPaneSearchEntries } from '@/components/stats/stats-search'
 import { getExperimentalPaneSearchEntries } from '@/components/settings/experimental-search'
 import { getRepositoryPaneSearchEntries } from '@/components/settings/repository-search'
 import { isWebClientLocation } from '@/lib/web-client-location'
@@ -374,17 +372,6 @@ export function buildSettingsNavigationMetadata({
       ),
       icon: Keyboard,
       searchEntries: getShortcutsPaneSearchEntries(),
-      group: 'interface'
-    },
-    {
-      id: 'stats',
-      title: translate('auto.hooks.useSettingsNavigationMetadata.d72a58b5b9', 'Stats & Usage'),
-      description: translate(
-        'auto.hooks.useSettingsNavigationMetadata.b351014180',
-        'Orca stats plus Claude, Codex, and OpenCode usage analytics.'
-      ),
-      icon: BarChart3,
-      searchEntries: getStatsPaneSearchEntries(),
       group: 'interface'
     },
     {

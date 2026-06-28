@@ -11,7 +11,6 @@ type FeatureWallSessionDepthInput = {
   isOpen: boolean
   hasConnectedTaskSource: boolean
   isCheckingTaskSources: boolean
-  hasUsageAccount: boolean
   orchestrationSkillInstalled: boolean
   browserUseSkillInstalled: boolean
   githubConfigured: boolean
@@ -34,7 +33,6 @@ export function useFeatureWallSessionDepth(
     isOpen,
     hasConnectedTaskSource,
     isCheckingTaskSources,
-    hasUsageAccount,
     orchestrationSkillInstalled,
     browserUseSkillInstalled,
     githubConfigured,
@@ -64,7 +62,6 @@ export function useFeatureWallSessionDepth(
       visitedReviewSteps: session.visitedReviewSteps,
       hasConnectedTaskSource,
       isCheckingTaskSources,
-      hasUsageAccount,
       orchestrationSkillInstalled,
       browserUseSkillInstalled,
       githubConfigured,
@@ -83,7 +80,6 @@ export function useFeatureWallSessionDepth(
     browserUseSkillInstalled,
     githubConfigured,
     hasConnectedTaskSource,
-    hasUsageAccount,
     isCheckingTaskSources,
     orchestrationSkillInstalled
   ])

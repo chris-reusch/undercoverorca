@@ -2983,15 +2983,7 @@ export type WorktreeCardMode = 'Default' | 'Compact'
 
 export type AgentActivityDisplayMode = 'compact' | 'full'
 
-export type StatusBarItem =
-  | 'claude'
-  | 'codex'
-  | 'gemini'
-  | 'opencode-go'
-  | 'kimi'
-  | 'ssh'
-  | 'resource-usage'
-  | 'ports'
+export type StatusBarItem = 'ssh' | 'ports'
 export type FloatingTerminalTriggerLocation = 'floating-button' | 'status-bar'
 
 export type TaskResumeState = {

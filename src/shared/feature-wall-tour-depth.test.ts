@@ -14,9 +14,9 @@ describe('feature wall tour depth summary', () => {
     expect(
       getFeatureWallTourDepthStep({
         workflowId: 'agents-orchestration',
-        agentStepId: 'usage'
+        agentStepId: 'orchestration'
       })
-    ).toBe('agents_usage')
+    ).toBe('agents_orchestration')
     expect(
       getFeatureWallTourDepthStep({ workflowId: 'workbench', workbenchStepId: 'browser' })
     ).toBe('workbench_browser')
@@ -41,7 +41,6 @@ describe('feature wall tour depth summary', () => {
         },
         agentStepDone: {
           statuses: false,
-          usage: false,
           orchestration: false
         },
         workbenchStepDone: {
