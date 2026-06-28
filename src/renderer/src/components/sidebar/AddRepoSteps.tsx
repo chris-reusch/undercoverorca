@@ -4,10 +4,10 @@ import { useAppStore } from '@/store'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import type { NestedRepoScanResult } from '../../../../shared/types'
 import type { SshTarget, SshConnectionState } from '../../../../shared/ssh-types'
-import { createNestedRepoTelemetryAttemptId } from '../../../../shared/nested-repo-telemetry'
 import { translate } from '@/i18n/i18n'
 import { extractIpcErrorMessage } from '@/lib/ipc-error'
 import { upsertAddedRepoWithProjectHostSetup } from './add-repo-store-upsert'
+import { createNestedRepoAttemptId } from './add-repo-dialog-types'
 
 // ── SSH host project hook ───────────────────────────────────────────
 
@@ -31,8 +31,7 @@ export function useRemoteRepo(
     attemptId: string,
     inProgress: boolean,
     scanId: string | null
-  ) => void,
-  onNestedScanResult?: (scan: NestedRepoScanResult | null, attemptId: string) => void
+  ) => void
 ) {
   const [sshTargets, setSshTargets] = useState<(SshTarget & { state?: SshConnectionState })[]>([])
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
@@ -141,7 +140,7 @@ export function useRemoteRepo(
     setIsAddingRemote(true)
     setRemoteError(null)
     try {
-      const attemptId = createNestedRepoTelemetryAttemptId()
+      const attemptId = createNestedRepoAttemptId()
       const scanId = `nested-repo-scan-${Date.now()}-${Math.random().toString(36).slice(2)}`
       setRemoteNestedScanId(scanId)
       const scan = await scanNestedRepos?.(trimmedRemotePath, selectedTargetId, {
@@ -168,7 +167,6 @@ export function useRemoteRepo(
       if (!mountedRef.current || gen !== remoteGenRef.current) {
         return
       }
-      onNestedScanResult?.(scan ?? null, attemptId)
       if (scan?.selectedPathKind === 'non_git_folder' && scan.repos.length > 0) {
         showNestedRepoReview?.(scan, trimmedRemotePath, selectedTargetId, attemptId, false, scanId)
         setRemoteNestedScanId(null)
@@ -232,7 +230,6 @@ export function useRemoteRepo(
     remotePath,
     scanNestedRepos,
     showNestedRepoReview,
-    onNestedScanResult,
     fetchWorktrees,
     mountedRef,
     closeModal,

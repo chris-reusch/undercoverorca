@@ -6,7 +6,6 @@ import {
   activateWebRuntimeSessionTab,
   closeWebRuntimeTerminal,
   closeWebRuntimeSessionTab,
-  consumePendingWebRuntimeSplitMirrorTelemetry,
   createWebRuntimeSessionBrowserTab,
   createWebRuntimeSessionTerminal,
   isWebRuntimeSessionActive,
@@ -24,7 +23,6 @@ const mocks = vi.hoisted(() => ({
   focusBrowserTabInWorktree: vi.fn(),
   applyFreshWebSessionTabsSnapshot: vi.fn(),
   resolveHostSessionTabIdForWebSessionTab: vi.fn(),
-  trackTerminalPaneSplit: vi.fn(),
   getRuntimeEnvironmentIdForWorktree: vi.fn()
 }))
 
@@ -38,10 +36,6 @@ vi.mock('../store', () => ({
 vi.mock('./web-session-tabs-sync', () => ({
   applyFreshWebSessionTabsSnapshot: mocks.applyFreshWebSessionTabsSnapshot,
   resolveHostSessionTabIdForWebSessionTab: mocks.resolveHostSessionTabIdForWebSessionTab
-}))
-
-vi.mock('@/lib/feature-education-telemetry', () => ({
-  trackTerminalPaneSplit: mocks.trackTerminalPaneSplit
 }))
 
 vi.mock('@/lib/worktree-runtime-owner', () => ({
@@ -880,7 +874,7 @@ describe('splitWebRuntimeTerminal', () => {
     vi.clearAllMocks()
   })
 
-  it('passes telemetry source to the host split while allowing the mirrored split event to be suppressed', async () => {
+  it('delegates the split to the host runtime pane', async () => {
     const runtimeCall = vi.fn().mockResolvedValue({
       id: 'split',
       ok: true,
@@ -900,15 +894,7 @@ describe('splitWebRuntimeTerminal', () => {
       }
     })
 
-    expect(splitWebRuntimeTerminal('remote:web-env-1@@terminal-1', 'horizontal', 'keyboard')).toBe(
-      true
-    )
-    expect(
-      consumePendingWebRuntimeSplitMirrorTelemetry('remote:web-env-1@@terminal-other', 'horizontal')
-    ).toBe(false)
-    expect(
-      consumePendingWebRuntimeSplitMirrorTelemetry('remote:web-env-1@@terminal-1', 'horizontal')
-    ).toBe(true)
+    expect(splitWebRuntimeTerminal('remote:web-env-1@@terminal-1', 'horizontal')).toBe(true)
 
     await vi.waitFor(() => expect(runtimeCall).toHaveBeenCalledTimes(1))
     expect(runtimeCall).toHaveBeenCalledWith({
@@ -916,14 +902,13 @@ describe('splitWebRuntimeTerminal', () => {
       method: 'terminal.split',
       params: {
         terminal: 'terminal-1',
-        direction: 'horizontal',
-        telemetrySource: 'keyboard'
+        direction: 'horizontal'
       },
       timeoutMs: 15_000
     })
   })
 
-  it('does not track rejected host split RPCs', async () => {
+  it('warns on rejected host split RPCs', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const runtimeCall = vi.fn().mockResolvedValue({
       id: 'split',
@@ -938,13 +923,10 @@ describe('splitWebRuntimeTerminal', () => {
       }
     })
 
-    expect(
-      splitWebRuntimeTerminal('remote:web-env-1@@terminal-1', 'vertical', 'context_menu')
-    ).toBe(true)
+    expect(splitWebRuntimeTerminal('remote:web-env-1@@terminal-1', 'vertical')).toBe(true)
 
     await vi.waitFor(() => expect(runtimeCall).toHaveBeenCalledTimes(1))
     await vi.waitFor(() => expect(warnSpy).toHaveBeenCalledTimes(1))
-    expect(mocks.trackTerminalPaneSplit).not.toHaveBeenCalled()
   })
 
   it('ignores local panes but delegates remote runtime panes from desktop or web clients', async () => {
@@ -967,11 +949,9 @@ describe('splitWebRuntimeTerminal', () => {
       }
     })
 
-    expect(splitWebRuntimeTerminal('pty-local-1', 'horizontal', 'keyboard')).toBe(false)
+    expect(splitWebRuntimeTerminal('pty-local-1', 'horizontal')).toBe(false)
     vi.stubGlobal('__ORCA_WEB_CLIENT__', false)
-    expect(splitWebRuntimeTerminal('remote:web-env-1@@terminal-1', 'horizontal', 'keyboard')).toBe(
-      true
-    )
+    expect(splitWebRuntimeTerminal('remote:web-env-1@@terminal-1', 'horizontal')).toBe(true)
 
     await vi.waitFor(() => expect(runtimeCall).toHaveBeenCalledTimes(1))
   })

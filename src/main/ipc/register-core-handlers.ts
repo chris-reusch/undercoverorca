@@ -38,7 +38,6 @@ import { registerWorkspaceSpaceHandlers } from './workspace-space'
 import { registerWorkspacePortHandlers } from './workspace-ports'
 import { registerAutomationHandlers } from './automations'
 import { registerKeybindingHandlers } from './keybindings'
-import { registerTelemetryHandlers } from './telemetry'
 import { registerBrowserHandlers } from './browser'
 import { registerShellHandlers } from './shell'
 import { registerPetHandlers } from './pet'
@@ -130,10 +129,8 @@ export function registerCoreHandlers(
   registerNotebookHandlers(store)
   registerOnboardingHandlers(store)
   registerDeveloperPermissionHandlers()
-  // Why: diagnostics handlers are wired alongside telemetry but the two
-  // lanes never share a code path — `ipc/diagnostics.ts` imports only from
-  // `src/main/observability/`, never from `src/main/telemetry/`. Order is
-  // not load-bearing; both register independent ipcMain channels.
+  // Why: diagnostics handlers wire the error-tracking lane — `ipc/diagnostics.ts`
+  // imports only from `src/main/observability/`. Order is not load-bearing.
   registerDiagnosticsHandlers()
   registerComputerUsePermissionHandlers()
   registerSettingsHandlers(store, agentAwakeService)
@@ -144,7 +141,6 @@ export function registerCoreHandlers(
   if (keybindings) {
     registerKeybindingHandlers(keybindings)
   }
-  registerTelemetryHandlers(store)
   registerBrowserHandlers()
   registerShellHandlers()
   registerPetHandlers()

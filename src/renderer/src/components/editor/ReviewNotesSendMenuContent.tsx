@@ -20,14 +20,13 @@ import {
   deriveNotesSendAgentTargets,
   type NotesSendAgentTarget
 } from '@/lib/notes-send-agent-targets'
-import { agentKindForAgentType, formatAgentTypeLabel } from '@/lib/agent-status'
+import { formatAgentTypeLabel } from '@/lib/agent-status'
 import { agentTypeToIconAgent } from '@/lib/agent-status'
-import { track } from '@/lib/telemetry'
 import { useNow } from '@/components/dashboard/useNow'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/useDashboardData'
 import { selectLivePtyIdsForWorktree } from '@/components/sidebar/worktree-card-status-inputs'
 import { useWorktreeAgentRows } from '@/components/sidebar/useWorktreeAgentRows'
-import type { LaunchSource } from '../../../../shared/telemetry-events'
+import type { LaunchSource } from '../../../../shared/agent-launch-source'
 import type { AgentStatusState } from '../../../../shared/agent-status-types'
 import { translate } from '@/i18n/i18n'
 
@@ -41,7 +40,7 @@ export function ReviewNotesSendMenuContent({
   groupId,
   prompt,
   promptDelivery = 'submit-after-ready',
-  launchSource = 'notes_send',
+  launchSource,
   onPromptDelivered
 }: {
   worktreeId: string
@@ -161,18 +160,11 @@ export function ReviewNotesSendMenuContent({
           }),
         () => {
           onPromptDelivered?.()
-          // Why: mirror the sidebar send-target telemetry so dropdown-routed
-          // follow-up notes show up identically on `agent_prompt_sent`.
-          track('agent_prompt_sent', {
-            agent_kind: agentKindForAgentType(target.agentType),
-            launch_source: launchSource,
-            request_kind: 'followup'
-          })
         },
         { explicitTarget: true }
       )
     },
-    [hasPrompt, runNotesSend, worktreeId, prompt, onPromptDelivered, launchSource]
+    [hasPrompt, runNotesSend, worktreeId, prompt, onPromptDelivered]
   )
 
   return (

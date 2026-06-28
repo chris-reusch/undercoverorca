@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { track } from '@/lib/telemetry'
 import { isGitRepoKind } from '../../../../shared/repo-kind'
-import {
-  buildNestedRepoScanTelemetry,
-  createNestedRepoTelemetryAttemptId,
-  type NestedRepoTelemetryRuntimeKind
-} from '../../../../shared/nested-repo-telemetry'
-import type { AddRepoExistingWorkspaceSource } from '../../../../shared/telemetry-events'
+import type { AddRepoExistingWorkspaceSource } from '../../../../shared/agent-launch-source'
 import type { NestedRepoScanResult, Repo } from '../../../../shared/types'
-import { createNestedRepoScanId } from './add-repo-dialog-types'
+import {
+  createNestedRepoScanId,
+  createNestedRepoAttemptId,
+  type NestedRepoRuntimeKind
+} from './add-repo-dialog-types'
 import { translate } from '@/i18n/i18n'
 
 type ShowNestedRepoReview = (args: {
@@ -17,7 +15,7 @@ type ShowNestedRepoReview = (args: {
   selectedPath: string
   connectionId: string | null
   attemptId: string
-  runtimeKind: NestedRepoTelemetryRuntimeKind
+  runtimeKind: NestedRepoRuntimeKind
   inProgress: boolean
   scanId: string | null
 }) => void
@@ -96,7 +94,7 @@ export function useAddRepoLocalFolderFlow({
       }
       setAddProjectBusyLabel('Scanning for repositories...')
       try {
-        const attemptId = createNestedRepoTelemetryAttemptId()
+        const attemptId = createNestedRepoAttemptId()
         const scanId = createNestedRepoScanId()
         setActiveNestedScanId(scanId)
         setNestedScanInProgress(true)
@@ -126,15 +124,6 @@ export function useAddRepoLocalFolderFlow({
           return { status: 'cancelled' }
         }
         clearNestedScanState()
-        track(
-          'add_repo_nested_scan_result',
-          buildNestedRepoScanTelemetry({
-            attemptId,
-            surface: 'sidebar',
-            runtimeKind: 'local',
-            scan
-          })
-        )
         if (scan?.selectedPathKind === 'non_git_folder' && mode === 'batch') {
           return { status: 'skipped' }
         }

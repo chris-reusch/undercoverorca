@@ -273,7 +273,8 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     showTitlebarAppName: true,
     showTasksButton: true,
     showAutomationsButton: true,
-    showMobileButton: true,
+    // Privacy-hardened fork: mobile companion is turned off, so hide its entry point.
+    showMobileButton: false,
     ctrlTabOrderMode: 'mru',
     // Why: switching worktrees and opening command surfaces from a focused
     // terminal is a core Orca workflow; users who prefer TUI ownership opt in.

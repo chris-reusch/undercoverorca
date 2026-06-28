@@ -88,9 +88,6 @@ import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { killAllProcessesForWorktree } from '../runtime/worktree-teardown'
 import { clearProviderPtyState, getLocalPtyProvider } from './pty'
 import { removeWorktreeLinkedPaths } from './worktree-symlinks'
-import { track } from '../telemetry/client'
-import { getCohortAtEmit } from '../telemetry/cohort-classifier'
-import { workspaceSourceSchema, type WorkspaceSource } from '../../shared/telemetry-events'
 import {
   finishAutomationWorkspaceProvenanceRequest,
   releaseAutomationWorkspaceProvenanceRequest,
@@ -100,7 +97,6 @@ import {
 type CreateWorktreeArgsWithSystemProvenance = CreateWorktreeArgs & {
   automationProvenance?: AutomationWorkspaceProvenance
 }
-import { classifyWorkspaceCreateError } from './workspace-create-error-classifier'
 import { advertisedUrlWatcher } from '../ports/advertised-url-watcher'
 import {
   assertWorktreeDoesNotContainRegisteredWorktree,
@@ -1141,9 +1137,6 @@ export function registerWorktreeHandlers(
           throw new Error(`Repo not found: ${args.repoId}`)
         }
 
-        const sourceParse = workspaceSourceSchema.safeParse(args.telemetrySource)
-        const source: WorkspaceSource = sourceParse.success ? sourceParse.data : 'unknown'
-
         const automationProvenance = resolveAutomationWorkspaceProvenance({
           authority: runtime,
           repoSelector: args.repoId,
@@ -1169,31 +1162,9 @@ export function registerWorktreeHandlers(
               : await createLocalWorktree(createArgs, repo, store, mainWindow, runtime)
         } catch (error) {
           releaseAutomationWorkspaceProvenanceRequest(args.automationProvenanceRequest)
-          track('workspace_create_failed', {
-            source,
-            error_class: classifyWorkspaceCreateError(error),
-            ...getCohortAtEmit()
-          })
           throw error
         }
         finishAutomationWorkspaceProvenanceRequest(args.automationProvenanceRequest)
-
-        // Why: emit `workspace_created` only after the underlying create has
-        // resolved (the helpers throw on failure, so reaching this line means
-        // git-add succeeded — we deliberately do not also emit a separate
-        // `workspace_initialized`, see telemetry-plan.md§Deferred events).
-        // `from_existing_branch` is true iff the caller specified a non-empty
-        // baseBranch; an unspecified baseBranch means "branch from default
-        // HEAD", which is the not-from-existing-branch case. We never send
-        // the branch name itself.
-        track('workspace_created', {
-          source,
-          from_existing_branch:
-            !isFolderRepo(repo) &&
-            typeof args.baseBranch === 'string' &&
-            args.baseBranch.length > 0,
-          ...getCohortAtEmit()
-        })
 
         if (isFolderRepo(repo)) {
           notifyWorktreesChanged(mainWindow, repo.id)

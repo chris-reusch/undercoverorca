@@ -18,10 +18,6 @@ vi.mock('@/lib/tui-agent-startup', () => ({
   }))
 }))
 
-vi.mock('@/lib/telemetry', () => ({
-  tuiAgentToAgentKind: (agent: string) => agent
-}))
-
 import { buildAgentDraftLaunchPlan, buildAgentStartupPlan } from '@/lib/tui-agent-startup'
 import { createGitHubWorkItemWorkspaceInBackground } from './github-work-item-background-create'
 

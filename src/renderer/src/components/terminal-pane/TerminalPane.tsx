@@ -2444,8 +2444,7 @@ export default function TerminalPane({
         paneCwdMap: paneCwdRef.current,
         fallbackCwd: cwd ?? '',
         pane,
-        direction,
-        source: 'context_menu'
+        direction
       })
     },
     [cwd]

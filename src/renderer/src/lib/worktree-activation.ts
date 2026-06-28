@@ -7,7 +7,7 @@ import type {
   WorktreeDefaultTabsLaunch,
   WorktreeSetupLaunch
 } from '../../../shared/types'
-import type { EventProps } from '../../../shared/telemetry-events'
+import type { AgentStartedTelemetry } from '../../../shared/agent-launch-source'
 import type { StartupCommandDelivery } from '../../../shared/codex-startup-delivery'
 import type { SleepingAgentLaunchConfig } from '../../../shared/agent-session-resume'
 import { shouldAutoCreateInitialTerminal } from '@/components/terminal/initial-terminal'
@@ -15,8 +15,7 @@ import { buildSetupRunnerCommand } from './setup-runner'
 import { buildAgentStartupPlan } from './tui-agent-startup'
 import { getAgentLaunchPlatformForRepo } from '@/lib/agent-launch-platform'
 import { CLIENT_PLATFORM } from './new-workspace'
-import { tuiAgentToAgentKind } from './telemetry'
-import { agentKindToTuiAgent } from '../../../shared/agent-kind'
+import { agentKindToTuiAgent, tuiAgentToAgentKind } from '../../../shared/agent-kind'
 import { useAppStore } from '@/store'
 import type { PendingSidebarWorktreeReveal } from '@/store/slices/ui'
 import { tabHasLivePty } from '@/lib/tab-has-live-pty'
@@ -54,10 +53,9 @@ import {
 } from './folder-workspace-path-status'
 import { toast } from 'sonner'
 
-/** Telemetry payload threaded from the launch site to `pty:spawn`. Main
- *  fires `agent_started` only after the spawn succeeds — see
- *  telemetry-plan.md§Agent launch semantics. */
-export type AgentStartedTelemetry = EventProps<'agent_started'>
+/** Agent launch attributes threaded from the launch site to `pty:spawn`
+ *  (re-exported for call sites that build the launch payload). */
+export type { AgentStartedTelemetry }
 
 /** Startup command threaded onto a worktree's first terminal at activation. */
 export type WorktreeStartupPayload = {

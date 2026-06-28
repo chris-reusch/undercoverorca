@@ -5,7 +5,7 @@ import type {
   FeatureWallWorkflowId
 } from '../../../../shared/feature-wall-workflows'
 import type { ReviewStep, ReviewStepId } from '../../../../shared/review-steps'
-import type { FeatureWallOpenSourceTelemetry } from '../../../../shared/telemetry-events'
+import type { FeatureWallOpenSourceTelemetry } from './feature-wall-open-source'
 import type { GlobalSettings } from '../../../../shared/types'
 import type { WorkbenchStep, WorkbenchStepId } from '../../../../shared/workbench-steps'
 import type { InstalledAgentSkillState } from '@/hooks/useInstalledAgentSkills'

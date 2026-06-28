@@ -55,14 +55,6 @@ import {
 } from '../attribution/terminal-attribution'
 import { registerPty, unregisterPty } from '../memory/pty-registry'
 import { advertisedUrlWatcher } from '../ports/advertised-url-watcher'
-import { track } from '../telemetry/client'
-import { classifyError } from '../telemetry/classify-error'
-import { getCohortAtEmit } from '../telemetry/cohort-classifier'
-import {
-  agentKindSchema,
-  launchSourceSchema,
-  requestKindSchema
-} from '../../shared/telemetry-events'
 import {
   isTerminalInputTooLargeWithDeferredMeasurement,
   iterateTerminalInputChunks
@@ -2004,19 +1996,6 @@ export function registerPtyHandlers(
         if (isClaudeLaunch) {
           markClaudePtySpawned(result.id)
         }
-        if (args.telemetry) {
-          const agentKindParse = agentKindSchema.safeParse(args.telemetry.agent_kind)
-          const launchSourceParse = launchSourceSchema.safeParse(args.telemetry.launch_source)
-          const requestKindParse = requestKindSchema.safeParse(args.telemetry.request_kind)
-          if (agentKindParse.success && launchSourceParse.success && requestKindParse.success) {
-            track('agent_started', {
-              agent_kind: agentKindParse.data,
-              launch_source: launchSourceParse.data,
-              request_kind: requestKindParse.data,
-              ...getCohortAtEmit()
-            })
-          }
-        }
         // Why: runtime-owned CLI PTYs bypass the renderer `pty:spawn` handler,
         // so record their spawn-time paneKey here too. Synthetic hook titles and
         // paneKey-scoped cache cleanup both depend on this reverse lookup.
@@ -2271,17 +2250,6 @@ export function registerPtyHandlers(
         // short-circuits.
         tabId?: string
         leafId?: string
-        // Why: telemetry-plan.md§Agent launch semantics. The renderer
-        // threads what Orca was *asked* to launch through this field; main
-        // fires `agent_started` only after `provider.spawn` resolves. Loose
-        // typing on the IPC boundary because the main-side schema
-        // validator is the single enforcement point — `track()` will drop
-        // the event if any field is outside its closed enum.
-        telemetry?: {
-          agent_kind?: unknown
-          launch_source?: unknown
-          request_kind?: unknown
-        }
       }
     ) => {
       const startupPromise = getLocalPtyStartupPromise(args.connectionId)
@@ -2635,31 +2603,6 @@ export function registerPtyHandlers(
           if (isMintedSessionId && effectiveSessionId !== undefined) {
             clearProviderPtyState(effectiveSessionId)
           }
-          // Why: telemetry-plan.md§agent_error — when the renderer threaded
-          // agent_kind through args.telemetry, attribute the error to that agent.
-          // Otherwise fall back to sniffing the command for `claude` (the one
-          // agent the main process can identify on its own via the existing
-          // `isClaudeLaunchCommand` regex used for auth gating). Bare-shell
-          // catches and unknown-agent catches without renderer telemetry remain
-          // unattributed. The event still emits with a classified `error_class`;
-          // raw error messages are dropped at the telemetry validator boundary.
-          const rendererAgentKindParse =
-            args.telemetry?.agent_kind !== undefined
-              ? agentKindSchema.safeParse(args.telemetry.agent_kind)
-              : null
-          const errorAgentKind = rendererAgentKindParse?.success
-            ? rendererAgentKindParse.data
-            : isClaudeLaunch
-              ? ('claude-code' as const)
-              : null
-          if (errorAgentKind) {
-            const classified = classifyError(spawnError)
-            track('agent_error', {
-              agent_kind: errorAgentKind,
-              error_class: classified.error_class,
-              ...getCohortAtEmit()
-            })
-          }
           throw spawnError
         } finally {
           if (preAllocatedHandle) {
@@ -2841,29 +2784,6 @@ export function registerPtyHandlers(
                 ? spawnedPid
                 : null
           })
-        }
-        // Why: telemetry-plan.md§Agent launch semantics — fire `agent_started`
-        // only after `provider.spawn` resolved. The renderer threads
-        // `args.telemetry` through the spawn IPC for every launch we want to
-        // attribute; bare-shell tabs (no agent) leave the field undefined and
-        // do not produce an event. Each field is parsed against its closed
-        // enum here so a malformed renderer payload (or a spoofed IPC) does
-        // not poison the event — `safeParse` failure drops that field, and
-        // if any required field is missing we skip the event entirely. The
-        // main-side `track()` validator re-runs the schema on the full
-        // payload as a second defense-in-depth check.
-        if (args.telemetry) {
-          const agentKindParse = agentKindSchema.safeParse(args.telemetry.agent_kind)
-          const launchSourceParse = launchSourceSchema.safeParse(args.telemetry.launch_source)
-          const requestKindParse = requestKindSchema.safeParse(args.telemetry.request_kind)
-          if (agentKindParse.success && launchSourceParse.success && requestKindParse.success) {
-            track('agent_started', {
-              agent_kind: agentKindParse.data,
-              launch_source: launchSourceParse.data,
-              request_kind: requestKindParse.data,
-              ...getCohortAtEmit()
-            })
-          }
         }
         const response = {
           ...result,

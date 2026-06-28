@@ -1,14 +1,17 @@
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import type { NestedRepoTelemetryRuntimeKind } from '../../../../shared/nested-repo-telemetry'
 import type { NestedRepoScanResult } from '../../../../shared/types'
-import { defaultProjectGroupNameForPath, type AddRepoDialogStep } from './add-repo-dialog-types'
+import {
+  defaultProjectGroupNameForPath,
+  type AddRepoDialogStep,
+  type NestedRepoRuntimeKind
+} from './add-repo-dialog-types'
 
 type ShowNestedRepoReviewArgs = {
   scan: NestedRepoScanResult
   selectedPath: string
   connectionId: string | null
   attemptId: string
-  runtimeKind: NestedRepoTelemetryRuntimeKind
+  runtimeKind: NestedRepoRuntimeKind
   inProgress: boolean
   scanId: string | null
 }
@@ -27,14 +30,14 @@ export function useAddRepoNestedReviewState({
   nestedGroupName: string
   nestedConnectionId: string | null
   nestedAttemptId: string | null
-  nestedRuntimeKind: NestedRepoTelemetryRuntimeKind | null
+  nestedRuntimeKind: NestedRepoRuntimeKind | null
   nestedScanInProgress: boolean
   nestedScanId: string | null
   nestedImportScanId: string | null
   setNestedSelectedPaths: Dispatch<SetStateAction<Set<string>>>
   setNestedGroupName: Dispatch<SetStateAction<string>>
   setNestedScanInProgress: Dispatch<SetStateAction<boolean>>
-  getNestedRepoRuntimeKind: (connectionId: string | null) => NestedRepoTelemetryRuntimeKind
+  getNestedRepoRuntimeKind: (connectionId: string | null) => NestedRepoRuntimeKind
   showNestedRepoReview: (args: ShowNestedRepoReviewArgs) => void
   setActiveNestedScanId: (scanId: string | null) => void
   handleStopNestedScan: () => void
@@ -45,7 +48,7 @@ export function useAddRepoNestedReviewState({
   const [nestedGroupName, setNestedGroupName] = useState('')
   const [nestedConnectionId, setNestedConnectionId] = useState<string | null>(null)
   const [nestedAttemptId, setNestedAttemptId] = useState<string | null>(null)
-  const [nestedRuntimeKind, setNestedRuntimeKind] = useState<NestedRepoTelemetryRuntimeKind | null>(
+  const [nestedRuntimeKind, setNestedRuntimeKind] = useState<NestedRepoRuntimeKind | null>(
     null
   )
   const [nestedScanInProgress, setNestedScanInProgress] = useState(false)
@@ -54,7 +57,7 @@ export function useAddRepoNestedReviewState({
   const nestedScanIdRef = useRef<string | null>(null)
 
   const getNestedRepoRuntimeKind = useCallback(
-    (connectionId: string | null): NestedRepoTelemetryRuntimeKind => {
+    (connectionId: string | null): NestedRepoRuntimeKind => {
       if (connectionId) {
         return 'ssh'
       }

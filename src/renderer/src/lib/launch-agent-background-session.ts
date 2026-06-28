@@ -6,7 +6,6 @@ import type {
 } from '@/lib/agent-background-session-contract'
 import { getAgentLaunchPlatformForRepo } from '@/lib/agent-launch-platform'
 import { CLIENT_PLATFORM } from '@/lib/new-workspace'
-import { tuiAgentToAgentKind } from '@/lib/telemetry'
 import { pasteDraftWhenAgentReady } from '@/lib/agent-paste-draft'
 import { showAutomationPromptNotSentToast } from '@/lib/agent-background-session-timeout-toast'
 import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
@@ -39,7 +38,7 @@ import { shouldUseShellReadyStartupDelivery } from '../../../shared/codex-startu
 export async function launchAgentBackgroundSession(
   args: LaunchAgentBackgroundSessionArgs
 ): Promise<LaunchAgentBackgroundSessionResult | null> {
-  const { agent, worktreeId, prompt, launchSource, title, onData, onExit, onAgentStatus } = args
+  const { agent, worktreeId, prompt, title, onData, onExit, onAgentStatus } = args
   const store = useAppStore.getState()
   const worktree = store.allWorktrees().find((entry) => entry.id === worktreeId)
   const repo = worktree ? store.repos.find((entry) => entry.id === worktree.repoId) : null
@@ -188,12 +187,7 @@ export async function launchAgentBackgroundSession(
         connectionId: sshConnectionId,
         worktreeId,
         tabId: tab.id,
-        leafId,
-        telemetry: {
-          agent_kind: tuiAgentToAgentKind(agent),
-          launch_source: launchSource ?? 'unknown',
-          request_kind: 'new'
-        }
+        leafId
       })
       ptyId = result.id
       if (result.launchConfig) {

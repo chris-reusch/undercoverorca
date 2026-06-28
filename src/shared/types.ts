@@ -29,7 +29,7 @@ import type {
   SourceControlAiSettings
 } from './source-control-ai-types'
 import type { StartupCommandDelivery } from './codex-startup-delivery'
-import type { AgentKind, LaunchSource, RequestKind } from './telemetry-events'
+import type { AgentStartedTelemetry } from './agent-launch-source'
 import type { SleepingAgentLaunchConfig, SleepingAgentSessionRecord } from './agent-session-resume'
 import type { ClaudeAgentTeamsMode } from './claude-agent-teams-tmux-compat'
 import type { TerminalCustomTheme } from './terminal-custom-themes'
@@ -61,11 +61,8 @@ export type {
 } from './git-status-types'
 
 // ─── Shell PATH hydration ────────────────────────────────────────────
-// Why: shared so the main-side `HydrationResult` discriminator and the
-// telemetry schema in `telemetry-events.ts` stay in lockstep without
-// `src/shared/` taking a forbidden import from `src/main/`. A compile-time
-// guard in telemetry-events.ts asserts the schema enum matches this alias —
-// adding a new failure mode without updating both places fails the build.
+// Why: shared so the main-side `HydrationResult` discriminator can reference
+// this alias without `src/shared/` taking a forbidden import from `src/main/`.
 export type ShellHydrationFailureReason =
   | 'none'
   | 'no_shell'
@@ -1939,7 +1936,10 @@ export type WorktreeStartupLaunch = {
   launchToken?: string
   launchAgent?: TuiAgent
   startupCommandDelivery?: StartupCommandDelivery
-  telemetry?: { agent_kind: AgentKind; launch_source: LaunchSource; request_kind: RequestKind }
+  // Launch attributes (agent kind / source / request kind) threaded to the
+  // spawn path; used for real logic such as recovering the agent on resume.
+  // Inert data — nothing is transmitted (telemetry was removed in this fork).
+  telemetry?: AgentStartedTelemetry
 }
 
 export type WorktreeDefaultTabsLaunch = {
@@ -2793,32 +2793,6 @@ export type GlobalSettings = {
    *  Optional for backward compatibility with profiles saved before
    *  GitLab support; the persistence merge fills the empty default. */
   gitlabProjects?: GitLabProjectSettings
-  /** Anonymous product-telemetry state. Optional because the one-shot
-   *  migration in `Store.load()` is what populates it on first boot of the
-   *  telemetry release; before migration runs, the field is absent. After
-   *  migration every user has `installId` set and `optedIn` is `true` (new
-   *  users) or `null` (existing users awaiting the first-launch banner).
-   *
-   *  Why this block carries only consent + identity state, not volatile
-   *  counters: DAU and crash attribution are both out of v1 scope
-   *  (daily_active_user is derived server-side from app_opened; crashes are
-   *  handled by a separate crash-reporting lane, not product telemetry). So
-   *  there is no lastActiveDate, no lastSessionId, and no heartbeat
-   *  timestamp here — adding any of those would amplify the debounced
-   *  settings write on a fast cadence and couple user preferences to
-   *  volatile telemetry counters. Keep this surface to values that only
-   *  change on explicit consent transitions. */
-  telemetry?: {
-    /** New users: initialized to `true` at install.
-     *  Existing users: `null` until they resolve the first-launch banner. */
-    optedIn: boolean | null
-    /** Anonymous UUID v4. Generated on first run. Stable across launches; not surfaced in the UI. */
-    installId: string
-    /** Cohort marker set once during migration. True for users with a
-     *  pre-existing profile (gates the existing-user opt-in banner);
-     *  false for fresh installs (no first-launch surface). */
-    existedBeforeTelemetryRelease: boolean
-  }
   /** Local voice/dictation configuration (Phase 1 voice feature). Optional
    *  because profiles created before voice landed won't have the key;
    *  `getDefaultSettings()` hydrates `getDefaultVoiceSettings()` via the
@@ -2874,11 +2848,8 @@ export type GhosttyImportPreview = {
 }
 
 // Subset of the renderer's onboarding-step Ghostty `DiscoveryState['status']`
-// values that ever ship a telemetry event. The UI-only states (`'idle'`,
-// `'detecting'`) never fire `onboarding_ghostty_discovered`. Lives in
-// `shared/` because the schema in `telemetry-events.ts` (node-tsconfig) and
-// `ThemeStep.tsx` (web-tsconfig) both need it for the compile-time
-// schema-vs-renderer enum sync guard.
+// values that represent a resolved discovery outcome. The UI-only states
+// (`'idle'`, `'detecting'`) are excluded.
 export type DiscoveryStatusEmitted = 'found' | 'absent' | 'imported'
 
 export type NotificationEventSource = 'agent-task-complete' | 'terminal-bell' | 'test'
@@ -2963,8 +2934,7 @@ export type OnboardingChecklistState = {
   addedFolder: boolean
   openedFile: boolean
   ranAgentOnFile: boolean
-  // Why: UI state flag (panel visibility), not an activation event. The
-  // telemetry checklist enum in telemetry-events.ts intentionally omits this.
+  // Why: UI state flag (panel visibility), not an activation event.
   dismissed: boolean
 }
 

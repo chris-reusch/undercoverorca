@@ -25,7 +25,7 @@ import type {
   TuiAgent,
   WorkspaceCreateTelemetrySource
 } from '../../../shared/types'
-import type { LaunchSource } from '../../../shared/telemetry-events'
+import type { LaunchSource } from '../../../shared/agent-launch-source'
 import { translate } from '@/i18n/i18n'
 
 type StartFixChecksAgentArgs = {

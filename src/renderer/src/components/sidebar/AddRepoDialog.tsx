@@ -45,7 +45,6 @@ const AddRepoDialog = React.memo(function AddRepoDialog() {
     nestedGroupName,
     nestedConnectionId,
     nestedAttemptId,
-    nestedRuntimeKind,
     nestedScanInProgress,
     nestedScanId,
     nestedImportScanId,
@@ -68,7 +67,7 @@ const AddRepoDialog = React.memo(function AddRepoDialog() {
     hostSelection.selectedParsedHost?.kind === 'runtime'
       ? hostSelection.selectedParsedHost.environmentId
       : null
-  const { showRemoteNestedRepoReview, trackRemoteNestedScanResult } = useAddRepoRemoteNestedScan({
+  const { showRemoteNestedRepoReview } = useAddRepoRemoteNestedScan({
     setActiveNestedScanId,
     showNestedRepoReview
   })
@@ -93,8 +92,7 @@ const AddRepoDialog = React.memo(function AddRepoDialog() {
     closeModal,
     (repoId) => completeGitRepoAdd(repoId, 'ssh_remote_path'),
     scanNestedRepos,
-    showRemoteNestedRepoReview,
-    trackRemoteNestedScanResult
+    showRemoteNestedRepoReview
   )
 
   const {
@@ -193,22 +191,19 @@ const AddRepoDialog = React.memo(function AddRepoDialog() {
     onGitRepoReady: completeGitRepoAdd,
     setAddProjectBusyLabel
   })
-  const { handleImportNestedRepos, resetNestedImportFlow, trackNestedBackAction } =
-    useAddRepoNestedImportFlow({
-      nestedAttemptId,
-      nestedScan,
-      nestedSelectedPaths,
-      nestedRuntimeKind,
-      nestedConnectionId,
-      nestedGroupName,
-      nestedImportScanId,
-      activeRuntimeEnvironmentId: selectedRuntimeEnvironmentId,
-      fetchWorktrees,
-      importNestedRepos,
-      getNestedRepoRuntimeKind,
-      onGitRepoReady: completeGitRepoAdd,
-      setIsAdding
-    })
+  const { handleImportNestedRepos, resetNestedImportFlow } = useAddRepoNestedImportFlow({
+    nestedAttemptId,
+    nestedScan,
+    nestedSelectedPaths,
+    nestedConnectionId,
+    nestedGroupName,
+    nestedImportScanId,
+    activeRuntimeEnvironmentId: selectedRuntimeEnvironmentId,
+    fetchWorktrees,
+    importNestedRepos,
+    onGitRepoReady: completeGitRepoAdd,
+    setIsAdding
+  })
 
   const resetState = useCallback(() => {
     // Why: kill the git clone process if one is running, so backing out
@@ -260,23 +255,17 @@ const AddRepoDialog = React.memo(function AddRepoDialog() {
   })
 
   const handleBack = useCallback(() => {
-    if (step === 'nested') {
-      trackNestedBackAction()
-    }
     resetState()
-  }, [resetState, step, trackNestedBackAction])
+  }, [resetState])
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
-        if (step === 'nested' && !isAdding) {
-          trackNestedBackAction()
-        }
         closeModal()
         resetState()
       }
     },
-    [closeModal, isAdding, resetState, step, trackNestedBackAction]
+    [closeModal, resetState]
   )
 
   return (

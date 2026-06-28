@@ -140,7 +140,7 @@ import {
 } from '../../shared/linear-agent-access'
 import { isLinearUuid } from '../../shared/linear-uuid'
 import type { FeatureInteractionId } from '../../shared/feature-interactions'
-import type { TerminalPaneSplitSource } from '../../shared/feature-education-telemetry'
+import type { TerminalPaneSplitSource } from '../../shared/terminal-pane-split-source'
 import {
   FOLDER_WORKSPACE_INSTANCE_SEPARATOR,
   splitWorktreeId,

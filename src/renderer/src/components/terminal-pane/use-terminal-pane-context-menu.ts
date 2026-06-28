@@ -43,14 +43,8 @@ import { copyTerminalHandleForPane } from './terminal-handle-copy'
 
 const CLOSE_ALL_CONTEXT_MENUS_EVENT = 'orca-close-all-context-menus'
 
-export function recordContextMenuCreatedTerminalPaneSplit(
-  createdPane: unknown,
-  args: {
-    source: 'contextual_tour' | 'context_menu'
-    direction: 'vertical' | 'horizontal'
-  }
-): boolean {
-  return recordCreatedTerminalPaneSplit(createdPane, args)
+export function recordContextMenuCreatedTerminalPaneSplit(createdPane: unknown): boolean {
+  return recordCreatedTerminalPaneSplit(createdPane)
 }
 
 type UseTerminalPaneContextMenuDeps = {
@@ -317,10 +311,7 @@ export function useTerminalPaneContextMenu({
   const onPaste = async (): Promise<void> => pasteResolvedPane('context-menu')
 
   const splitWithInheritedCwd = useCallback(
-    (
-      direction: 'vertical' | 'horizontal',
-      source: 'contextual_tour' | 'context_menu' = 'context_menu'
-    ): void => {
+    (direction: 'vertical' | 'horizontal'): void => {
       const pane = resolveMenuPane()
       const manager = managerRef.current
       if (!pane || !manager) {
@@ -333,8 +324,7 @@ export function useTerminalPaneContextMenu({
         paneCwdMap: paneCwdRef.current,
         fallbackCwd,
         pane,
-        direction,
-        source
+        direction
       })
     },
     [fallbackCwd, managerRef, paneCwdRef, paneTransportsRef, resolveMenuPane]
@@ -350,7 +340,7 @@ export function useTerminalPaneContextMenu({
         return
       }
       contextPaneIdRef.current = null
-      splitWithInheritedCwd(detail?.direction ?? 'vertical', getRequestedSplitTelemetrySource())
+      splitWithInheritedCwd(detail?.direction ?? 'vertical')
     }
     window.addEventListener(REQUEST_ACTIVE_TERMINAL_PANE_SPLIT_EVENT, onRequestSplit)
     return () =>
@@ -524,10 +514,4 @@ export function useTerminalPaneContextMenu({
     onToggleExpand,
     onSetTitle: handleSetTitle
   }
-}
-
-function getRequestedSplitTelemetrySource(): 'contextual_tour' | 'context_menu' {
-  return useAppStore.getState().activeContextualTourId === 'workspace-agent-sessions'
-    ? 'contextual_tour'
-    : 'context_menu'
 }

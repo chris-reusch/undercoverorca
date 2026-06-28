@@ -3029,12 +3029,7 @@ describe('worktree remote runtime mutations', () => {
         undefined,
         {
           command: "claude --prefill 'summarize repo'",
-          env: { ORCA_AGENT_MODE: 'direct' },
-          telemetry: {
-            agent_kind: 'claude-code',
-            launch_source: 'new_workspace_composer',
-            request_kind: 'new'
-          }
+          env: { ORCA_AGENT_MODE: 'direct' }
         }
       )
 

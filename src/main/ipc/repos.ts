@@ -78,9 +78,6 @@ import { getSshFilesystemProvider } from '../providers/ssh-filesystem-dispatch'
 import { getSshGitUsername } from '../git/git-username'
 import { getActiveMultiplexer } from './ssh'
 import { normalizeSparseDirectories } from './sparse-checkout-directories'
-import { track } from '../telemetry/client'
-import { getCohortAtEmit } from '../telemetry/cohort-classifier'
-import type { RepoMethod } from '../../shared/telemetry-events'
 import { detectRepoIconAndUpstream } from '../repo-icon-autodetect'
 import { enrichMissingRepoGitRemoteIdentities } from '../repo-git-remote-identity-enrichment'
 import { getProjectHostSetupForRepo } from '../../shared/project-host-setup-projection'
@@ -93,39 +90,6 @@ import {
 } from '../project-groups/folder-workspace-path-status'
 import { getGitCloneFailureMessage } from '../../shared/git-clone-failure-message'
 import { prepareLocalWorktreeRootForRepo } from '../worktree-root-preparation'
-
-// Why: `method` answers "which entry point did the user take?", not "what did
-// they add?" — so the IPC the renderer invoked IS the method. We never send
-// the path, URL, or display name. `repos:create` collapses into
-// `folder_picker` because the user's entry was the folder picker, even
-// though main also `git init`s. `drag_drop` is reserved for a future call
-// site; no current renderer surface produces it.
-//
-// Why `isGitRepo`: low-cardinality, non-identifying git-vs-folder signal.
-// Callers pass it because they already have the git-detection result in scope
-// (avoids re-running git I/O here). Pass `undefined` when a call site genuinely
-// can't determine git-ness (e.g. some SSH/remote edges) — never default-guess
-// `false`. This replaced the now-removed `onboarding_completed.is_git_repo`,
-// which became meaningless once repo selection left onboarding (1.4.46).
-function emitRepoAdded(method: RepoMethod, alreadyExisted: boolean, isGitRepo?: boolean): void {
-  // Why: re-adding an existing repo (matched by path inside the handler)
-  // is not a new activation event. Suppressing the duplicate keeps the
-  // funnel honest and avoids inflating `repo_added` for users who
-  // re-pick the same folder.
-  if (alreadyExisted) {
-    return
-  }
-  // Why: cohort must read AFTER `store.addRepo()` lands so the just-added
-  // repo is counted — every call site below already emits post-addRepo, so
-  // `getCohortAtEmit()` here returns the user's Nth `repo_added` as `N`.
-  // See docs/onboarding-funnel-cohort-addendum.md §Read-vs-write ordering.
-  const props = {
-    method,
-    ...(isGitRepo === undefined ? {} : { is_git_repo: isGitRepo }),
-    ...getCohortAtEmit()
-  }
-  track('repo_added', props)
-}
 
 function buildProjectHostSetupResult(store: Store, repo: Repo): ProjectHostSetupResult {
   const setup = getProjectHostSetupForRepo(store.getProjectHostSetups(), repo)
@@ -364,7 +328,6 @@ async function cloneRemoteRepo(
     )
   })
   if (existing && !isFolderRepo(existing)) {
-    emitRepoAdded('clone_url', true)
     return existing
   }
 
@@ -421,7 +384,6 @@ async function cloneRemoteRepo(
       projectHostSetupMethod: 'cloned'
     })
     if (updated) {
-      emitRepoAdded('clone_url', false)
       getActiveMultiplexer(args.connectionId)?.notify('session.registerRoot', {
         rootPath: clonePath
       })
@@ -437,7 +399,6 @@ async function cloneRemoteRepo(
   if ('error' in result) {
     throw new Error(result.error)
   }
-  emitRepoAdded('clone_url', result.alreadyExisted)
   return result.repo
 }
 
@@ -487,7 +448,6 @@ async function createRemoteRepo(
     )
   })
   if (existing) {
-    emitRepoAdded('folder_picker', true)
     return { repo: existing }
   }
 
@@ -563,7 +523,6 @@ async function createRemoteRepo(
     )
   })
   if (raceWinner) {
-    emitRepoAdded('folder_picker', true)
     return { repo: raceWinner }
   }
 
@@ -576,7 +535,6 @@ async function createRemoteRepo(
   if ('error' in result) {
     return result
   }
-  emitRepoAdded('folder_picker', result.alreadyExisted)
   return { repo: result.repo }
 }
 
@@ -1267,7 +1225,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
       }
       invalidateAuthorizedRootsCache()
       notifyReposChanged(mainWindow)
-      emitRepoAdded('folder_picker', result.alreadyExisted)
       const aligned = alignRepoWithRequestedProject(
         store,
         result.repo,
@@ -1585,7 +1542,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
           results.push({ path: repoPath, projectId: repo.id, status: 'imported' })
           // Why: nested-repo import only reaches here after the isGitRepo /
           // isGitRepoAsync guard above confirmed a git repo, so always `true`.
-          emitRepoAdded('folder_picker', false, true)
         } catch (error) {
           results.push({
             path: repoPath,
@@ -1631,7 +1587,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
       }
       invalidateAuthorizedRootsCache()
       notifyReposChanged(mainWindow)
-      emitRepoAdded('folder_picker', result.alreadyExisted, result.repo.kind === 'git')
       return { repo: result.repo }
     }
   )
@@ -1652,7 +1607,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
         return result
       }
       notifyReposChanged(mainWindow)
-      emitRepoAdded('folder_picker', result.alreadyExisted, result.repo.kind === 'git')
       return { repo: result.repo }
     }
   )
@@ -1719,7 +1673,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
       // the race matters even after this one passes.
       const existing = store.getRepos().find((r) => r.path === targetPath)
       if (existing) {
-        emitRepoAdded('folder_picker', true, repoKind === 'git')
         return { repo: existing }
       }
 
@@ -1849,7 +1802,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
         // other invocation is using it. Leaking a freshly-made empty folder on
         // a rare race is strictly safer than deleting a directory the winning
         // call (and the user) now owns.
-        emitRepoAdded('folder_picker', true, repoKind === 'git')
         return { repo: raceWinner }
       }
 
@@ -1877,7 +1829,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
       notifyReposChanged(mainWindow)
       // Why: `repos:create` git-inits when kind is 'git', so `repoKind` is the
       // true git-vs-folder signal for the just-created project.
-      emitRepoAdded('folder_picker', false, repoKind === 'git')
       return { repo }
     }
   )
@@ -2149,7 +2100,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
           .find((r) => getClonePathComparisonKey(r.path) === clonePathKey)
         if (existingAfterPendingClone && !isFolderRepo(existingAfterPendingClone)) {
           // Why: clone_url always produces a git repo.
-          emitRepoAdded('clone_url', true, true)
           return existingAfterPendingClone
         }
         // Why: gitSpawn uses args.destination as cwd, so it must exist before
@@ -2281,11 +2231,9 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
                 invalidateAuthorizedRootsCache()
                 notifyReposChanged(mainWindow)
                 // Why: folder→git upgrade is a real new git repo provisioning event.
-                emitRepoAdded('clone_url', false, true)
                 return updated
               }
             }
-            emitRepoAdded('clone_url', true, true)
             return existing
           }
 
@@ -2307,7 +2255,6 @@ export function registerRepoHandlers(mainWindow: BrowserWindow, store: Store): v
           await prepareLocalWorktreeRootForRepo(store, repo)
           invalidateAuthorizedRootsCache()
           notifyReposChanged(mainWindow)
-          emitRepoAdded('clone_url', false, true)
           return repo
         } finally {
           const metadata = cloneMetadataRef.current

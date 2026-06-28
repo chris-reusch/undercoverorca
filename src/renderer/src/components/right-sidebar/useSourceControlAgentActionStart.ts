@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { LaunchSource } from '../../../../shared/telemetry-events'
+import type { LaunchSource } from '../../../../shared/agent-launch-source'
 import type {
   SourceControlActionRecipe,
   SourceControlLaunchActionId

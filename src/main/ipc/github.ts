@@ -105,9 +105,6 @@ import type {
   UpdateProjectItemFieldArgs,
   UpdatePullRequestBySlugArgs
 } from '../../shared/github-project-types'
-import { appStarSourceSchema } from '../../shared/gh-star-source'
-import { track } from '../telemetry/client'
-import { getCohortAtEmit } from '../telemetry/cohort-classifier'
 
 const prRefreshVisibilityCleanupRegistered = new Set<number>()
 
@@ -1099,18 +1096,8 @@ export function registerGitHubHandlers(store: Store, stats: StatsCollector): voi
   // Star operations target the Orca repo itself — no repoPath validation needed
   ipcMain.handle('gh:viewer', () => getAuthenticatedViewer())
   ipcMain.handle('gh:checkOrcaStarred', () => checkOrcaStarred())
-  ipcMain.handle('gh:starOrca', async (_event, source: unknown) => {
-    const sourceParse = appStarSourceSchema.safeParse(source)
-    const starred = await starOrca()
-    if (starred && sourceParse.success) {
-      // Why: this main-owned event bypasses renderer telemetry IPC, so cohort
-      // context must be attached here on the successful star path.
-      track('app_starred_orca', {
-        source: sourceParse.data,
-        ...getCohortAtEmit()
-      })
-    }
-    return starred
+  ipcMain.handle('gh:starOrca', async () => {
+    return starOrca()
   })
 
   // Why: `rate_limit` is exempt from GitHub's rate-limit accounting, so

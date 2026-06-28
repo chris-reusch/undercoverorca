@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import type { TuiAgent } from '../../../../shared/types'
-import { workspaceSourceSchema } from '../../../../shared/telemetry-events'
+import { WORKSPACE_SOURCE_VALUES } from '../../../../shared/workspace-source'
 import { sleepingAgentLaunchConfigSchema } from '../../../../shared/workspace-session-sleeping-agents'
 import {
   OptionalBoolean,
@@ -84,7 +84,7 @@ export const WorktreeCreate = z
     telemetrySource: z
       .unknown()
       .transform((value) => {
-        const parsed = workspaceSourceSchema.safeParse(value)
+        const parsed = z.enum(WORKSPACE_SOURCE_VALUES).safeParse(value)
         return parsed.success ? parsed.data : undefined
       })
       .optional(),

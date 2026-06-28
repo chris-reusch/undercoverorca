@@ -50,18 +50,14 @@ describe('splitTerminalPaneWithInheritedCwd', () => {
       paneCwdMap: new Map(),
       fallbackCwd: '/fallback',
       pane: { id: 1 } as ManagedPane,
-      direction: 'vertical',
-      source: 'context_menu'
+      direction: 'vertical'
     })
 
     await flushAsyncSplit()
 
     expect(staleSplitPane).not.toHaveBeenCalled()
     expect(liveSplitPane).toHaveBeenCalledWith(1, 'vertical', { cwd: '/resolved' })
-    expect(mocks.recordCreatedTerminalPaneSplit).toHaveBeenCalledWith(
-      { id: 2 },
-      { source: 'context_menu', direction: 'vertical' }
-    )
+    expect(mocks.recordCreatedTerminalPaneSplit).toHaveBeenCalledWith({ id: 2 })
   })
 
   it('does not split a stale manager when the live manager is gone', async () => {
@@ -75,16 +71,12 @@ describe('splitTerminalPaneWithInheritedCwd', () => {
       paneCwdMap: new Map(),
       fallbackCwd: '/fallback',
       pane: { id: 1 } as ManagedPane,
-      direction: 'horizontal',
-      source: 'context_menu'
+      direction: 'horizontal'
     })
 
     await flushAsyncSplit()
 
     expect(staleSplitPane).not.toHaveBeenCalled()
-    expect(mocks.recordCreatedTerminalPaneSplit).toHaveBeenCalledWith(undefined, {
-      source: 'context_menu',
-      direction: 'horizontal'
-    })
+    expect(mocks.recordCreatedTerminalPaneSplit).toHaveBeenCalledWith(undefined)
   })
 })

@@ -55,7 +55,6 @@ import RightSidebar from './components/right-sidebar'
 import { StarNagCard } from './components/StarNagCard'
 import { StarNagAgentValueMomentObserver } from './components/star-nag/StarNagAgentValueMomentObserver'
 import { StarNagToastHost } from './components/star-nag/StarNagToastHost'
-import { TelemetryFirstLaunchSurface } from './components/TelemetryFirstLaunchSurface'
 import { ZoomOverlay } from './components/ZoomOverlay'
 import { onOnboardingReopened } from './components/onboarding/show-onboarding-event'
 import { shouldShowOnboarding } from './components/onboarding/should-show-onboarding'
@@ -141,10 +140,6 @@ import {
   getFeatureTipsAppOpenDecision,
   isCliFeatureTipCompleted
 } from './components/feature-tips/feature-tip-startup-gate'
-import {
-  trackCmdJPaletteFeatureTipShown,
-  trackOrcaCliFeatureTipShown
-} from './components/feature-tips/feature-tip-telemetry'
 import {
   keybindingMatchesAction,
   type KeybindingActionId,
@@ -312,11 +307,6 @@ const UpdateCard = lazy(() =>
 const ContextualTourOverlay = lazy(() =>
   import('./components/contextual-tours/ContextualTourOverlay').then((module) => ({
     default: module.ContextualTourOverlay
-  }))
-)
-const SetupGuideTelemetryObserver = lazy(() =>
-  import('./components/setup-guide/SetupGuideTelemetryObserver').then((module) => ({
-    default: module.SetupGuideTelemetryObserver
   }))
 )
 const FloatingTerminalPanel = lazy(() =>
@@ -603,7 +593,6 @@ function App(): React.JSX.Element {
   const acknowledgedAgentsByPaneKey = useAppStore((s) => s.acknowledgedAgentsByPaneKey)
   const persistedUIReady = useAppStore((s) => s.persistedUIReady)
   const shouldMountContextualTourOverlay = activeContextualTourId !== null
-  const shouldMountSetupGuideTelemetryObserver = persistedUIReady
   const shouldMountUpdateCard = shouldMountUpdateCardForStatus(updateStatus)
   const rightSidebarWidth = useAppStore((s) => s.rightSidebarWidth)
   const markdownTocPanelWidth = useAppStore((s) => s.markdownTocPanelWidth)
@@ -781,11 +770,6 @@ function App(): React.JSX.Element {
     }
 
     featureTipsPromptedThisSessionRef.current = true
-    if (featureTipsDecision.tipId === 'orca-cli') {
-      trackOrcaCliFeatureTipShown('app_open')
-    } else if (featureTipsDecision.tipId === 'cmd-j-palette') {
-      trackCmdJPaletteFeatureTipShown('app_open')
-    }
     // Why: once a tip is visible, app quit/crash should not make it reappear
     // on the next launch just because the user never clicked a dismiss button.
     actions.markFeatureTipsSeen([featureTipsDecision.tipId])
@@ -2471,11 +2455,6 @@ function App(): React.JSX.Element {
                 </RecoverableRenderErrorBoundary>
               ) : null}
             </Suspense>
-            {shouldMountSetupGuideTelemetryObserver ? (
-              <Suspense fallback={null}>
-                <SetupGuideTelemetryObserver />
-              </Suspense>
-            ) : null}
             {shouldMountContextualTourOverlay ? (
               <Suspense fallback={null}>
                 <ContextualTourOverlay />
@@ -2525,21 +2504,6 @@ function App(): React.JSX.Element {
               <StarNagToastHost />
             </RecoverableRenderErrorBoundary>
             <StarNagAgentValueMomentObserver />
-            {/* Why: the existing-user opt-in banner mounts at App root so it
-          renders once per renderer session, not per view. It gates
-          internally on the cohort markers populated by the migration,
-          so it only shows for users who installed before the telemetry
-          release and have not yet resolved consent. New users get no
-          first-launch surface — see telemetry-plan.md §First-launch
-          experience. */}
-            <RecoverableRenderErrorBoundary
-              boundaryId="overlay.telemetry-first-launch"
-              surface="overlay"
-              resetKey={settings?.telemetry?.optedIn ?? 'unknown'}
-              compact
-            >
-              <TelemetryFirstLaunchSurface />
-            </RecoverableRenderErrorBoundary>
             <RecoverableRenderErrorBoundary
               boundaryId="overlay.zoom"
               surface="overlay"

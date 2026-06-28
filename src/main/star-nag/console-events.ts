@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { STAR_NAG_INITIAL_THRESHOLD } from '../../shared/constants'
-import type { StarNagPromptSource } from '../../shared/star-nag-telemetry'
+import type { StarNagPromptSource } from './prompt-types'
 import type { Store } from '../persistence'
 import type { StatsCollector } from '../stats/collector'
 

@@ -1,5 +1,4 @@
-import type { AgentHookInstallStatus } from '../../shared/agent-hook-types'
-import type { HookInstallAgent } from '../../shared/telemetry-events'
+import type { AgentHookInstallStatus, AgentHookTarget } from '../../shared/agent-hook-types'
 import type { GlobalSettings } from '../../shared/types'
 import { ampHookService } from '../amp/hook-service'
 import { antigravityHookService } from '../antigravity/hook-service'
@@ -16,9 +15,9 @@ import { hermesHookService } from '../hermes/hook-service'
 import { kimiHookService } from '../kimi/hook-service'
 import { openClaudeHookService } from '../openclaude/hook-service'
 
-export type ManagedAgentHookInstaller = readonly [HookInstallAgent, () => void]
-type ManagedHookRemover = readonly [HookInstallAgent, () => AgentHookInstallStatus]
-type ManagedHookStatusReader = readonly [HookInstallAgent, () => AgentHookInstallStatus]
+export type ManagedAgentHookInstaller = readonly [AgentHookTarget, () => void]
+type ManagedHookRemover = readonly [AgentHookTarget, () => AgentHookInstallStatus]
+type ManagedHookStatusReader = readonly [AgentHookTarget, () => AgentHookInstallStatus]
 
 export const MANAGED_AGENT_HOOK_INSTALLERS: readonly ManagedAgentHookInstaller[] = [
   ['claude', () => claudeHookService.install()],
@@ -87,7 +86,7 @@ export function installManagedAgentHooks(): void {
   }
 }
 
-function errorStatus(agent: HookInstallAgent, error: unknown): AgentHookInstallStatus {
+function errorStatus(agent: AgentHookTarget, error: unknown): AgentHookInstallStatus {
   return {
     agent,
     state: 'error',

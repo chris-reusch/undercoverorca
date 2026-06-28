@@ -6,8 +6,7 @@ import type {
 } from '../../../shared/agent-status-types'
 import { tabHasLivePty } from './tab-has-live-pty'
 import type { WorktreeStatus } from './worktree-status'
-import { tuiAgentToAgentKind } from '../../../shared/agent-kind'
-import type { AgentKind } from '../../../shared/telemetry-events'
+import { tuiAgentToAgentKind, type AgentKind } from '../../../shared/agent-kind'
 
 // Re-export from shared module so existing renderer imports continue to work.
 // Why: the main process now needs the same agent detection logic for stat

@@ -133,9 +133,6 @@ import { normalizeSourceControlGroupOrder } from '../shared/source-control-group
 import { normalizeAppIconId } from '../shared/app-icon'
 import { normalizeTerminalCustomThemes } from '../shared/terminal-custom-themes'
 import {
-  compareFeatureInteractionUsageBuckets,
-  getFeatureInteractionCategory,
-  getFeatureInteractionUsageBucket,
   normalizeFeatureInteractions,
   normalizeFeatureInteractionTelemetryBuckets,
   type FeatureInteractionId
@@ -201,8 +198,6 @@ import {
   migrateWorkspaceSessionTerminalScrollbackSnapshots,
   readTerminalScrollbackSnapshotSync
 } from './terminal-scrollback-snapshots'
-import { track } from './telemetry/client'
-import { getCohortAtEmit } from './telemetry/cohort-classifier'
 
 function encrypt(plaintext: string): string {
   if (!plaintext || !safeStorage.isEncryptionAvailable()) {
@@ -2491,13 +2486,8 @@ export class Store {
   }
 
   private load(allowBackupRecovery = true): PersistedState {
-    // Capture once, at the top: this is the unambiguous "has the user run
-    // Orca before?" signal used by the telemetry cohort migration below.
-    // Field-based inference (e.g., `settings.telemetry` presence) does not
-    // work on the telemetry release itself — `telemetry` is new here, so it
-    // would be absent on every pre-telemetry install and misclassify existing
-    // users as fresh, flipping them to default-on in violation of the
-    // social contract we installed them under.
+    // Capture once, at the top: the unambiguous "has the user run Orca
+    // before?" signal used by the fresh-install default below.
     const dataFile = getDataFile()
     const fileExistedOnLoad = existsSync(dataFile)
 
@@ -3018,11 +3008,7 @@ export class Store {
       console.error('[persistence] Failed to load primary state, trying backups:', err)
     }
 
-    // Corrupt-file catch path and "no file on disk" path converge here. The
-    // telemetry migration below runs on whichever branch produced `result`,
-    // because a user whose `orca-data.json` got corrupted is not a fresh
-    // install of the telemetry release — they still count as existing and
-    // must see the opt-in banner, not the default-on toast.
+    // Corrupt-file catch path and "no file on disk" path converge here.
     if (result === null && allowBackupRecovery) {
       let hasBackup = false
       for (let i = 0; i < BACKUP_COUNT; i++) {
@@ -3093,66 +3079,7 @@ export class Store {
     }
     result = folderScopeConnectionMigration.state
 
-    return this.migrateTelemetry(result, fileExistedOnLoad)
-  }
-
-  // One-shot telemetry cohort migration. Runs on every `load()` but is a
-  // no-op once `existedBeforeTelemetryRelease` is set, so subsequent launches
-  // pay only the property lookup. Populates:
-  //   - `existedBeforeTelemetryRelease` — cohort discriminator (drives
-  //     whether the existing-user opt-in banner is shown in PR 3;
-  //     new users get no first-launch surface).
-  //   - `optedIn` — new users start opted in; existing users are `null` until
-  //     the banner resolves (the consent resolver returns `pending_banner`
-  //     until then, so nothing transmits).
-  //   - `installId` — anonymous UUID v4. Stable across launches; not surfaced in the UI.
-  private migrateTelemetry(state: PersistedState, fileExistedOnLoad: boolean): PersistedState {
-    const existing = state.settings?.telemetry
-    // Why: the one-shot is complete only when all three invariants hold.
-    // Keying on `existedBeforeTelemetryRelease` alone would let a partially-
-    // written telemetry block (crash mid-save, hand-edit, future bug) short-
-    // circuit migration and leave `installId` undefined or `optedIn` wiped.
-    if (
-      typeof existing?.existedBeforeTelemetryRelease === 'boolean' &&
-      typeof existing.installId === 'string' &&
-      existing.installId.length > 0 &&
-      (existing.optedIn === true || existing.optedIn === false || existing.optedIn === null)
-    ) {
-      return state
-    }
-    // Why: cohort is the authoritative discriminator per invariant #8, so
-    // resolve it once and reuse it below — the `optedIn` fallback must not
-    // re-infer cohort from `fileExistedOnLoad` or field presence, or a
-    // partially-written telemetry block could land a new user in the
-    // existing-user `pending_banner` state.
-    const resolvedExistedBefore =
-      typeof existing?.existedBeforeTelemetryRelease === 'boolean'
-        ? existing.existedBeforeTelemetryRelease
-        : fileExistedOnLoad
-    return {
-      ...state,
-      settings: {
-        ...state.settings,
-        telemetry: {
-          ...existing,
-          existedBeforeTelemetryRelease: resolvedExistedBefore,
-          // Why: preserve an explicit opt-in/out if the user has ever resolved
-          // it. Only fall back to the cohort default (new users: on; existing
-          // users: undecided until the first-launch banner resolves) when
-          // optedIn is truly unset (undefined), never when it is `false`.
-          optedIn:
-            existing?.optedIn === true || existing?.optedIn === false || existing?.optedIn === null
-              ? existing.optedIn
-              : resolvedExistedBefore
-                ? null
-                : true,
-          installId:
-            typeof existing?.installId === 'string' && existing.installId.length > 0
-              ? existing.installId
-              : randomUUID()
-        }
-      }
-    }
+    return result
   }
 
   private scheduleSave(): void {
@@ -4673,16 +4600,6 @@ export class Store {
     if (historyWithPreviousLayout) {
       sanitizedUpdates.workspaceDirHistory = historyWithPreviousLayout
     }
-    // Why: `telemetry` is deep-merged for the same reason `notifications` is —
-    // partial updates from the Privacy pane / consent flow (e.g., flipping
-    // only `optedIn`) must not clobber sibling fields like `installId` or
-    // `existedBeforeTelemetryRelease`. The field is optional, so we only
-    // synthesize a `telemetry` key on the result when at least one side has
-    // one.
-    const mergedTelemetry =
-      sanitizedUpdates.telemetry !== undefined
-        ? { ...this.state.settings.telemetry, ...sanitizedUpdates.telemetry }
-        : this.state.settings.telemetry
     if ('sourceControlAi' in sanitizedUpdates) {
       sanitizedUpdates.sourceControlAi = retireLegacyInstructionsForClearedTextActionRecipes(
         sanitizedUpdates.sourceControlAi,
@@ -4710,8 +4627,7 @@ export class Store {
       notifications: normalizeNotificationSettings({
         ...this.state.settings.notifications,
         ...sanitizedUpdates.notifications
-      }),
-      ...(mergedTelemetry !== undefined ? { telemetry: mergedTelemetry } : {})
+      })
     }
     this.scheduleSave()
     const changedUpdates = {} as Partial<GlobalSettings> & Record<string, unknown>
@@ -4884,46 +4800,16 @@ export class Store {
 
   recordFeatureInteraction(id: FeatureInteractionId): PersistedState['ui'] {
     const featureInteractions = normalizeFeatureInteractions(this.state.ui?.featureInteractions)
-    const telemetryBuckets = normalizeFeatureInteractionTelemetryBuckets(
-      this.state.featureInteractionTelemetryBuckets
-    )
     const existing = featureInteractions[id]
-    const previousCount = existing?.interactionCount ?? 0
-    const nextCount = previousCount + 1
-    const previousBucket = getFeatureInteractionUsageBucket(previousCount)
-    const nextBucket = getFeatureInteractionUsageBucket(nextCount)
-    const lastEmittedBucket = telemetryBuckets[id] ?? null
-    const shouldEmit =
-      nextBucket !== null &&
-      (lastEmittedBucket === null ||
-        compareFeatureInteractionUsageBuckets(nextBucket, lastEmittedBucket) > 0)
-
     this.updateUI({
       featureInteractions: {
         ...featureInteractions,
         [id]: {
           firstInteractedAt: existing?.firstInteractedAt ?? Date.now(),
-          interactionCount: nextCount
+          interactionCount: (existing?.interactionCount ?? 0) + 1
         }
       }
     })
-    this.state.featureInteractionTelemetryBuckets = shouldEmit
-      ? { ...telemetryBuckets, [id]: nextBucket }
-      : telemetryBuckets
-    this.scheduleSave()
-
-    if (shouldEmit) {
-      track('feature_interaction_usage_bucket_reached', {
-        feature_id: id,
-        feature_category: getFeatureInteractionCategory(id),
-        count_bucket: nextBucket,
-        bucket_source:
-          lastEmittedBucket === null && previousBucket !== null && previousBucket === nextBucket
-            ? 'observed_existing'
-            : 'crossed_now',
-        ...getCohortAtEmit()
-      })
-    }
     return this.getUI()
   }
 

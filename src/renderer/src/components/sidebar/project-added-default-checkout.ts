@@ -1,15 +1,14 @@
 import { useAppStore } from '@/store'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
-import { track } from '@/lib/telemetry'
 import type {
   AddRepoDefaultCheckoutHandoffSource,
-  EventProps
-} from '../../../../shared/telemetry-events'
+  AddRepoDefaultCheckoutHandoffReason
+} from '../../../../shared/agent-launch-source'
 import type { DetectedWorktreeListResult, Worktree } from '../../../../shared/types'
 import { markOnboardingProjectAdded } from '@/lib/onboarding-project-checklist'
 import { finalizeImportedRepoAfterSkip } from './add-repo-skip-finalization'
 
-type DefaultCheckoutHandoffReason = EventProps<'add_repo_default_checkout_handoff'>['reason']
+type DefaultCheckoutHandoffReason = AddRepoDefaultCheckoutHandoffReason
 
 export function getProjectDefaultCheckout(worktrees: readonly Worktree[]): Worktree | null {
   return worktrees.find((worktree) => worktree.isMainWorktree) ?? null
@@ -96,31 +95,25 @@ async function findDetectedDefaultCheckout(repoId: string): Promise<{
 
 export async function openProjectDefaultCheckout({
   repoId,
-  source,
   setHideDefaultBranchWorkspace
 }: {
   repoId: string
+  // Retained for call-site compatibility across the add-project flow; the value
+  // no longer drives behavior after telemetry removal.
   source: AddRepoDefaultCheckoutHandoffSource
   setHideDefaultBranchWorkspace: (value: boolean) => void
 }): Promise<void> {
   let defaultCheckout = getProjectDefaultCheckout(
     useAppStore.getState().worktreesByRepo[repoId] ?? []
   )
-  let reason: DefaultCheckoutHandoffReason = 'loaded_default_checkout'
   if (!defaultCheckout) {
     const detectedDefaultCheckout = await findDetectedDefaultCheckout(repoId)
     defaultCheckout = detectedDefaultCheckout.worktree
-    reason = detectedDefaultCheckout.reason
   }
 
   if (defaultCheckout) {
     const revealLinkedFailureReason = await revealDetectedHiddenLinkedExternalWorktrees(repoId)
     if (revealLinkedFailureReason) {
-      track('add_repo_default_checkout_handoff', {
-        source,
-        result: 'revealed_project',
-        reason: revealLinkedFailureReason
-      })
       finalizeImportedRepoAfterSkip(useAppStore.getState(), repoId)
       return
     }
@@ -130,20 +123,10 @@ export async function openProjectDefaultCheckout({
     if (state.hideDefaultBranchWorkspace) {
       setHideDefaultBranchWorkspace(false)
     }
-    track('add_repo_default_checkout_handoff', {
-      source,
-      result: 'opened_default_checkout',
-      reason
-    })
     activateAndRevealWorktree(defaultCheckout.id)
     return
   }
 
-  track('add_repo_default_checkout_handoff', {
-    source,
-    result: 'revealed_project',
-    reason
-  })
   finalizeImportedRepoAfterSkip(useAppStore.getState(), repoId)
 }
 

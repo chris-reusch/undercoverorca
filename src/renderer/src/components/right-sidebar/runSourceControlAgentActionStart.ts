@@ -1,7 +1,7 @@
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import type { GlobalSettings, Repo, TuiAgent } from '../../../../shared/types'
-import type { LaunchSource } from '../../../../shared/telemetry-events'
+import type { LaunchSource } from '../../../../shared/agent-launch-source'
 import type {
   SourceControlActionRecipe,
   SourceControlLaunchActionId

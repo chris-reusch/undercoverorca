@@ -21,16 +21,11 @@ import { registerCoreHandlers } from './ipc/register-core-handlers'
 import { initObservability, shutdownObservability } from './observability'
 import { startSpan } from './observability/tracer'
 import { registerMobileHandlers } from './ipc/mobile'
-import { initTelemetry, shutdownTelemetry, trackAppOpenedOnce } from './telemetry/client'
-import { runManagedHookInstallers } from './agent-hooks/install-telemetry'
 import {
+  installManagedAgentHooks,
   isAgentStatusHooksEnabled,
-  MANAGED_AGENT_HOOK_INSTALLERS,
   removeManagedAgentHooks
 } from './agent-hooks/managed-agent-hook-controls'
-import { initCohortClassifier } from './telemetry/cohort-classifier'
-import { initOnboardingCohortClassifier } from './telemetry/onboarding-cohort-classifier'
-import { resolveConsent } from './telemetry/consent'
 import { triggerStartupNotificationRegistration } from './ipc/notifications'
 import { OrcaRuntimeService } from './runtime/orca-runtime'
 import { OrcaRuntimeRpcServer } from './runtime/runtime-rpc'
@@ -690,23 +685,13 @@ function openMainWindow(): BrowserWindow {
     logStartupMilestone('ready-to-show')
   })
 
-  // Why: telemetry-plan.md§First-launch experience anchors default-on
-  // `app_opened` to the first main-window load. Existing users in the
-  // pending-banner cohort resolve through telemetry/client.ts; this load
-  // path only fires once consent is already enabled.
+  // Why: clears the expected-reload guard and records crash/startup
+  // breadcrumbs on the first main-window load.
   const rendererWebContentsId = window.webContents.id
   const onFirstWindowLoad = (): void => {
     clearExpectedRendererReload(rendererWebContentsId)
     recordCrashBreadcrumb('main_window_loaded')
     logStartupMilestone('did-finish-load')
-    if (!store) {
-      return
-    }
-    const consent = resolveConsent(store.getSettings())
-    if (consent.effective !== 'enabled') {
-      return
-    }
-    trackAppOpenedOnce()
   }
   window.webContents.on('did-finish-load', onFirstWindowLoad)
 
@@ -1108,7 +1093,7 @@ function installServeSignalHandlers(): void {
   const quit = (): void => {
     // Why: foreground `orca serve` is controlled by the parent CLI/terminal,
     // so POSIX termination signals should follow Electron's normal quit path
-    // and flush runtime metadata, daemon checkpoints, and telemetry.
+    // and flush runtime metadata and daemon checkpoints.
     app.quit()
   }
   process.once('SIGINT', quit)
@@ -1291,28 +1276,12 @@ app.whenReady().then(async () => {
   unsubscribeAgentAwakeStatusChanges = agentHookServer.subscribeStatusChanges((statuses) => {
     agentAwakeService?.setStatuses(statuses)
   })
-  // Why: telemetry must initialize before any IPC handler / renderer can
-  // call `track()`. The client is a no-op in dev/contributor builds
-  // (`IS_OFFICIAL_BUILD === false`) and a no-op while `TELEMETRY_ENABLED`
-  // is false in PR 2 — so this call is safe to run early; it only records
-  // the Store reference, seeds common props, and resets per-session burst
-  // caps. Actual transport initialization is still gated by both flags.
-  initTelemetry(store)
   // Why: the error-tracking lane (telemetry-error-tracking.md) is its own
-  // composition root — independent of product telemetry — and must
-  // initialize before any IPC handler / runtime span is created so the
-  // tracer's active sink is populated at the moment the first span fires.
-  // Honors DO_NOT_TRACK / ORCA_TELEMETRY_DISABLED / ORCA_DIAGNOSTICS_DISABLED
-  // / CI internally; those gates do not need to be re-checked here.
+  // composition root and must initialize before any IPC handler / runtime
+  // span is created so the tracer's active sink is populated at the moment
+  // the first span fires. Honors DO_NOT_TRACK / ORCA_TELEMETRY_DISABLED /
+  // ORCA_DIAGNOSTICS_DISABLED / CI internally.
   initObservability()
-  // Why: cohort-classifier reads the repo count synchronously at every emit
-  // for cohort-extended events. The Store has been sync-loaded above, and
-  // this init runs before any IPC handler is registered and before any
-  // window loads — so the classifier is hydrated before any `track()` call,
-  // regardless of whether it originates from the renderer, an IPC handler,
-  // or `trackAppOpenedOnce` / `did-finish-load`.
-  initCohortClassifier(store)
-  initOnboardingCohortClassifier(store)
   stats = new StatsCollector()
   claudeUsage = new ClaudeUsageStore(store)
   codexUsage = new CodexUsageStore(store)
@@ -1516,7 +1485,7 @@ app.whenReady().then(async () => {
     // Why: the persisted off switch must run before any auto-install path so
     // users who removed Orca-managed hooks do not see them silently reappear on launch.
     if (isAgentStatusHooksEnabled(store.getSettings())) {
-      runManagedHookInstallers(MANAGED_AGENT_HOOK_INSTALLERS)
+      installManagedAgentHooks()
     } else {
       removeManagedAgentHooks()
     }
@@ -1635,7 +1604,10 @@ app.whenReady().then(async () => {
   runtimeRpc = new OrcaRuntimeRpcServer({
     runtime,
     userDataPath: app.getPath('userData'),
-    enableWebSocket: true,
+    // Privacy-hardened fork: mobile companion / phone-pairing is turned off, so the
+    // WebSocket relay never binds and no device registry / E2EE keypair is created.
+    // The local Unix-socket CLI transport is unaffected.
+    enableWebSocket: false,
     ...(isE2E ? { wsPort: 0 } : {}),
     ...(devWsPort !== undefined ? { wsPort: devWsPort } : {}),
     ...(serveOptions?.wsPort !== undefined ? { wsPort: serveOptions.wsPort } : {}),
@@ -1792,19 +1764,16 @@ app.on('will-quit', (e) => {
     // Using allSettled (not all) preserves the existing fail-open posture:
     // if disconnectDaemon rejects, we still quit instead of hanging the app.
     //
-    // Telemetry shutdown folds in after the daemon/RPC teardown and BEFORE
-    // app.quit(): the PostHog client has up to 2s of bounded flush. Errors
-    // inside `shutdownTelemetry()` are caught by the client itself — we
-    // catch again here defensively so a flush failure cannot cancel the
-    // quit chain.
+    // The error-tracking lane shutdown folds in after the daemon/RPC teardown
+    // and BEFORE app.quit(); errors are swallowed so a flush failure cannot
+    // cancel the quit chain.
     // Why: normal quits preserve the detached daemon for warm reattach, but a
     // dev parent dying means the temp/dev profile has no owner left to reattach.
     const daemonTeardown = isDevParentShutdownRequested() ? shutdownDaemon() : disconnectDaemon()
     Promise.allSettled([daemonTeardown, rpcStopAndClear, watcherShutdown, emulatorShutdown])
-      .then(() => shutdownTelemetry())
       .then(() => shutdownObservability())
       .catch(() => {
-        /* swallow — telemetry must never prevent app.quit() */
+        /* swallow — shutdown must never prevent app.quit() */
       })
       .then(() => {
         daemonDisconnectDone = true

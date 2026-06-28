@@ -11,7 +11,6 @@ import type {
 import type { NativeFileDropPayload } from '../shared/native-file-drop'
 import type { ReadClipboardTextOptions } from '../shared/clipboard-text'
 import type { AppIdentity } from '../shared/app-identity'
-import type { TerminalPaneSplitSource } from '../shared/feature-education-telemetry'
 import type { TaskSourceContext } from '../shared/task-source-context'
 import type { ProjectExecutionRuntimeResolution } from '../shared/project-execution-runtime'
 import type { StartupCommandDelivery } from '../shared/codex-startup-delivery'
@@ -362,8 +361,6 @@ import type {
   OpenCodeUsageSummary
 } from '../shared/opencode-usage-types'
 import type { AiVaultListArgs, AiVaultListResult } from '../shared/ai-vault-types'
-import type { TelemetryConsentState } from '../shared/telemetry-consent-types'
-import type { AgentKind, LaunchSource, RequestKind } from '../shared/telemetry-events'
 import type { AppStarSource } from '../shared/gh-star-source'
 import type {
   RemoteWorkspaceChangedEvent,
@@ -1032,11 +1029,6 @@ export type PreloadApi = {
       // pty:spawn returns. Only the renderer's daemon-host path threads these.
       tabId?: string
       leafId?: string
-      // Why: telemetry-plan.md§Agent launch semantics — main emits
-      // `agent_started` only after the PTY/session is created successfully,
-      // so the renderer threads the launch metadata through this field and
-      // the IPC handler fires the event from the spawn-success branch.
-      telemetry?: { agent_kind: AgentKind; launch_source: LaunchSource; request_kind: RequestKind }
     }) => Promise<{
       id: string
       launchConfig?: SleepingAgentLaunchConfig
@@ -1743,14 +1735,6 @@ export type PreloadApi = {
     showAgentValueMoment: () => Promise<void>
     onboardingCompleted: () => Promise<void>
   }
-  /** Fire-and-forget track. Loose typing at the IPC boundary on purpose —
-   *  the main-side validator is the single enforcement point. Renderer call
-   *  sites should import `track<N>()` from `src/renderer/src/lib/telemetry.ts`
-   *  for the `EventMap`-based type safety, not reach for this directly. */
-  telemetryTrack: (name: string, props: Record<string, unknown>) => Promise<void>
-  /** Flip the persisted opt-in preference. Subject to a per-session
-   *  consent-mutation rate limit on the main side (≤5/session). */
-  telemetrySetOptIn: (optedIn: boolean) => Promise<void>
   /** Diagnostic file controls. Surface for telemetry-error-tracking.md
    *  §User controls. The renderer triggers flows; main does the filesystem /
    *  network work and returns serializable metadata. Main retains collected
@@ -1764,19 +1748,6 @@ export type PreloadApi = {
     uploadBundle: (bundleSubmissionId: string) => Promise<DiagnosticsUploadPayload>
     deleteBundle: (ticketId: string) => Promise<void>
   }
-  /** Read-only view of effective consent state, including the reason if
-   *  disabled (env var / user opt-out / CI / pending banner). Used by the
-   *  Privacy pane to render the correct "blocked by X" helper text — env
-   *  vars are main-side state the renderer cannot read directly. */
-  telemetryGetConsentState: () => Promise<TelemetryConsentState>
-  /** Banner ✕ — persist `optedIn = true` silently, emit nothing. Deliberately
-   *  a separate channel from `telemetrySetOptIn` because main's `via`
-   *  derivation on that channel would tag this path as `first_launch_banner`
-   *  and fire `telemetry_opted_in`, which the ✕-as-silent-acknowledge
-   *  semantics forbid (the user did not explicitly opt in, they declined to
-   *  intervene). Subject to the same per-session consent-mutation rate
-   *  limit as `telemetrySetOptIn`. */
-  telemetryAcknowledgeBanner: () => Promise<void>
   settings: {
     get: () => Promise<GlobalSettings>
     set: (args: Partial<GlobalSettings>) => Promise<GlobalSettings>
@@ -2408,7 +2379,6 @@ export type PreloadApi = {
         leafId?: string
         splitFromLeafId?: string
         splitDirection?: 'horizontal' | 'vertical'
-        splitTelemetrySource?: TerminalPaneSplitSource
       }) => void
     ) => () => void
     onRequestTerminalCreate: (
@@ -2439,7 +2409,6 @@ export type PreloadApi = {
         paneRuntimeId: number
         direction: 'horizontal' | 'vertical'
         command?: string
-        telemetrySource?: TerminalPaneSplitSource
       }) => void
     ) => () => void
     onRenameTerminal: (

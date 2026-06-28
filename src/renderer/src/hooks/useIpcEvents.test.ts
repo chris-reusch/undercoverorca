@@ -5374,7 +5374,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
 
   it('buffers ready push events until a mounted tab contains the pane leaf', async () => {
     const setAgentStatus = vi.fn()
-    const track = vi.fn()
     const onSetListenerRef: { current: ((data: AgentStatusSetData) => void) | null } = {
       current: null
     }
@@ -5409,7 +5408,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
       }
     }))
     stubAuxiliaryModules()
-    vi.doMock('@/lib/telemetry', () => ({ track }))
     vi.stubGlobal(
       'window',
       buildWindowApi({
@@ -5448,9 +5446,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
     })
 
     expect(setAgentStatus).not.toHaveBeenCalled()
-    expect(track).toHaveBeenCalledWith('agent_hook_unattributed', {
-      reason: 'unknown_tab_id'
-    })
 
     storeState.terminalLayoutsByTabId = {
       'tab-future': {
@@ -5618,9 +5613,8 @@ describe('useIpcEvents agent status snapshot integration', () => {
     expect(setAgentStatus).not.toHaveBeenCalled()
   })
 
-  it('tracks ready push events whose paneKey does not resolve to a renderer tab', async () => {
+  it('drops ready push events whose paneKey does not resolve to a renderer tab', async () => {
     const setAgentStatus = vi.fn()
-    const track = vi.fn()
     const onSetListenerRef: { current: ((data: AgentStatusSetData) => void) | null } = {
       current: null
     }
@@ -5641,7 +5635,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
       }
     }))
     stubAuxiliaryModules()
-    vi.doMock('@/lib/telemetry', () => ({ track }))
     vi.stubGlobal(
       'window',
       buildWindowApi({
@@ -5671,9 +5664,6 @@ describe('useIpcEvents agent status snapshot integration', () => {
     })
 
     expect(setAgentStatus).not.toHaveBeenCalled()
-    expect(track).toHaveBeenCalledWith('agent_hook_unattributed', {
-      reason: 'unknown_tab_id'
-    })
   })
 
   it('pulls the snapshot once workspace session is ready even before settings load', async () => {

@@ -6,7 +6,7 @@
  * and the eager-buffer reconnection logic share.
  */
 import type { ParsedAgentStatusPayload } from '../../../../shared/agent-status-types'
-import type { EventProps } from '../../../../shared/telemetry-events'
+import type { AgentStartedTelemetry } from '../../../../shared/agent-launch-source'
 import type { ProjectExecutionRuntimeResolution } from '../../../../shared/project-execution-runtime'
 import type { StartupCommandDelivery } from '../../../../shared/codex-startup-delivery'
 import { TERMINAL_SCROLLBACK_SESSION_BUFFER_BYTE_LIMIT } from '../../../../shared/terminal-scrollback-limits'
@@ -396,7 +396,7 @@ export type IpcPtyTransportOptions = {
    *  to `pty:spawn` so main can fire the event after confirmed launch. The
    *  IPC handler re-validates the schema; this type is the renderer-side
    *  contract. */
-  telemetry?: EventProps<'agent_started'>
+  telemetry?: AgentStartedTelemetry
   onPtyExit?: (ptyId: string) => void
   onTitleChange?: (title: string, rawTitle: string) => void
   onPtySpawn?: (ptyId: string) => void

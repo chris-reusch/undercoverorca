@@ -8,7 +8,6 @@ import { glApi } from './gitlab'
 import type { AppIdentity } from '../shared/app-identity'
 import type { CliInstallStatus } from '../shared/cli-install-types'
 import type { AgentHookInstallStatus } from '../shared/agent-hook-types'
-import type { TerminalPaneSplitSource } from '../shared/feature-education-telemetry'
 import type { ProjectExecutionRuntimeResolution } from '../shared/project-execution-runtime'
 import type { StartupCommandDelivery } from '../shared/codex-startup-delivery'
 import type { SleepingAgentLaunchConfig } from '../shared/agent-session-resume'
@@ -131,9 +130,7 @@ import type {
   SpeechModelState,
   SpeechTranscriptEvent
 } from '../shared/speech-types'
-import type { TelemetryConsentState } from '../shared/telemetry-consent-types'
 import type { PreflightRuntimeContext, RefreshAgentsResult } from './api-types'
-import type { AgentKind, LaunchSource, RequestKind } from '../shared/telemetry-events'
 import type { AppStarSource } from '../shared/gh-star-source'
 import type {
   Automation,
@@ -717,12 +714,6 @@ const api = {
       // user-typing-Ctrl+T daemon-host path threads these.
       tabId?: string
       leafId?: string
-      // Why: telemetry-plan.md§Agent launch semantics — main fires
-      // `agent_started` only after the spawn succeeds. The renderer is the
-      // source of truth for the launch metadata; main is the source of
-      // truth for whether the launch happened. Loose typing here on
-      // purpose: validation lives at the main-side schema validator.
-      telemetry?: { agent_kind: AgentKind; launch_source: LaunchSource; request_kind: RequestKind }
     }): Promise<{
       id: string
       launchConfig?: SleepingAgentLaunchConfig
@@ -1569,24 +1560,11 @@ const api = {
     onboardingCompleted: (): Promise<void> => ipcRenderer.invoke('star-nag:onboardingCompleted')
   },
 
-  // Why: telemetry uses a loose untyped surface at the preload boundary on
-  // purpose — the main-side validator (src/main/telemetry/validator.ts) is
-  // the single enforcement point, not the preload types. The renderer gets
-  // typed `track<N>()` / `setOptIn()` wrappers via
-  // src/renderer/src/lib/telemetry.ts, which is what call sites import.
-  telemetryTrack: (name: string, props: Record<string, unknown>): Promise<void> =>
-    ipcRenderer.invoke('telemetry:track', name, props),
-  telemetrySetOptIn: (optedIn: boolean): Promise<void> =>
-    ipcRenderer.invoke('telemetry:setOptIn', optedIn),
-  telemetryAcknowledgeBanner: (): Promise<void> =>
-    ipcRenderer.invoke('telemetry:acknowledgeBanner'),
-  telemetryGetConsentState: (): Promise<TelemetryConsentState> =>
-    ipcRenderer.invoke('telemetry:getConsentState'),
-
   // Why: diagnostics is the renderer-facing surface for the error-tracking
   // lane (telemetry-error-tracking.md §User controls). Handlers type-narrow
   // their inputs in main (renderer is untrusted by design); the bridges here
-  // are deliberately loose for the same reason the telemetry bridges are.
+  // are deliberately loose so the main-side validator stays the single
+  // enforcement point.
   diagnostics: {
     getStatus: (): Promise<unknown> => ipcRenderer.invoke('diagnostics:getStatus'),
     collectBundle: (lookbackMinutes?: number): Promise<unknown> =>
@@ -3043,7 +3021,6 @@ const api = {
         leafId?: string
         splitFromLeafId?: string
         splitDirection?: 'horizontal' | 'vertical'
-        splitTelemetrySource?: TerminalPaneSplitSource
       }) => void
     ): (() => void) => {
       const listener = (
@@ -3063,7 +3040,6 @@ const api = {
           leafId?: string
           splitFromLeafId?: string
           splitDirection?: 'horizontal' | 'vertical'
-          splitTelemetrySource?: TerminalPaneSplitSource
         }
       ) => callback(data)
       ipcRenderer.on('ui:createTerminal', listener)
@@ -3119,7 +3095,6 @@ const api = {
         paneRuntimeId: number
         direction: 'horizontal' | 'vertical'
         command?: string
-        telemetrySource?: TerminalPaneSplitSource
       }) => void
     ): (() => void) => {
       const listener = (
@@ -3129,7 +3104,6 @@ const api = {
           paneRuntimeId: number
           direction: 'horizontal' | 'vertical'
           command?: string
-          telemetrySource?: TerminalPaneSplitSource
         }
       ) => callback(data)
       ipcRenderer.on('ui:splitTerminal', listener)

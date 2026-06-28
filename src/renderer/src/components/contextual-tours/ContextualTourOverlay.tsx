@@ -1,20 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { useAppStore } from '@/store'
 import {
   getContextualTour,
-  type ContextualTourId,
   type ContextualTourStepAction
 } from '../../../../shared/contextual-tours'
-import type { ContextualTourOutcome } from '../../../../shared/feature-education-telemetry'
-import {
-  trackContextualTourOutcome,
-  trackContextualTourShown
-} from '@/lib/feature-education-telemetry'
 import { isContextualTourAllowedForModal } from './contextual-tour-gate'
-import {
-  getContextualTourCleanupOutcome,
-  measureContextualTourOverlayRenderState
-} from './contextual-tour-overlay-measurement'
+import { measureContextualTourOverlayRenderState } from './contextual-tour-overlay-measurement'
 import {
   ContextualTourOverlaySurface,
   getContextualTourFocusableElements,
@@ -29,9 +20,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
   const activeTourId = useAppStore((s) => s.activeContextualTourId)
   const activeStepIndex = useAppStore((s) => s.activeContextualTourStepIndex)
   const activeTourSource = useAppStore((s) => s.activeContextualTourSource)
-  const wasFeaturePreviouslyInteracted = useAppStore(
-    (s) => s.activeContextualTourWasFeaturePreviouslyInteracted
-  )
   const activeModal = useAppStore((s) => s.activeModal)
   const onboardingVisible = useAppStore((s) => s.contextualToursOnboardingVisible)
   const blockingSurfaceVisible = useAppStore((s) => s.contextualToursBlockingSurfaceVisible)
@@ -56,44 +44,10 @@ export function ContextualTourOverlay(): JSX.Element | null {
   const markedTourIdRef = useRef<string | null>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const focusedStepRef = useRef<string | null>(null)
-  const telemetryTourIdRef = useRef<ContextualTourId | null>(null)
-  const telemetryOutcomeSentRef = useRef(false)
-  const telemetryStepsSeenRef = useRef<Set<number>>(new Set())
-  const telemetryTotalStepsRef = useRef(1)
-  const telemetryFurthestStepIndexRef = useRef(0)
-  const telemetryDefinedStepCountRef = useRef(1)
 
   const activeTour = useMemo(
     () => (activeTourId ? getContextualTour(activeTourId) : null),
     [activeTourId]
-  )
-
-  const emitContextualTourOutcome = useCallback(
-    (outcome: ContextualTourOutcome): void => {
-      if (
-        !activeTourId ||
-        telemetryOutcomeSentRef.current ||
-        telemetryTourIdRef.current !== activeTourId
-      ) {
-        return
-      }
-      telemetryOutcomeSentRef.current = true
-      const furthestStepIndex = telemetryFurthestStepIndexRef.current
-      trackContextualTourOutcome({
-        tourId: activeTourId,
-        source: activeTourSource,
-        outcome,
-        stepsSeen: telemetryStepsSeenRef.current.size,
-        totalSteps: telemetryTotalStepsRef.current,
-        ...(furthestStepIndex > 0
-          ? {
-              furthestStepIndex,
-              definedStepCount: telemetryDefinedStepCountRef.current
-            }
-          : {})
-      })
-    },
-    [activeTourId, activeTourSource]
   )
 
   useLayoutEffect(() => {
@@ -104,12 +58,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
     // Why: reset before the measurement layout effect below, otherwise the
     // first passive effect can hide a freshly measured tour until the next tick.
     markedTourIdRef.current = null
-    telemetryTourIdRef.current = null
-    telemetryOutcomeSentRef.current = false
-    telemetryStepsSeenRef.current = new Set()
-    telemetryTotalStepsRef.current = 1
-    telemetryFurthestStepIndexRef.current = 0
-    telemetryDefinedStepCountRef.current = activeTour?.steps.length ?? 1
     setRenderState(null)
   }, [activeTour?.steps.length, activeTourId])
 
@@ -123,7 +71,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
       activeTourSuppressed ||
       !isContextualTourAllowedForModal(activeTour, activeModal)
     ) {
-      emitContextualTourOutcome('cancelled')
       cancelContextualTour(activeTourId)
     }
   }, [
@@ -133,7 +80,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
     activeTourId,
     blockingSurfaceVisible,
     cancelContextualTour,
-    emitContextualTourOutcome,
     onboardingVisible
   ])
 
@@ -158,18 +104,12 @@ export function ContextualTourOverlay(): JSX.Element | null {
       return
     }
 
-    telemetryDefinedStepCountRef.current = activeTour.steps.length
     const measurement = measureContextualTourOverlayRenderState({
       tour: activeTour,
       activeStepIndex,
       sidebarOpen,
-      keybindings,
-      previousTelemetryTotalSteps: telemetryTotalStepsRef.current
+      keybindings
     })
-    telemetryTotalStepsRef.current = Math.max(
-      telemetryTotalStepsRef.current,
-      measurement.kind === 'render' ? measurement.telemetryTotalSteps : 0
-    )
 
     if (measurement.kind === 'advance') {
       advanceContextualTour()
@@ -179,7 +119,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
       return
     }
     if (measurement.kind === 'cancel') {
-      emitContextualTourOutcome('cancelled')
       cancelContextualTour(activeTourId)
       return
     }
@@ -191,7 +130,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
     activeTourId,
     advanceContextualTour,
     cancelContextualTour,
-    emitContextualTourOutcome,
     keybindings,
     measureVersion,
     sidebarOpen
@@ -206,52 +144,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
     markedTourIdRef.current = activeTourId
     markContextualToursSeen([activeTourId])
   }, [activeTourId, markContextualToursSeen, renderState])
-
-  useEffect(() => {
-    if (!activeTourId || !renderState || telemetryTourIdRef.current === activeTourId) {
-      return
-    }
-    telemetryTourIdRef.current = activeTourId
-    telemetryStepsSeenRef.current.add(activeStepIndex)
-    telemetryFurthestStepIndexRef.current = Math.max(
-      telemetryFurthestStepIndexRef.current,
-      activeStepIndex + 1
-    )
-    trackContextualTourShown({
-      tourId: activeTourId,
-      source: activeTourSource,
-      wasFeaturePreviouslyInteracted
-    })
-  }, [activeStepIndex, activeTourId, activeTourSource, renderState, wasFeaturePreviouslyInteracted])
-
-  useEffect(() => {
-    if (!activeTourId || !renderState) {
-      return
-    }
-    telemetryStepsSeenRef.current.add(activeStepIndex)
-    telemetryFurthestStepIndexRef.current = Math.max(
-      telemetryFurthestStepIndexRef.current,
-      activeStepIndex + 1
-    )
-  }, [activeStepIndex, activeTourId, renderState])
-
-  useEffect(() => {
-    if (!activeTourId) {
-      return
-    }
-
-    const emitPendingCancellation = (): void => {
-      emitContextualTourOutcome(getContextualTourCleanupOutcome(activeTourId))
-    }
-
-    window.addEventListener('beforeunload', emitPendingCancellation)
-    return () => {
-      window.removeEventListener('beforeunload', emitPendingCancellation)
-      // Why: analytics expects every shown tour to have an outcome, even when
-      // the renderer closes or unmounts before the user presses Skip/Done.
-      emitPendingCancellation()
-    }
-  }, [activeTourId, emitContextualTourOutcome])
 
   useEffect(() => {
     if (!activeTourId || !renderState) {
@@ -297,7 +189,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
   }
 
   const finishTour = (): void => {
-    emitContextualTourOutcome('completed')
     completeContextualTour(activeTourId)
   }
 
@@ -332,7 +223,6 @@ export function ContextualTourOverlay(): JSX.Element | null {
       panelRef={panelRef}
       panelHost={renderState.panelHost}
       onSkip={(id) => {
-        emitContextualTourOutcome('skipped')
         dismissContextualTour(id)
       }}
       onBack={regressContextualTour}
@@ -348,5 +238,3 @@ export function ContextualTourOverlay(): JSX.Element | null {
     />
   )
 }
-
-export { getContextualTourCleanupOutcome } from './contextual-tour-overlay-measurement'

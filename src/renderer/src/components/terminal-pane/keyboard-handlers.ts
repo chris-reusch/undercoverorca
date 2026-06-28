@@ -19,7 +19,6 @@ import { isFindQueryTooLarge } from '@/lib/find-query-bounds'
 import { handleEmptyFloatingWorkspacePanelCloseShortcut } from '@/lib/floating-workspace-terminal-actions'
 import { recordCreatedTerminalPaneSplit } from './terminal-pane-split-completion'
 import { splitTerminalPaneWithInheritedCwd } from './terminal-pane-split-with-inherited-cwd'
-import { useAppStore } from '@/store'
 import { recordTerminalUserInputForLeaf } from './terminal-input-activity'
 import {
   markTerminalFollowOutput,
@@ -27,14 +26,8 @@ import {
   syncTerminalScrollIntentFromViewport
 } from '@/lib/pane-manager/terminal-scroll-intent'
 
-export function recordKeyboardCreatedTerminalPaneSplit(
-  createdPane: unknown,
-  args: {
-    source: 'contextual_tour' | 'keyboard'
-    direction: 'vertical' | 'horizontal'
-  }
-): boolean {
-  return recordCreatedTerminalPaneSplit(createdPane, args)
+export function recordKeyboardCreatedTerminalPaneSplit(createdPane: unknown): boolean {
+  return recordCreatedTerminalPaneSplit(createdPane)
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -427,8 +420,7 @@ export function useTerminalKeyboardShortcuts({
           paneCwdMap: paneCwdRef.current,
           fallbackCwd,
           pane,
-          direction: action.direction,
-          source: getKeyboardSplitTelemetrySource()
+          direction: action.direction
         })
       }
     }
@@ -465,10 +457,4 @@ export function useTerminalKeyboardShortcuts({
     terminalShortcutPolicy,
     tabId
   ])
-}
-
-function getKeyboardSplitTelemetrySource(): 'contextual_tour' | 'keyboard' {
-  return useAppStore.getState().activeContextualTourId === 'workspace-agent-sessions'
-    ? 'contextual_tour'
-    : 'keyboard'
 }

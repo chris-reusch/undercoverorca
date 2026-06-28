@@ -8,8 +8,8 @@
 //   diagnostics:uploadBundle         — POST the main-retained payload.
 //   diagnostics:deleteBundle         — delete an uploaded bundle by ticket ID.
 //
-// Same threat model as the product-telemetry IPC (`ipc/telemetry.ts`):
-// renderer can pass anything over the wire, type-narrow here. Everything
+// Threat model: renderer can pass anything over the wire, type-narrow here.
+// Everything
 // that touches the network or filesystem stays in main — the renderer
 // only sees the resulting status / preview / ticket-id.
 //

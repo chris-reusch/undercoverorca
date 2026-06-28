@@ -64,12 +64,7 @@ import type {
 } from '../../../../shared/types'
 import { DEFAULT_SHOW_SLEEPING_WORKSPACES } from '../../../../shared/constants'
 import { buildWorktreeComparator } from './smart-sort'
-import {
-  buildAttentionByWorktree,
-  type SmartClass,
-  type WorktreeAttention
-} from './smart-attention'
-import { track } from '@/lib/telemetry'
+import { buildAttentionByWorktree, type WorktreeAttention } from './smart-attention'
 import { tabHasLivePty } from '@/lib/tab-has-live-pty'
 import { deriveRunningAgentSendTargets } from '@/lib/running-agent-targets'
 import { rightSidebarShowsPullRequestData } from '@/lib/right-sidebar-visibility'
@@ -5097,12 +5092,6 @@ const WorktreeList = React.memo(function WorktreeList({
   // Why useMemo instead of useEffect: the sort order must be computed
   // synchronously *before* the worktrees memo reads it, otherwise the
   // first render (and epoch bumps) would use stale/empty data from the ref.
-  // Why a ref alongside the memo: telemetry effects need access to the most
-  // recently computed attention map without forcing every render to read it
-  // from store state again. The ref captures whatever the memo last produced
-  // for the smart branch.
-  const lastAttentionByWorktreeRef = useRef<Map<string, WorktreeAttention> | null>(null)
-
   const sortedIds = useMemo(() => {
     const state = useAppStore.getState()
     const nonArchivedWorktrees = getAllWorktreesFromState(state).filter(
@@ -5130,7 +5119,6 @@ const WorktreeList = React.memo(function WorktreeList({
         nonArchivedWorktrees.sort(
           (a, b) => b.sortOrder - a.sortOrder || a.displayName.localeCompare(b.displayName)
         )
-        lastAttentionByWorktreeRef.current = null
         return nonArchivedWorktrees.map((w) => w.id)
       }
     }
@@ -5154,7 +5142,6 @@ const WorktreeList = React.memo(function WorktreeList({
             state.terminalLayoutsByTabId
           )
         : new Map<string, WorktreeAttention>()
-    lastAttentionByWorktreeRef.current = sortBy === 'smart' ? attentionByWorktree : null
     nonArchivedWorktrees.sort(buildWorktreeComparator(sortBy, repoMap, now, attentionByWorktree))
     return nonArchivedWorktrees.map((w) => w.id)
     // debouncedSortEpoch is an intentional trigger: it's not read inside the
@@ -5162,95 +5149,6 @@ const WorktreeList = React.memo(function WorktreeList({
     // The debounce prevents jarring mid-interaction position shifts.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSortEpoch, repoMap, sortBy])
-
-  // Why a ref of prior class per worktree: smart_sort_class_1_promotion must
-  // fire only on transitions INTO Class 1, not on every recompute that keeps
-  // a worktree there. Suppressing repeats with a ref keeps the event signal
-  // clean without growing component state.
-  const prevClassByWorktreeIdRef = useRef<Map<string, SmartClass>>(new Map())
-  // Why gate the first observation: when Smart mode first activates (app
-  // start, or toggling away from Smart and back), the prev-class map is
-  // empty, so every existing Class-1 worktree would look like a fresh
-  // promotion and produce a burst of spurious events. Treat the first
-  // observation as a silent baseline — populate the map but don't fire.
-  const hasObservedSmartOnceRef = useRef<boolean>(false)
-
-  useEffect(() => {
-    const attention = lastAttentionByWorktreeRef.current
-    if (sortBy !== 'smart' || !attention) {
-      // Why reset: when the user switches off Smart, drop the prior-class map
-      // so re-entering Smart doesn't fire stale promotion events for worktrees
-      // whose state has since changed. Reset the first-observation gate too
-      // so the next Smart-mode session starts with a fresh silent baseline.
-      prevClassByWorktreeIdRef.current = new Map()
-      hasObservedSmartOnceRef.current = false
-      return
-    }
-    const next = new Map<string, SmartClass>()
-    const isFirstObservation = !hasObservedSmartOnceRef.current
-    for (const [worktreeId, info] of attention) {
-      const prev = prevClassByWorktreeIdRef.current.get(worktreeId)
-      if (!isFirstObservation && info.cls === 1 && prev !== 1 && info.cause) {
-        track('smart_sort_class_1_promotion', { cause: info.cause })
-      }
-      next.set(worktreeId, info.cls)
-    }
-    prevClassByWorktreeIdRef.current = next
-    hasObservedSmartOnceRef.current = true
-  }, [sortBy, sortedIds])
-
-  // Why retry on sortedIds changes: Smart can become active before attention
-  // hydrates. Fire once when class data exists, then stay quiet until the user
-  // leaves Smart so this never becomes a telemetry heartbeat.
-  const hasTrackedSmartDistributionRef = useRef(false)
-  useEffect(() => {
-    if (sortBy !== 'smart') {
-      hasTrackedSmartDistributionRef.current = false
-      return
-    }
-    if (hasTrackedSmartDistributionRef.current) {
-      return
-    }
-    const attention = lastAttentionByWorktreeRef.current
-    if (!attention || attention.size === 0) {
-      return
-    }
-    let class1 = 0
-    let class2 = 0
-    let class3 = 0
-    let class4 = 0
-    for (const info of attention.values()) {
-      if (info.cls === 1) {
-        class1++
-      } else if (info.cls === 2) {
-        class2++
-      } else if (info.cls === 3) {
-        class3++
-      } else {
-        class4++
-      }
-    }
-    track('smart_sort_class_distribution', {
-      class_1: class1,
-      class_2: class2,
-      class_3: class3,
-      class_4: class4,
-      total_worktrees: attention.size
-    })
-    hasTrackedSmartDistributionRef.current = true
-  }, [sortBy, sortedIds])
-
-  // Why fire on the transition: switching away from Smart is the user signal
-  // we care about (regression). Use a ref to compare against the previous
-  // value so we don't double-fire when sortBy momentarily round-trips.
-  const prevSortByRef = useRef(sortBy)
-  useEffect(() => {
-    const prev = prevSortByRef.current
-    prevSortByRef.current = sortBy
-    if (prev === 'smart' && sortBy === 'recent') {
-      track('smart_to_recent_switch', {})
-    }
-  }, [sortBy])
 
   // Persist the computed sort order so the sidebar can be restored after
   // restart. Only persist during live sessions (sessionHasHadPty latched) —

@@ -30,7 +30,7 @@ import type {
   VisibleWorkspaceHostIds
 } from '../../../../shared/types'
 import type { GitLabWorkItem } from '../../../../shared/gitlab-types'
-import type { LaunchSource } from '../../../../shared/telemetry-events'
+import type { LaunchSource } from '../../../../shared/agent-launch-source'
 import type { TaskSourceContext } from '../../../../shared/task-source-context'
 import { PET_SIZE_DEFAULT, PET_SIZE_MAX, PET_SIZE_MIN } from '../../../../shared/types'
 import {
@@ -101,7 +101,7 @@ import {
   getNextVisibleContextualTourStepIndex,
   getPreviousVisibleContextualTourStepIndex
 } from '../../components/contextual-tours/contextual-tour-gate'
-import { agentKindForAgentType, formatAgentTypeLabel } from '../../lib/agent-status'
+import { formatAgentTypeLabel } from '../../lib/agent-status'
 import {
   deriveRunningAgentSendTargets,
   resolveRunningAgentSendTarget
@@ -1042,16 +1042,11 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
       return false
     }
 
-    const [{ toast }, { track }] = await Promise.all([import('sonner'), import('@/lib/telemetry')])
+    const { toast } = await import('sonner')
     if (!stillCurrent()) {
       return false
     }
     mode.onPromptDelivered?.()
-    track('agent_prompt_sent', {
-      agent_kind: agentKindForAgentType(target.entry.agentType),
-      launch_source: mode.launchSource,
-      request_kind: 'followup'
-    })
     toast.success(
       translate('auto.store.slices.ui.66e3bd7ce6', 'Sent to {{value0}}', { value0: label })
     )

@@ -16,8 +16,7 @@ const mocks = vi.hoisted(() => ({
   showNestedRepoReview: vi.fn(),
   onGitRepoReady: vi.fn(),
   setAddProjectBusyLabel: vi.fn(),
-  markOnboardingProjectAdded: vi.fn(),
-  track: vi.fn()
+  markOnboardingProjectAdded: vi.fn()
 }))
 
 vi.mock('react', async (importOriginal) => {
@@ -43,10 +42,6 @@ vi.mock('react', async (importOriginal) => {
 
 vi.mock('@/lib/onboarding-project-checklist', () => ({
   markOnboardingProjectAdded: mocks.markOnboardingProjectAdded
-}))
-
-vi.mock('@/lib/telemetry', () => ({
-  track: mocks.track
 }))
 
 function makeRepo(overrides: Partial<Repo> = {}): Repo {

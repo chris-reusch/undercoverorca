@@ -17,7 +17,7 @@ import {
   encodeTerminalStreamText,
   type TerminalStreamFrame
 } from '../../../../shared/terminal-stream-protocol'
-import { TERMINAL_PANE_SPLIT_SOURCES } from '../../../../shared/feature-education-telemetry'
+import { TERMINAL_PANE_SPLIT_SOURCES } from '../../../../shared/terminal-pane-split-source'
 import type { TerminalOscLinkRange } from '../../../../shared/terminal-osc-link-ranges'
 import {
   TERMINAL_INPUT_MAX_BYTES,

@@ -1,11 +1,9 @@
 import { useCallback } from 'react'
-import { track } from '@/lib/telemetry'
 import { useAppStore } from '@/store'
 import { ONBOARDING_FINAL_STEP, ONBOARDING_FLOW_VERSION } from '../../../../shared/constants'
-import type { EventProps } from '../../../../shared/telemetry-events'
 import type { GlobalSettings, OnboardingState, TuiAgent } from '../../../../shared/types'
 import { applyAgentPermissionMode } from '../../../../shared/tui-agent-permissions'
-import type { StepId, StepNumber } from './use-onboarding-flow-types'
+import type { StepId } from './use-onboarding-flow-types'
 
 export async function persistStep(
   stepNumber: number,
@@ -35,51 +33,14 @@ export function buildCompletedOnboardingNotificationSettings(
 
 type CloseWithDeps = {
   onOnboardingChange: (state: OnboardingState) => void
-  onboardingChecklist: OnboardingState['checklist']
-  startTimeRef: { current: number }
   setError: (msg: string | null) => void
 }
 
-export type DismissedExtras = {
-  advancedVia: NonNullable<EventProps<'onboarding_dismissed'>['advanced_via']>
-  durationMs: number
-}
-
-export function buildOnboardingDismissedPayload(
-  lastStepReached: StepNumber,
-  dismissedExtras?: DismissedExtras
-): EventProps<'onboarding_dismissed'> {
-  return {
-    last_step: lastStepReached,
-    ...(dismissedExtras
-      ? {
-          duration_ms: dismissedExtras.durationMs,
-          advanced_via: dismissedExtras.advancedVia
-        }
-      : {})
-  }
-}
-
-export function trackOnboardingDismissed(
-  lastStepReached: StepNumber,
-  dismissedExtras?: DismissedExtras
-): void {
-  track('onboarding_dismissed', buildOnboardingDismissedPayload(lastStepReached, dismissedExtras))
-}
-
-export function useCloseWith({
-  onOnboardingChange,
-  onboardingChecklist,
-  startTimeRef,
-  setError
-}: CloseWithDeps) {
+export function useCloseWith({ onOnboardingChange, setError }: CloseWithDeps) {
   return useCallback(
     async (
       outcome: 'completed' | 'dismissed',
-      checklist: Partial<OnboardingState['checklist']>,
-      lastStepReached: StepNumber,
-      completedPath?: 'open_folder' | 'clone_url' | 'add_project_modal',
-      dismissedExtras?: DismissedExtras
+      checklist: Partial<OnboardingState['checklist']>
     ): Promise<boolean> => {
       let nextState: OnboardingState
       try {
@@ -101,44 +62,16 @@ export function useCloseWith({
         return false
       }
       onOnboardingChange(nextState)
-      if (outcome === 'completed' && completedPath) {
-        const total = Math.max(0, Date.now() - startTimeRef.current)
-        // Why: no `is_git_repo` — project selection now happens in the Add
-        // Project modal after this fires, so the signal moved to
-        // `repo_added.is_git_repo`. See docs/reference/telemetry-availability.md.
-        track('onboarding_completed', {
-          path: completedPath,
-          total_duration_ms: total
-        })
-        // Why: checklist items completed by the wizard itself must fire
-        // `activation_checklist_item_completed` so the post-wizard panel and
-        // analytics agree. Other items (ranFirstAgent, triedCmdJ, …) emit
-        // from their own product surfaces.
-        if (checklist.addedRepo && !onboardingChecklist.addedRepo) {
-          track('activation_checklist_item_completed', {
-            item: 'addedRepo',
-            time_since_completed_ms: 0
-          })
-        }
-        if (checklist.addedFolder && !onboardingChecklist.addedFolder) {
-          track('activation_checklist_item_completed', {
-            item: 'addedFolder',
-            time_since_completed_ms: 0
-          })
-        }
-      }
       if (outcome === 'completed') {
         // Why: closeWith updates parent state synchronously from this hook's
         // perspective, but the modal unmounts on the next React commit.
         window.setTimeout(() => {
           void window.api.starNag.onboardingCompleted()
         }, 0)
-      } else if (outcome === 'dismissed') {
-        trackOnboardingDismissed(lastStepReached, dismissedExtras)
       }
       return true
     },
-    [onOnboardingChange, onboardingChecklist, startTimeRef, setError]
+    [onOnboardingChange, setError]
   )
 }
 
@@ -185,18 +118,11 @@ export function usePersistCurrentStep({
           })
         })
         const choseAgent = defaultTuiAgent !== 'blank'
-        const wasAlreadyChosen = onboardingChecklist.choseAgent
         onOnboardingChange(
           await persistStep(1, {
             checklist: { ...onboardingChecklist, choseAgent }
           })
         )
-        if (choseAgent && !wasAlreadyChosen) {
-          track('activation_checklist_item_completed', {
-            item: 'choseAgent',
-            time_since_completed_ms: 0
-          })
-        }
         return { ok: true }
       }
       if (currentStepId === 'theme') {

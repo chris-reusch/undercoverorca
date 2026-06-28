@@ -5,20 +5,9 @@ import { getAgentCatalog } from '@/lib/agent-catalog'
 import { useAppStore } from '@/store'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
 import { applyDocumentTheme } from '@/lib/document-theme'
-import { track } from '@/lib/telemetry'
 import { getSelectedNestedRepoPathsInScanOrder } from '@/lib/nested-repo-selected-paths'
-import { buildAgentPickedPayload } from './agent-picked-payload'
 import { ONBOARDING_FINAL_STEP, ONBOARDING_FLOW_VERSION } from '../../../../shared/constants'
 import { isGitRepoKind } from '../../../../shared/repo-kind'
-import {
-  buildNestedRepoImportActionTelemetry,
-  buildNestedRepoImportResultTelemetry,
-  buildNestedRepoScanTelemetry,
-  createNestedRepoTelemetryAttemptId,
-  shouldEmitNestedRepoImportSubmitTelemetry,
-  type NestedRepoTelemetryRuntimeKind
-} from '../../../../shared/nested-repo-telemetry'
-import type { EventProps } from '../../../../shared/telemetry-events'
 import type {
   GlobalSettings,
   NestedRepoScanResult,
@@ -26,7 +15,7 @@ import type {
   Repo,
   TuiAgent
 } from '../../../../shared/types'
-import { STEPS, type StepNumber } from './use-onboarding-flow-types'
+import { STEPS } from './use-onboarding-flow-types'
 import { persistStep, useCloseWith, usePersistCurrentStep } from './use-onboarding-flow-persistence'
 import { callRuntimeRpc, getActiveRuntimeTarget } from '@/runtime/runtime-rpc-client'
 import { buildOnboardingFolderAgentStartup } from '@/lib/onboarding-folder-agent-startup'
@@ -35,17 +24,11 @@ import { openProjectDefaultCheckout } from '../sidebar/project-added-default-che
 import { translate } from '@/i18n/i18n'
 import { resolveAgentPermissionModeSummary } from '../../../../shared/tui-agent-permissions'
 import { isWindowsUserAgent } from '@/components/terminal-pane/pane-helpers'
-import { buildWindowsTerminalSnapshotPayload } from './windows-terminal-onboarding-telemetry'
 
 export { STEPS } from './use-onboarding-flow-types'
 export type { StepId, StepNumber } from './use-onboarding-flow-types'
 
 export type OnboardingFlowController = ReturnType<typeof useOnboardingFlow>
-
-type TaskSourcesSnapshotProps = EventProps<'onboarding_task_sources_snapshot'>
-type TaskSourcesGithubStatus = TaskSourcesSnapshotProps['github_status']
-type TaskSourcesLinearStatus = TaskSourcesSnapshotProps['linear_status']
-type TaskSourcesExitAction = TaskSourcesSnapshotProps['exit_action']
 
 function shouldSkipIntegrationsStep(
   status: ReturnType<typeof useAppStore.getState>['preflightStatus']
@@ -89,29 +72,6 @@ function resolveStepIndex(
 
 function createNestedRepoScanId(): string {
   return `nested-repo-scan-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
-
-function getGitHubTaskSourceStatus(
-  status: ReturnType<typeof useAppStore.getState>['preflightStatus'],
-  loading: boolean
-): TaskSourcesGithubStatus {
-  if (loading || !status) {
-    return 'checking'
-  }
-  if (!status.gh.installed) {
-    return 'not_installed'
-  }
-  return status.gh.authenticated ? 'connected' : 'not_authenticated'
-}
-
-function getLinearTaskSourceStatus(
-  status: ReturnType<typeof useAppStore.getState>['linearStatus'],
-  checked: boolean
-): TaskSourcesLinearStatus {
-  if (status.connected) {
-    return 'connected'
-  }
-  return checked ? 'not_connected' : 'checking'
 }
 
 type OnboardingStepId = (typeof STEPS)[number]['id']
@@ -224,8 +184,6 @@ export function useOnboardingFlow(
   const refreshDetectedAgents = useAppStore((s) => s.refreshDetectedAgents)
   const detectedAgentIds = useAppStore((s) => s.detectedAgentIds)
   const isDetectingAgents = useAppStore((s) => s.isDetectingAgents || s.isRefreshingAgents)
-  const pathSource = useAppStore((s) => s.pathSource)
-  const pathFailureReason = useAppStore((s) => s.pathFailureReason)
   const fetchRepos = useAppStore((s) => s.fetchRepos)
   const fetchWorktrees = useAppStore((s) => s.fetchWorktrees)
   const setHideDefaultBranchWorkspace = useAppStore((s) => s.setHideDefaultBranchWorkspace)
@@ -238,10 +196,7 @@ export function useOnboardingFlow(
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const preflightStatus = useAppStore((s) => s.preflightStatus)
   const preflightStatusChecked = useAppStore((s) => s.preflightStatusChecked)
-  const preflightStatusLoading = useAppStore((s) => s.preflightStatusLoading)
   const refreshPreflightStatus = useAppStore((s) => s.refreshPreflightStatus)
-  const linearStatus = useAppStore((s) => s.linearStatus)
-  const linearStatusChecked = useAppStore((s) => s.linearStatusChecked)
   // Why: App hydrates repos before mounting onboarding. Reading the store
   // synchronously lets the final step render its already-added state without a flash.
   const repos = useAppStore((s) => s.repos)
@@ -281,10 +236,6 @@ export function useOnboardingFlow(
   const [cloneDestination, setCloneDestination] = useState('')
   const [nestedScan, setNestedScan] = useState<NestedRepoScanResult | null>(null)
   const [nestedSelectedPaths, setNestedSelectedPaths] = useState<Set<string>>(new Set())
-  const [nestedAttemptId, setNestedAttemptId] = useState<string | null>(null)
-  const [nestedRuntimeKind, setNestedRuntimeKind] = useState<NestedRepoTelemetryRuntimeKind | null>(
-    null
-  )
   const [nestedScanInProgress, setNestedScanInProgress] = useState(false)
   const [nestedImportScanId, setNestedImportScanId] = useState<string | null>(null)
   const nestedScanIdRef = useRef<string | null>(null)
@@ -332,53 +283,14 @@ export function useOnboardingFlow(
     themeInteractedRef.current = true
     setTheme(value)
   }, [])
-  // `fromCollapsedSection` is the click-site signal for whether the picked
-  // agent lived under the `<details>` disclosure in AgentStep. AgentStep is
-  // the only call site that has the real answer; main-side detected_count /
-  // detection_state are merged in here from the store.
-  const detectedAgentIdsRef = useRef<readonly TuiAgent[]>(detectedAgentIds ?? [])
-  const isDetectingRef = useRef<boolean>(isDetectingAgents)
+  // Why: refs let `setSelectedAgentInteractive` and the auto-select effect read
+  // the freshest selection at click/async time without re-creating callbacks.
   const selectedAgentRef = useRef(selectedAgent)
-  // Why: refs let `setSelectedAgentInteractive` (a stable useCallback) read
-  // the freshest hydration classification at click time. Mirrors the
-  // detectedAgentIdsRef / isDetectingRef pattern.
-  const pathSourceRef = useRef(pathSource)
-  const pathFailureReasonRef = useRef(pathFailureReason)
-  // Why: stable onboarding handlers read these values at click/async time, so
-  // keep the mirrors fresh before events can run.
   selectedAgentRef.current = selectedAgent
-  detectedAgentIdsRef.current = detectedAgentIds ?? []
-  isDetectingRef.current = isDetectingAgents
-  pathSourceRef.current = pathSource
-  pathFailureReasonRef.current = pathFailureReason
-  const setSelectedAgentInteractive = useCallback(
-    (value: TuiAgent | null, fromCollapsedSection = false) => {
-      agentInteractedRef.current = true
-      // Why: de-dup re-clicks on the current agent so dashboards count
-      // mind-changes only, not idle reselection of the same option.
-      const prev = selectedAgentRef.current
-      setSelectedAgent(value)
-      if (value === null || value === prev) {
-        return
-      }
-      // Why: emit at click time, not at step completion, so we capture
-      // mind-changes within the step. The payload builder is extracted so the
-      // store-fields-attached invariant has unit coverage — see
-      // agent-picked-payload.test.ts.
-      track(
-        'onboarding_agent_picked',
-        buildAgentPickedPayload({
-          agent: value,
-          detectedAgentIds: detectedAgentIdsRef.current,
-          isDetecting: isDetectingRef.current,
-          fromCollapsedSection,
-          pathSource: pathSourceRef.current,
-          pathFailureReason: pathFailureReasonRef.current
-        })
-      )
-    },
-    []
-  )
+  const setSelectedAgentInteractive = useCallback((value: TuiAgent | null) => {
+    agentInteractedRef.current = true
+    setSelectedAgent(value)
+  }, [])
   const setYoloPermissionsInteractive = useCallback((enabled: boolean) => {
     yoloPermissionsInteractedRef.current = true
     setYoloPermissions(enabled)
@@ -411,9 +323,6 @@ export function useOnboardingFlow(
     progressSteps.findIndex(({ index }) => index === stepIndex)
   )
   const hasExistingProject = repos.length > 0
-
-  // Why: pin start time once so onboarding_completed reports a real funnel duration.
-  const startTimeRef = useRef<number>(Date.now())
 
   // Why: track the latest persisted theme in a ref so the unmount-only revert
   // below uses the freshest value without retriggering on each settings change.
@@ -488,44 +397,6 @@ export function useOnboardingFlow(
     stepIndex
   ])
 
-  // Why: ref guard prevents StrictMode's double-invoke from emitting
-  // `onboarding_started` twice on mount.
-  const startedTrackedRef = useRef(false)
-  useEffect(() => {
-    if (startedTrackedRef.current) {
-      return
-    }
-    startedTrackedRef.current = true
-    // Why: `resumed_from_step` is the step the user finished, not the
-    // step we resume into.
-    const lastCompleted = remappedLastCompletedStep
-    track(
-      'onboarding_started',
-      lastCompleted >= 1 && lastCompleted < ONBOARDING_FINAL_STEP
-        ? { resumed_from_step: lastCompleted as StepNumber }
-        : {}
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Session-local step duration: re-pinned on every step view so a resumed
-  // user emits `duration_ms` for the visible step measuring only the
-  // post-resume time. Optional on the schema so a missing baseline (e.g. the
-  // _viewed effect was skipped or StrictMode double-mounted) fail-soft drops
-  // the field rather than the event. See docs/onboarding-telemetry-extensions.md.
-  const stepStartedAtRef = useRef<number>(Date.now())
-  useEffect(() => {
-    stepStartedAtRef.current = Date.now()
-    track('onboarding_step_viewed', {
-      step: currentStep.stepNumber,
-      value_kind: currentStep.valueKind
-    })
-  }, [currentStep.id, currentStep.stepNumber, currentStep.valueKind])
-
-  const consumeStepDurationMs = useCallback((): number => {
-    return Math.max(0, Date.now() - stepStartedAtRef.current)
-  }, [])
-
   const setLifecycleRootRef = useCallback((node: HTMLElement | null): void => {
     if (node !== null) {
       return
@@ -534,25 +405,6 @@ export function useOnboardingFlow(
     // final cleanup to the modal root detaching instead of passive Effects.
     applyDocumentTheme(persistedThemeRef.current)
   }, [])
-
-  const trackTaskSourcesSnapshot = useCallback(
-    (
-      exitAction: TaskSourcesExitAction,
-      durationMs: number,
-      advancedVia: 'button' | 'keyboard'
-    ): void => {
-      // Why: one low-cardinality snapshot answers whether task sources were
-      // usable at step exit without paying for per-button telemetry.
-      track('onboarding_task_sources_snapshot', {
-        github_status: getGitHubTaskSourceStatus(preflightStatus, preflightStatusLoading),
-        linear_status: getLinearTaskSourceStatus(linearStatus, linearStatusChecked),
-        exit_action: exitAction,
-        duration_ms: durationMs,
-        advanced_via: advancedVia
-      })
-    },
-    [linearStatus, linearStatusChecked, preflightStatus, preflightStatusLoading]
-  )
 
   // Why: only auto-pick on first mount when detection completes; otherwise
   // selecting an agent would re-trigger this effect and clobber/race user clicks.
@@ -576,8 +428,6 @@ export function useOnboardingFlow(
 
   const closeWith = useCloseWith({
     onOnboardingChange,
-    onboardingChecklist: onboarding.checklist,
-    startTimeRef,
     setError
   })
 
@@ -603,37 +453,11 @@ export function useOnboardingFlow(
           activateAndRevealWorktree(worktree.id, { startup })
         }
       }
-      // Why: next() short-circuits the repo step, so emit step_completed here
-      // once the repo is successfully added to keep the funnel consistent.
-      // Gate on closeWith's success so a persistence failure doesn't
-      // double-count.
-      const closed = await closeWith(
-        'completed',
-        isGit ? { addedRepo: true } : { addedFolder: true },
-        ONBOARDING_FINAL_STEP,
-        path
-      )
-      if (!closed) {
-        return
-      }
-      // Why: the repo step has no keyboard-vs-button advance — Cmd+Enter
-      // routes to `openFolder()` which collapses both into the path-clicked
-      // path. Emit `duration_ms` only; `advanced_via` is intentionally absent
-      // for the final step. See docs/onboarding-telemetry-extensions.md §3.
-      track('onboarding_step_completed', {
-        step: ONBOARDING_FINAL_STEP,
-        value_kind: 'repo',
-        duration_ms: consumeStepDurationMs()
-      })
+      // Why: next() short-circuits the repo step, so close onboarding here once
+      // the repo is successfully added to keep the funnel consistent.
+      await closeWith('completed', isGit ? { addedRepo: true } : { addedFolder: true })
     },
-    [
-      closeWith,
-      consumeStepDurationMs,
-      fetchRepos,
-      fetchWorktrees,
-      setHideDefaultBranchWorkspace,
-      settings
-    ]
+    [closeWith, fetchRepos, fetchWorktrees, setHideDefaultBranchWorkspace, settings]
   )
 
   const persistCurrentStep = usePersistCurrentStep({
@@ -654,41 +478,10 @@ export function useOnboardingFlow(
   // the first call's setStepIndex has run, advancing twice and skipping a
   // step. A ref flips synchronously so re-entries bail immediately.
   const nextInFlightRef = useRef(false)
-  const trackCurrentStepCompleted = useCallback(
-    (advancedVia: 'button' | 'keyboard'): void => {
-      const durationMs = consumeStepDurationMs()
-      track('onboarding_step_completed', {
-        step: currentStep.stepNumber,
-        value_kind: currentStep.valueKind,
-        duration_ms: durationMs,
-        advanced_via: advancedVia
-      })
-      if (currentStep.id === 'integrations') {
-        trackTaskSourcesSnapshot('continue', durationMs, advancedVia)
-      }
-      if (currentStep.id === 'windows_terminal') {
-        track(
-          'onboarding_windows_terminal_snapshot',
-          buildWindowsTerminalSnapshotPayload({
-            settings,
-            exitAction: 'continue',
-            durationMs,
-            advancedVia
-          })
-        )
-      }
-    },
-    [
-      consumeStepDurationMs,
-      currentStep.id,
-      currentStep.stepNumber,
-      currentStep.valueKind,
-      settings,
-      trackTaskSourcesSnapshot
-    ]
-  )
   const next = useCallback(
-    async (advancedVia: 'button' | 'keyboard' = 'button') => {
+    // `advancedVia` is retained for the controller API (keyboard vs button)
+    // even though the per-step completion telemetry it fed has been removed.
+    async (_advancedVia: 'button' | 'keyboard' = 'button') => {
       if (nextInFlightRef.current || busyLabel) {
         return
       }
@@ -696,15 +489,9 @@ export function useOnboardingFlow(
       try {
         const result = await persistCurrentStep()
         if (result.ok) {
-          trackCurrentStepCompleted(advancedVia)
           if (currentStep.id === 'notifications') {
             setBusyLabel('Opening Add Project...')
-            const closed = await closeWith(
-              'completed',
-              {},
-              ONBOARDING_FINAL_STEP,
-              'add_project_modal'
-            )
+            const closed = await closeWith('completed', {})
             if (closed) {
               openModal('add-repo')
             }
@@ -745,31 +532,19 @@ export function useOnboardingFlow(
       onOnboardingChange,
       openModal,
       persistCurrentStep,
-      stepIndex,
-      trackCurrentStepCompleted
+      stepIndex
     ]
   )
 
   const showNestedRepoReview = useCallback(
-    (
-      scan: NestedRepoScanResult,
-      attemptId: string,
-      runtimeKind: NestedRepoTelemetryRuntimeKind,
-      inProgress = false,
-      scanId: string | null = null
-    ) => {
+    (scan: NestedRepoScanResult, inProgress = false, scanId: string | null = null) => {
       setNestedScan(scan)
       setNestedSelectedPaths(new Set(scan.repos.map((repo) => repo.path)))
-      setNestedAttemptId(attemptId)
-      setNestedRuntimeKind(runtimeKind)
       setNestedScanInProgress(inProgress)
       setNestedImportScanId(scanId)
     },
     []
   )
-
-  const onboardingNestedRepoRuntimeKind: NestedRepoTelemetryRuntimeKind =
-    settings?.activeRuntimeEnvironmentId?.trim() ? 'runtime' : 'local'
 
   const openFolder = useCallback(
     async (kind: 'git' | 'folder' = 'git') => {
@@ -785,36 +560,23 @@ export function useOnboardingFlow(
           setError(message)
           return
         }
-        track('onboarding_step4_path_clicked', { path: 'open_folder' })
         setBusyLabel(kind === 'git' ? 'Scanning for repositories…' : 'Opening folder…')
         try {
           if (kind === 'git') {
-            const attemptId = createNestedRepoTelemetryAttemptId()
             const scan = await scanNestedRepos(path)
-            track(
-              'add_repo_nested_scan_result',
-              buildNestedRepoScanTelemetry({
-                attemptId,
-                surface: 'onboarding',
-                runtimeKind: 'runtime',
-                scan
-              })
-            )
             if (scan?.selectedPathKind === 'non_git_folder' && scan.repos.length > 0) {
-              showNestedRepoReview(scan, attemptId, 'runtime')
+              showNestedRepoReview(scan)
               return
             }
           }
           setBusyLabel(kind === 'git' ? 'Opening project…' : 'Opening folder…')
           const repo = await addRepoPath(path, kind)
           if (!repo) {
-            track('onboarding_step4_path_failed', { path: 'open_folder', reason: 'invalid_path' })
             return
           }
           await completeRepo(repo.id, isGitRepoKind(repo), 'open_folder')
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err))
-          track('onboarding_step4_path_failed', { path: 'open_folder', reason: 'invalid_path' })
         } finally {
           nestedScanIdRef.current = null
           setNestedScanInProgress(false)
@@ -822,10 +584,8 @@ export function useOnboardingFlow(
         }
         return
       }
-      track('onboarding_step4_path_clicked', { path: 'open_folder' })
       const path = await window.api.repos.pickFolder()
       if (!path) {
-        track('onboarding_step4_path_failed', { path: 'open_folder', reason: 'cancelled' })
         return
       }
       setBusyLabel('Opening project…')
@@ -833,7 +593,6 @@ export function useOnboardingFlow(
         let result = await window.api.repos.add({ path })
         if ('error' in result && result.error.includes('Not a valid git repository')) {
           setBusyLabel('Scanning for repositories...')
-          const attemptId = createNestedRepoTelemetryAttemptId()
           const scanId = createNestedRepoScanId()
           nestedScanIdRef.current = scanId
           setNestedScanInProgress(true)
@@ -847,7 +606,7 @@ export function useOnboardingFlow(
               ) {
                 return
               }
-              showNestedRepoReview(progressScan, attemptId, 'local', true, scanId)
+              showNestedRepoReview(progressScan, true, scanId)
             }
           })
           if (nestedScanIdRef.current !== scanId) {
@@ -855,17 +614,8 @@ export function useOnboardingFlow(
           }
           nestedScanIdRef.current = null
           setNestedScanInProgress(false)
-          track(
-            'add_repo_nested_scan_result',
-            buildNestedRepoScanTelemetry({
-              attemptId,
-              surface: 'onboarding',
-              runtimeKind: 'local',
-              scan
-            })
-          )
           if (scan?.selectedPathKind === 'non_git_folder' && scan.repos.length > 0) {
-            showNestedRepoReview(scan, attemptId, 'local', false, scanId)
+            showNestedRepoReview(scan, false, scanId)
             return
           }
           result = await window.api.repos.add({ path, kind: 'folder' })
@@ -876,7 +626,6 @@ export function useOnboardingFlow(
         await completeRepo(result.repo.id, isGitRepoKind(result.repo), 'open_folder')
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
-        track('onboarding_step4_path_failed', { path: 'open_folder', reason: 'invalid_path' })
       } finally {
         nestedScanIdRef.current = null
         setNestedScanInProgress(false)
@@ -896,35 +645,11 @@ export function useOnboardingFlow(
 
   const importNested = useCallback(async () => {
     const mode = 'separate'
-    const attemptId = nestedAttemptId
-    if (
-      !nestedScan ||
-      !attemptId ||
-      !shouldEmitNestedRepoImportSubmitTelemetry({
-        attemptId,
-        selectedCount: nestedSelectedPaths.size,
-        isBusy: busyLabel !== null
-      })
-    ) {
+    if (!nestedScan || nestedSelectedPaths.size === 0 || busyLabel !== null) {
       return
     }
-    const foundCount = nestedScan.repos.length
-    const selectedCount = nestedSelectedPaths.size
-    const runtimeKind = nestedRuntimeKind ?? onboardingNestedRepoRuntimeKind
     setError(null)
     setBusyLabel('Importing repositories…')
-    track(
-      'add_repo_nested_import_action',
-      buildNestedRepoImportActionTelemetry({
-        attemptId,
-        surface: 'onboarding',
-        runtimeKind,
-        action: 'import_separate',
-        foundCount,
-        selectedCount
-      })
-    )
-    let resultTracked = false
     try {
       const selectedProjectPaths = getSelectedNestedRepoPathsInScanOrder(
         nestedScan,
@@ -939,19 +664,6 @@ export function useOnboardingFlow(
         ...(nestedImportScanId ? { scanId: nestedImportScanId } : {}),
         mode
       })
-      track(
-        'add_repo_nested_import_result',
-        buildNestedRepoImportResultTelemetry({
-          attemptId,
-          surface: 'onboarding',
-          runtimeKind,
-          mode,
-          foundCount,
-          selectedCount,
-          result
-        })
-      )
-      resultTracked = true
       const importedRepoIds =
         result?.projects
           .map((entry) => entry.projectId)
@@ -970,22 +682,7 @@ export function useOnboardingFlow(
       }
       await completeRepo(projectId, true, 'open_folder')
     } catch (err) {
-      if (!resultTracked) {
-        track(
-          'add_repo_nested_import_result',
-          buildNestedRepoImportResultTelemetry({
-            attemptId,
-            surface: 'onboarding',
-            runtimeKind,
-            mode,
-            foundCount,
-            selectedCount,
-            result: null
-          })
-        )
-      }
       setError(err instanceof Error ? err.message : String(err))
-      track('onboarding_step4_path_failed', { path: 'open_folder', reason: 'invalid_path' })
     } finally {
       setBusyLabel(null)
     }
@@ -994,44 +691,20 @@ export function useOnboardingFlow(
     completeRepo,
     fetchWorktrees,
     importNestedRepos,
-    nestedAttemptId,
     nestedScan,
     nestedSelectedPaths,
-    nestedImportScanId,
-    nestedRuntimeKind,
-    onboardingNestedRepoRuntimeKind
+    nestedImportScanId
   ])
 
-  const trackNestedBackAndClear = useCallback(() => {
-    if (nestedScan && nestedAttemptId) {
-      track(
-        'add_repo_nested_import_action',
-        buildNestedRepoImportActionTelemetry({
-          attemptId: nestedAttemptId,
-          surface: 'onboarding',
-          runtimeKind: nestedRuntimeKind ?? onboardingNestedRepoRuntimeKind,
-          action: 'back',
-          foundCount: nestedScan.repos.length,
-          selectedCount: nestedSelectedPaths.size
-        })
-      )
-    }
+  const clearNestedRepoReview = useCallback(() => {
     setNestedScan(null)
     setNestedSelectedPaths(new Set())
-    setNestedAttemptId(null)
-    setNestedRuntimeKind(null)
     setNestedScanInProgress(false)
     setNestedImportScanId(null)
     nestedScanIdRef.current = null
     setBusyLabel(null)
     setError(null)
-  }, [
-    nestedAttemptId,
-    nestedRuntimeKind,
-    nestedScan,
-    nestedSelectedPaths.size,
-    onboardingNestedRepoRuntimeKind
-  ])
+  }, [])
 
   // Why: lets the user back out of the nested-repo step in onboarding to
   // re-pick a folder/clone target. Mirrors the dialog's left-aligned Back.
@@ -1042,8 +715,8 @@ export function useOnboardingFlow(
     if (nestedScanInProgress && nestedScanIdRef.current) {
       void cancelNestedRepoScan(nestedScanIdRef.current)
     }
-    trackNestedBackAndClear()
-  }, [busyLabel, cancelNestedRepoScan, nestedScanInProgress, trackNestedBackAndClear])
+    clearNestedRepoReview()
+  }, [busyLabel, cancelNestedRepoScan, nestedScanInProgress, clearNestedRepoReview])
 
   const stopNestedScan = useCallback(() => {
     const scanId = nestedScanIdRef.current
@@ -1052,10 +725,6 @@ export function useOnboardingFlow(
     }
     void cancelNestedRepoScan(scanId)
   }, [cancelNestedRepoScan])
-
-  const canImportNestedForTelemetry = useCallback((): boolean => {
-    return Boolean(nestedScan && nestedAttemptId && nestedSelectedPaths.size > 0)
-  }, [nestedAttemptId, nestedScan, nestedSelectedPaths.size])
 
   const clone = useCallback(async () => {
     // Why: re-entry guard — prevents Enter spamming from triggering duplicate clones.
@@ -1067,7 +736,6 @@ export function useOnboardingFlow(
       return
     }
     setError(null)
-    track('onboarding_step4_path_clicked', { path: 'clone_url' })
     const target = getActiveRuntimeTarget(settings)
     const destination =
       target.kind === 'environment' ? cloneDestination.trim() : settings.workspaceDir
@@ -1095,7 +763,6 @@ export function useOnboardingFlow(
       await completeRepo(repo.id, true, 'clone_url')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-      track('onboarding_step4_path_failed', { path: 'clone_url', reason: 'clone_failed' })
       toast.error(
         translate('auto.components.onboarding.use.onboarding.flow.fd74e7558e', 'Clone failed'),
         {
@@ -1108,7 +775,9 @@ export function useOnboardingFlow(
   }, [busyLabel, cloneDestination, cloneUrl, completeRepo, settings])
 
   const continueWithExistingProject = useCallback(
-    async (advancedVia: 'button' | 'keyboard' = 'button') => {
+    // `advancedVia` is kept for the controller API even though the per-step
+    // completion telemetry it fed has been removed.
+    async (_advancedVia: 'button' | 'keyboard' = 'button') => {
       if (busyLabel !== null || repos.length === 0) {
         return
       }
@@ -1118,21 +787,12 @@ export function useOnboardingFlow(
         const checklist = repos.some((repo) => isGitRepoKind(repo))
           ? { addedRepo: true }
           : { addedFolder: true }
-        const closed = await closeWith('completed', checklist, ONBOARDING_FINAL_STEP)
-        if (!closed) {
-          return
-        }
-        track('onboarding_step_completed', {
-          step: ONBOARDING_FINAL_STEP,
-          value_kind: 'repo',
-          duration_ms: consumeStepDurationMs(),
-          advanced_via: advancedVia
-        })
+        await closeWith('completed', checklist)
       } finally {
         setBusyLabel(null)
       }
     },
-    [busyLabel, closeWith, consumeStepDurationMs, repos]
+    [busyLabel, closeWith, repos]
   )
 
   const skipToRepo = useCallback(async () => {
@@ -1143,7 +803,6 @@ export function useOnboardingFlow(
     if (currentStep.id === 'notifications') {
       return
     }
-    const durationMs = consumeStepDurationMs()
     const preferencesSaved = await prepareSkippedOnboardingPreferences({
       currentStepId: currentStep.id,
       themeBeforePreview: themeStepEntryThemeRef.current,
@@ -1157,37 +816,14 @@ export function useOnboardingFlow(
     if (!preferencesSaved) {
       return
     }
-    const stepId = currentStep.id
-    const stepNumber = currentStep.stepNumber
-    const valueKind = currentStep.valueKind
     setBusyLabel('Opening Add Project...')
     try {
-      const closed = await closeWith('completed', {}, ONBOARDING_FINAL_STEP, 'add_project_modal')
+      const closed = await closeWith('completed', {})
       if (!closed) {
         return
       }
       // Why: the repo picker moved to the Add Project dialog, so skipping
       // optional setup now closes onboarding and hands off to that modal.
-      track('onboarding_step_skipped', {
-        step: stepNumber,
-        value_kind: valueKind,
-        duration_ms: durationMs,
-        advanced_via: 'button'
-      })
-      if (stepId === 'integrations') {
-        trackTaskSourcesSnapshot('skip_to_project_setup', durationMs, 'button')
-      }
-      if (stepId === 'windows_terminal') {
-        track(
-          'onboarding_windows_terminal_snapshot',
-          buildWindowsTerminalSnapshotPayload({
-            settings,
-            exitAction: 'skip_to_project_setup',
-            durationMs,
-            advancedVia: 'button'
-          })
-        )
-      }
       openModal('add-repo')
     } finally {
       setBusyLabel(null)
@@ -1195,42 +831,28 @@ export function useOnboardingFlow(
   }, [
     busyLabel,
     closeWith,
-    consumeStepDurationMs,
     currentStep.id,
-    currentStep.stepNumber,
-    currentStep.valueKind,
     openModal,
     selectedAgent,
     settings,
-    trackTaskSourcesSnapshot,
     updateSettings
   ])
 
   const dismissOnboarding = useCallback(
-    async (advancedVia: 'button' | 'keyboard' = 'button'): Promise<boolean> => {
+    // `advancedVia` is kept for the controller API even though the dismissal
+    // telemetry it fed has been removed.
+    async (_advancedVia: 'button' | 'keyboard' = 'button'): Promise<boolean> => {
       if (busyLabel) {
         return false
       }
       setError(null)
-      const closed = await closeWith('dismissed', {}, currentStep.stepNumber, undefined, {
-        durationMs: consumeStepDurationMs(),
-        advancedVia
-      })
-      if (closed) {
-        if (nestedScan) {
-          trackNestedBackAndClear()
-        }
+      const closed = await closeWith('dismissed', {})
+      if (closed && nestedScan) {
+        clearNestedRepoReview()
       }
       return closed
     },
-    [
-      busyLabel,
-      closeWith,
-      consumeStepDurationMs,
-      currentStep.stepNumber,
-      nestedScan,
-      trackNestedBackAndClear
-    ]
+    [busyLabel, closeWith, nestedScan, clearNestedRepoReview]
   )
 
   const openSshSettings = useCallback(async () => {
@@ -1271,20 +893,20 @@ export function useOnboardingFlow(
 
   const back = useCallback(() => {
     if (nestedScan) {
-      trackNestedBackAndClear()
+      clearNestedRepoReview()
       return
     }
     setStepIndex(getPreviousStepIndex)
-  }, [getPreviousStepIndex, nestedScan, trackNestedBackAndClear])
+  }, [getPreviousStepIndex, nestedScan, clearNestedRepoReview])
 
   const jumpToStep = useCallback(
     (idx: number) => {
       if (nestedScan && idx !== stepIndex) {
-        trackNestedBackAndClear()
+        clearNestedRepoReview()
       }
       setStepIndex(resolveStepIndex(idx, skipOptions, idx < stepIndex ? 'backward' : 'forward'))
     },
-    [nestedScan, skipOptions, stepIndex, trackNestedBackAndClear]
+    [nestedScan, skipOptions, stepIndex, clearNestedRepoReview]
   )
 
   return {
@@ -1311,7 +933,6 @@ export function useOnboardingFlow(
     importNested,
     cancelNested,
     stopNestedScan,
-    canImportNestedForTelemetry,
     hasExistingProject,
     serverPath,
     setServerPath,

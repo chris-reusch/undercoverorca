@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
-import { track } from '@/lib/telemetry'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import {
   buildImportedHookSettings,
@@ -15,11 +14,9 @@ import {
 import { checkRuntimeHooks, inspectRuntimeSetupScriptImports } from '@/runtime/runtime-hooks-client'
 import { isGitRepoKind } from '../../../../shared/repo-kind'
 import type { SetupScriptImportCandidate } from '../../../../shared/setup-script-imports'
-import { buildSetupScriptPromptActionTelemetry } from '../../../../shared/setup-script-telemetry'
 import { SetupScriptPromptCardShell } from './SetupScriptPromptCardShell'
 import { showSavedInProjectSettingsToast } from './SetupScriptPromptToast'
 import { openSetupScriptSettings } from './open-setup-script-settings'
-import { trackSetupScriptPromptExposure } from './setup-script-prompt-exposure-telemetry'
 import {
   getRenderedSetupScriptPromptState,
   getRepoProjectId,
@@ -46,7 +43,6 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
   const [detectedSetupDraft, setDetectedSetupDraft] = useState('')
   const [isImporting, setIsImporting] = useState(false)
   const [inspectionRetryKey, setInspectionRetryKey] = useState(0)
-  const trackedPromptKeysRef = useRef<Set<string>>(new Set())
   const mountedRef = useMountedRef()
 
   const activeRepo = useMemo(
@@ -113,75 +109,26 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
     setInspectionRetryKey((value) => value + 1)
   }, [])
 
-  useEffect(() => {
-    if (
-      !sidebarOpen ||
-      !activeRepo ||
-      !isGitRepoKind(activeRepo) ||
-      isDismissed ||
-      promptState?.repoId !== activeRepo.id ||
-      promptState.status !== 'ok' ||
-      promptState.hasEffectiveSetup
-    ) {
-      return
-    }
-
-    trackSetupScriptPromptExposure({
-      repoId: activeRepo.id,
-      promptState,
-      trackedPromptKeys: trackedPromptKeysRef.current
-    })
-  }, [activeRepo, isDismissed, promptState, sidebarOpen])
-
   const handleConfigure = useCallback(() => {
     if (!activeRepo) {
       return
     }
-    if (
-      promptState?.repoId === activeRepo.id &&
-      promptState.status === 'ok' &&
-      !promptState.hasEffectiveSetup
-    ) {
-      track(
-        'setup_script_prompt_action',
-        buildSetupScriptPromptActionTelemetry({
-          action: 'configure_clicked',
-          candidate: promptState.candidate,
-          hasSharedHooks: promptState.hasSharedHooks
-        })
-      )
-    }
     openLocalCommandSettings(activeRepo.id)
-  }, [activeRepo, openLocalCommandSettings, promptState])
+  }, [activeRepo, openLocalCommandSettings])
 
   const handleDismiss = useCallback(() => {
     if (activeRepo) {
-      if (
-        promptState?.repoId === activeRepo.id &&
-        promptState.status === 'ok' &&
-        !promptState.hasEffectiveSetup
-      ) {
-        track(
-          'setup_script_prompt_action',
-          buildSetupScriptPromptActionTelemetry({
-            action: 'dismissed',
-            candidate: promptState.candidate,
-            hasSharedHooks: promptState.hasSharedHooks
-          })
-        )
-      }
       dismissSetupScriptPrompt(activeRepo.id)
     }
-  }, [activeRepo, dismissSetupScriptPrompt, promptState])
+  }, [activeRepo, dismissSetupScriptPrompt])
 
   const saveSetupCandidate = useCallback(
     async (input: {
       candidate: SetupScriptImportCandidate
       hasSharedHooks: boolean
       actionPrefix: 'save_detected_setup' | 'import'
-      editedBeforeSave?: boolean
     }) => {
-      const { candidate, hasSharedHooks, actionPrefix, editedBeforeSave } = input
+      const { candidate, hasSharedHooks, actionPrefix } = input
       if (!activeRepo) {
         return
       }
@@ -191,18 +138,6 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
         const nextSettings = buildImportedHookSettings(activeRepo, candidate, hasSharedHooks)
         const didUpdate = await updateRepo(activeRepo.id, { hookSettings: nextSettings })
         if (!didUpdate) {
-          track(
-            'setup_script_prompt_action',
-            buildSetupScriptPromptActionTelemetry({
-              action:
-                actionPrefix === 'save_detected_setup'
-                  ? 'save_detected_setup_failed'
-                  : 'import_failed',
-              candidate,
-              hasSharedHooks,
-              editedBeforeSave
-            })
-          )
           if (mountedRef.current) {
             toast.error(
               translate(
@@ -213,18 +148,6 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
           }
           return
         }
-        track(
-          'setup_script_prompt_action',
-          buildSetupScriptPromptActionTelemetry({
-            action:
-              actionPrefix === 'save_detected_setup'
-                ? 'save_detected_setup_completed'
-                : 'import_completed',
-            candidate,
-            hasSharedHooks,
-            editedBeforeSave
-          })
-        )
         if (actionPrefix === 'save_detected_setup') {
           if (mountedRef.current) {
             setPromptState((current) =>
@@ -258,18 +181,6 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
           })
         }
       } catch (error) {
-        track(
-          'setup_script_prompt_action',
-          buildSetupScriptPromptActionTelemetry({
-            action:
-              actionPrefix === 'save_detected_setup'
-                ? 'save_detected_setup_failed'
-                : 'import_failed',
-            candidate,
-            hasSharedHooks,
-            editedBeforeSave
-          })
-        )
         console.warn('[setup-script-prompt] Failed to save setup script:', error)
         if (mountedRef.current) {
           toast.error(
@@ -294,8 +205,6 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
     }
     const isPackageManagerCandidate = promptState.candidate.provider === 'package-manager'
     const actionPrefix = isPackageManagerCandidate ? 'save_detected_setup' : 'import'
-    const editedBeforeSave =
-      isPackageManagerCandidate && detectedSetupDraft.trim() !== promptState.candidate.setup.trim()
     const candidate = isPackageManagerCandidate
       ? {
           ...promptState.candidate,
@@ -311,22 +220,10 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
       )
       return
     }
-    if (actionPrefix === 'save_detected_setup') {
-      track(
-        'setup_script_prompt_action',
-        buildSetupScriptPromptActionTelemetry({
-          action: 'save_detected_setup_clicked',
-          candidate,
-          hasSharedHooks: promptState.hasSharedHooks,
-          editedBeforeSave
-        })
-      )
-    }
     await saveSetupCandidate({
       candidate,
       hasSharedHooks: promptState.hasSharedHooks,
-      actionPrefix,
-      editedBeforeSave: isPackageManagerCandidate ? editedBeforeSave : undefined
+      actionPrefix
     })
   }, [activeRepo, detectedSetupDraft, promptState, saveSetupCandidate])
 

@@ -667,12 +667,7 @@ function createWebPreloadApi(): Partial<PreloadApi> {
       listRuntimeAccessGrants: () => Promise.resolve({ grants: [] }),
       revokeRuntimeAccess: () => Promise.resolve({ revoked: false }),
       isWebSocketReady: () => Promise.resolve({ ready: Boolean(activeEnvironment), endpoint: null })
-    },
-    telemetryTrack: () => Promise.resolve(),
-    telemetrySetOptIn: () => Promise.resolve(),
-    telemetryGetConsentState: () =>
-      Promise.resolve({ optedIn: false, source: 'default', blockedByEnv: false } as never),
-    telemetryAcknowledgeBanner: () => Promise.resolve()
+    }
   }
 }
 

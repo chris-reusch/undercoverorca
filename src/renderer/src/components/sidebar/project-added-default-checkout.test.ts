@@ -24,8 +24,7 @@ const mocks = vi.hoisted(() => ({
   },
   activateAndRevealWorktree: vi.fn(),
   onboardingGet: vi.fn(),
-  onboardingUpdate: vi.fn(),
-  track: vi.fn()
+  onboardingUpdate: vi.fn()
 }))
 
 vi.mock('@/store', () => ({
@@ -36,10 +35,6 @@ vi.mock('@/store', () => ({
 
 vi.mock('@/lib/worktree-activation', () => ({
   activateAndRevealWorktree: mocks.activateAndRevealWorktree
-}))
-
-vi.mock('@/lib/telemetry', () => ({
-  track: mocks.track
 }))
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
@@ -157,15 +152,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
       checklist: { addedRepo: true }
     })
     expect(setHideDefaultBranchWorkspace).toHaveBeenCalledWith(false)
-    expect(mocks.track).toHaveBeenCalledWith('activation_checklist_item_completed', {
-      item: 'addedRepo',
-      time_since_completed_ms: 0
-    })
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'clone_url',
-      result: 'opened_default_checkout',
-      reason: 'loaded_default_checkout'
-    })
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('repo-1::/repo')
   })
 
@@ -205,11 +191,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
     expect(mocks.state.fetchWorktrees).toHaveBeenCalledWith('repo-1', {
       requireAuthoritative: true
     })
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'local_folder_picker',
-      result: 'opened_default_checkout',
-      reason: 'detected_default_checkout'
-    })
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('repo-1::/repo')
   })
 
@@ -234,11 +215,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
     expect(mocks.state.fetchWorktrees).toHaveBeenCalledWith('repo-1', {
       requireAuthoritative: true
     })
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'local_folder_picker',
-      result: 'opened_default_checkout',
-      reason: 'loaded_default_checkout'
-    })
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('repo-1::/repo')
   })
 
@@ -259,11 +235,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
 
     expect(mocks.state.updateRepo).not.toHaveBeenCalled()
     expect(mocks.state.fetchWorktrees).not.toHaveBeenCalled()
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'local_folder_picker',
-      result: 'opened_default_checkout',
-      reason: 'loaded_default_checkout'
-    })
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('repo-1::/repo')
   })
 
@@ -304,11 +275,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
       externalWorktreeVisibility: 'show'
     })
     expect(mocks.state.fetchWorktrees).toHaveBeenCalledTimes(1)
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'local_folder_picker',
-      result: 'opened_default_checkout',
-      reason: 'detected_default_checkout'
-    })
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('repo-1::/repo')
   })
 
@@ -328,11 +294,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
       setHideDefaultBranchWorkspace: vi.fn()
     })
 
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'local_folder_picker',
-      result: 'revealed_project',
-      reason: 'show_detected_linked_failed'
-    })
     expect(mocks.activateAndRevealWorktree).not.toHaveBeenCalled()
     expect(mocks.state.setActiveRepo).toHaveBeenCalledWith('repo-1')
   })
@@ -353,11 +314,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
       setHideDefaultBranchWorkspace: vi.fn()
     })
 
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'local_folder_picker',
-      result: 'revealed_project',
-      reason: 'linked_external_refresh_failed'
-    })
     expect(mocks.activateAndRevealWorktree).not.toHaveBeenCalled()
     expect(mocks.state.setActiveRepo).toHaveBeenCalledWith('repo-1')
   })
@@ -378,11 +334,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
 
     expect(closeModal).toHaveBeenCalledTimes(1)
     expect(mocks.activateAndRevealWorktree).not.toHaveBeenCalled()
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'ssh_remote_path',
-      result: 'revealed_project',
-      reason: 'no_authoritative_detection'
-    })
     expect(mocks.state.setActiveRepo).toHaveBeenCalledWith('repo-1')
     expect(setHideDefaultBranchWorkspace).not.toHaveBeenCalled()
   })
@@ -399,11 +350,6 @@ describe('finishProjectAddWithDefaultCheckout', () => {
     })
 
     expect(mocks.activateAndRevealWorktree).not.toHaveBeenCalled()
-    expect(mocks.track).toHaveBeenCalledWith('add_repo_default_checkout_handoff', {
-      source: 'project_added_compat',
-      result: 'revealed_project',
-      reason: 'no_authoritative_detection'
-    })
     expect(mocks.state.setActiveRepo).toHaveBeenCalledWith('repo-1')
     expect(mocks.state.setFilterRepoIds).toHaveBeenCalledWith([])
     expect(mocks.state.setShowActiveOnly).toHaveBeenCalledWith(false)

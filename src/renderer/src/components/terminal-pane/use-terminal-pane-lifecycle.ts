@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react'
 import type { IDisposable, Terminal } from '@xterm/xterm'
 import type { ParsedAgentStatusPayload } from '../../../../shared/agent-status-types'
 import { PaneManager } from '@/lib/pane-manager/pane-manager'
-import { consumePendingWebRuntimeSplitMirrorTelemetry } from '@/runtime/web-runtime-session'
 import {
   normalizeTerminalFastScrollSensitivity,
   normalizeTerminalScrollSensitivity,
@@ -31,8 +30,7 @@ import type {
   TerminalTab,
   TerminalLayoutSnapshot
 } from '../../../../shared/types'
-import type { TerminalPaneSplitSource } from '../../../../shared/feature-education-telemetry'
-import type { EventProps } from '../../../../shared/telemetry-events'
+import type { AgentStartedTelemetry } from '../../../../shared/agent-launch-source'
 import type { StartupCommandDelivery } from '../../../../shared/codex-startup-delivery'
 import { resolveTerminalFontWeights } from '../../../../shared/terminal-fonts'
 import {
@@ -98,15 +96,8 @@ import { recordCreatedTerminalPaneSplit } from './terminal-pane-split-completion
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
 import { seedStartupSessionRestoredBanner } from './session-restored-banner-pane-state'
 
-export function recordRuntimeCreatedTerminalPaneSplit(
-  createdPane: unknown,
-  args: {
-    source: TerminalPaneSplitSource
-    direction: 'vertical' | 'horizontal'
-    telemetrySuppressed?: boolean
-  }
-): boolean {
-  return recordCreatedTerminalPaneSplit(createdPane, args)
+export function recordRuntimeCreatedTerminalPaneSplit(createdPane: unknown): boolean {
+  return recordCreatedTerminalPaneSplit(createdPane)
 }
 
 function extractUncHost(value: string | undefined): string | null {
@@ -140,7 +131,7 @@ type UseTerminalPaneLifecycleDeps = {
     env?: Record<string, string>
     /** Telemetry payload for `agent_started`. Forwarded to `pty:spawn`
      *  so main fires the event only after the spawn succeeds. */
-    telemetry?: EventProps<'agent_started'>
+    telemetry?: AgentStartedTelemetry
     /** Show the restored-session banner when this startup command mounts. */
     showSessionRestoredBanner?: boolean
   } | null
@@ -1364,20 +1355,10 @@ export function useTerminalPaneLifecycle({
         const createdPane = splitPaneWithOneShotStartup(ptyDeps, { command: detail.command }, () =>
           mgr.splitPane(sourcePaneId, detail.direction, splitOptions)
         )
-        recordRuntimeCreatedTerminalPaneSplit(createdPane, {
-          source: detail.telemetrySource ?? 'command',
-          direction: detail.direction
-        })
+        recordRuntimeCreatedTerminalPaneSplit(createdPane)
       } else {
         const createdPane = mgr.splitPane(sourcePaneId, detail.direction, splitOptions)
-        const telemetrySuppressed = createdPane
-          ? consumePendingWebRuntimeSplitMirrorTelemetry(detail.sourcePtyId, detail.direction)
-          : false
-        recordRuntimeCreatedTerminalPaneSplit(createdPane, {
-          source: detail.telemetrySource ?? 'command',
-          direction: detail.direction,
-          telemetrySuppressed
-        })
+        recordRuntimeCreatedTerminalPaneSplit(createdPane)
       }
     }
     window.addEventListener(SPLIT_TERMINAL_PANE_EVENT, onCliSplitPane)

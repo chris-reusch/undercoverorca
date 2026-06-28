@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import type { FeatureWallWorkflow } from '../../../../shared/feature-wall-workflows'
-import type { FeatureWallOpenSourceTelemetry } from '../../../../shared/telemetry-events'
+import type { FeatureWallOpenSourceTelemetry } from './feature-wall-open-source'
 import type { AgentsStep } from '../../../../shared/agents-orchestration-steps'
 import type { WorkbenchStep } from '../../../../shared/workbench-steps'
 import type { ReviewStep } from '../../../../shared/review-steps'

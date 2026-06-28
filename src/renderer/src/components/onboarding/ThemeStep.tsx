@@ -2,14 +2,9 @@ import { useEffect, useState } from 'react'
 import { Check, Monitor, Moon, Settings2, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { track } from '@/lib/telemetry'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { GhosttyDiscoveryRow } from './GhosttyDiscoveryRow'
-import type {
-  DiscoveryStatusEmitted,
-  GhosttyImportPreview,
-  GlobalSettings
-} from '../../../../shared/types'
+import type { GhosttyImportPreview, GlobalSettings } from '../../../../shared/types'
 import { translate } from '@/i18n/i18n'
 import { ChromePreview } from './theme-chrome-preview'
 
@@ -31,37 +26,12 @@ export function applyOnboardingThemeSelection(
   void updateSettings({ theme: id })
 }
 
-// The two UI-only states (`'idle'`, `'detecting'`) never fire telemetry. The
-// remaining states are exactly `DiscoveryStatusEmitted`, which is the
-// schema-side enum the compile-time guard in
-// `src/shared/telemetry-events.ts` locks against.
 export type DiscoveryState =
   | { status: 'idle' }
   | { status: 'detecting' }
   | { status: 'found'; preview: GhosttyImportPreview; fields: string[] }
   | { status: 'imported'; fields: string[] }
   | { status: 'absent' }
-type _DiscoveryStatusEmittedSync =
-  Exclude<DiscoveryState['status'], 'idle' | 'detecting'> extends DiscoveryStatusEmitted
-    ? DiscoveryStatusEmitted extends Exclude<DiscoveryState['status'], 'idle' | 'detecting'>
-      ? true
-      : never
-    : never
-const _discoveryStatusEmittedSyncCheck: _DiscoveryStatusEmittedSync = true
-void _discoveryStatusEmittedSyncCheck
-
-function fieldGroupCountBucket(count: number): '0' | '1-3' | '4-7' | '8+' {
-  if (count <= 0) {
-    return '0'
-  }
-  if (count <= 3) {
-    return '1-3'
-  }
-  if (count <= 7) {
-    return '4-7'
-  }
-  return '8+'
-}
 
 export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: ThemeStepProps) {
   const [importing, setImporting] = useState(false)
@@ -73,9 +43,7 @@ export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: Th
   // Settings are not applied until the user clicks Import (per design doc).
   useEffect(() => {
     // Why: Ghostty config-import is darwin-only (see src/main/ghostty/discovery.ts).
-    // Skip the IPC + telemetry emission entirely on non-Mac so the
-    // `_discovered: absent` rate measured by the Mac-cohort dashboard isn't
-    // polluted by a population that cannot have a Ghostty config.
+    // Skip the IPC entirely on non-Mac since they cannot have a Ghostty config.
     if (!navigator.userAgent.includes('Mac')) {
       return
     }
@@ -94,28 +62,16 @@ export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: Th
         // tell, so don't make a claim either way.
         if (!preview.found || Object.keys(preview.diff).length === 0) {
           setDiscovery({ status: 'absent' })
-          track('onboarding_ghostty_discovered', {
-            state: 'absent',
-            field_group_count_bucket: '0'
-          })
           return
         }
         const fields = humanFields(preview.diff)
         setDiscovery({ status: 'found', preview, fields })
-        track('onboarding_ghostty_discovered', {
-          state: 'found',
-          field_group_count_bucket: fieldGroupCountBucket(fields.length)
-        })
       })
       .catch(() => {
         if (cancelled) {
           return
         }
         setDiscovery({ status: 'absent' })
-        track('onboarding_ghostty_discovered', {
-          state: 'absent',
-          field_group_count_bucket: '0'
-        })
       })
     return () => {
       cancelled = true
@@ -126,10 +82,6 @@ export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: Th
     if (!settings || importing) {
       return
     }
-    // Why: track AFTER the busy guard so a double-click during an in-flight
-    // import doesn't inflate the click counter when no second import attempt
-    // actually proceeds.
-    track('onboarding_ghostty_import_clicked', {})
     setImporting(true)
     try {
       const resolved = preview.found ? preview : await window.api.settings.previewGhosttyImport()
@@ -142,7 +94,6 @@ export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: Th
             )
           )
         }
-        track('onboarding_ghostty_import_failed', { reason: 'empty_diff' })
         return
       }
       await updateSettings({
@@ -165,10 +116,6 @@ export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: Th
       if (mountedRef.current) {
         setDiscovery({ status: 'imported', fields: importedFields })
       }
-      track('onboarding_ghostty_discovered', {
-        state: 'imported',
-        field_group_count_bucket: fieldGroupCountBucket(importedFields.length)
-      })
     } catch (err) {
       if (mountedRef.current) {
         toast.error(
@@ -181,7 +128,6 @@ export function ThemeStep({ theme, onThemeChange, settings, updateSettings }: Th
           }
         )
       }
-      track('onboarding_ghostty_import_failed', { reason: 'unknown' })
     } finally {
       if (mountedRef.current) {
         setImporting(false)

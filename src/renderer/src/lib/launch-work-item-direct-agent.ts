@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
 import { pasteDraftWhenAgentReady } from '@/lib/agent-paste-draft'
-import { track, tuiAgentToAgentKind } from '@/lib/telemetry'
+import { tuiAgentToAgentKind } from '../../../shared/agent-kind'
 import {
   buildAgentDraftLaunchPlan,
   buildAgentStartupPlan,
@@ -8,7 +8,7 @@ import {
 } from '@/lib/tui-agent-startup'
 import type { AgentStartedTelemetry } from '@/lib/worktree-activation'
 import type { SleepingAgentLaunchConfig } from '../../../shared/agent-session-resume'
-import type { LaunchSource } from '../../../shared/telemetry-events'
+import type { LaunchSource } from '../../../shared/agent-launch-source'
 import type { StartupCommandDelivery } from '../../../shared/codex-startup-delivery'
 import type { TuiAgent } from '../../../shared/types'
 import {
@@ -149,12 +149,6 @@ export async function pasteDirectWorkItemDraftWhenAgentReady(args: {
           { value0: label }
         )
       )
-      // Why: process-startup timeout has no v1 enum slot; the `unknown` slice
-      // on the dashboard is the trigger to add one.
-      track('agent_error', {
-        error_class: 'unknown',
-        agent_kind: tuiAgentToAgentKind(startupPlan.agent)
-      })
     }
   })
 }

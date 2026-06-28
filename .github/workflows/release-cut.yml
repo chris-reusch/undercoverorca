@@ -1129,24 +1129,6 @@ jobs:
             exit 1
           fi
 
-      # Why post-publish for macOS/Linux: electron-builder packs and uploads
-      # in a single `--publish always` invocation, so there is no cheap
-      # insertion point between pack and upload without splitting those steps.
-      # Running verify last still blocks the bad release: the
-      # binary is uploaded to the draft, but a failed matrix job blocks
-      # the `publish-release` job (which depends on `build`) from flipping
-      # the release from draft → published, so users never see it. A human
-      # then deletes the draft and re-cuts.
-      #
-      # Why this guards against: a misconfigured CI run where
-      # `ORCA_POSTHOG_WRITE_KEY` is unset or the tag fails to classify
-      # would otherwise produce a binary with `BUILD_IDENTITY = null` and
-      # `WRITE_KEY = null`, which silently disables transport
-      # (`IS_OFFICIAL_BUILD === false`) — the exact failure mode flagged
-      # in PR #1385's deferred follow-up.
-      - name: Verify telemetry constants present in app.asar
-        run: node config/scripts/verify-telemetry-constants.mjs
-
   publish-release:
     needs:
       - cut

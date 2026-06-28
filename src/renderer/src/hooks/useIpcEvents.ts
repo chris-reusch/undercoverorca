@@ -85,7 +85,6 @@ import { createRuntimeClientEventsSync } from './runtime-client-events-sync'
 import { detectLanguage } from '@/lib/language-detect'
 import { makePaneKey, parsePaneKey } from '../../../shared/stable-pane-id'
 import { collectLeafIdsInOrder } from '@/components/terminal-pane/layout-serialization'
-import { track } from '@/lib/telemetry'
 import { singlePaneLayoutSnapshot } from '@/store/slices/terminal-helpers'
 import { buildWorkspaceSessionPayload } from '@/lib/workspace-session'
 import { getLinearIssueWorkspaceName } from '../../../shared/workspace-name'
@@ -1338,8 +1337,7 @@ export function useIpcEvents(): void {
           tabId,
           leafId,
           splitFromLeafId,
-          splitDirection,
-          splitTelemetrySource
+          splitDirection
         }) => {
           try {
             if (isRuntimeEnvironmentActive()) {
@@ -1463,7 +1461,6 @@ export function useIpcEvents(): void {
                       direction: splitDirection ?? 'horizontal',
                       sourceLeafId: splitFromLeafId,
                       sourcePtyId,
-                      telemetrySource: splitTelemetrySource,
                       newLeafId: leafId,
                       ptyId
                     }
@@ -1624,18 +1621,15 @@ export function useIpcEvents(): void {
     )
 
     unsubs.push(
-      window.api.ui.onSplitTerminal(
-        ({ tabId, paneRuntimeId, direction, command, telemetrySource }) => {
-          const detail: SplitTerminalPaneDetail = {
-            tabId,
-            paneRuntimeId,
-            direction,
-            command,
-            telemetrySource
-          }
-          window.dispatchEvent(new CustomEvent(SPLIT_TERMINAL_PANE_EVENT, { detail }))
+      window.api.ui.onSplitTerminal(({ tabId, paneRuntimeId, direction, command }) => {
+        const detail: SplitTerminalPaneDetail = {
+          tabId,
+          paneRuntimeId,
+          direction,
+          command
         }
-      )
+        window.dispatchEvent(new CustomEvent(SPLIT_TERMINAL_PANE_EVENT, { detail }))
+      })
     )
 
     unsubs.push(
@@ -2808,7 +2802,6 @@ export function useIpcEvents(): void {
         // reconciliation miss is not a regression signal.
         if (options?.replay !== true) {
           if (options?.retry !== true) {
-            track('agent_hook_unattributed', { reason: 'unknown_tab_id' })
             // Why: live hook IPC can beat the renderer's tab/layout hydration.
             // Main already cached the event; retry locally so a transient
             // pane-key miss does not drop Droid/Codex completion state.

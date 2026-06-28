@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { checkOrcaStarred } from '../github/client'
 import type { Store } from '../persistence'
-import type { StarNagPromptMode } from '../../shared/star-nag-telemetry'
+import type { StarNagPromptMode } from './prompt-types'
 
 export type AgentValueMomentPreparation =
   | { status: 'ready'; mode: StarNagPromptMode }
@@ -14,7 +14,6 @@ type StarNagAgentValueMomentDeps = {
   isPromptVisible: () => boolean
   isCooldownActive: (deferredUntil: number | null | undefined) => boolean
   markCompleted: () => void
-  trackAlreadyStarredSuppressed: () => void
   broadcastShow: (mode: StarNagPromptMode) => boolean
 }
 
@@ -52,7 +51,6 @@ export class StarNagAgentValueMoment {
         return { status: 'ready', mode: 'web' }
       }
       if (starred) {
-        this.deps.trackAlreadyStarredSuppressed()
         this.deps.markCompleted()
         // Why: already-starred users should not be rechecked on every agent
         // completion after this version has been resolved.
