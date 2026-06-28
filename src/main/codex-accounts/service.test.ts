@@ -94,7 +94,6 @@ function createSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings
     sourceControlViewMode: 'list',
     sourceControlGroupOrder: 'changes-first',
     showTitlebarAppName: true,
-    showTasksButton: true,
     floatingTerminalEnabled: false,
     floatingTerminalCwd: '~',
     floatingTerminalTriggerLocation: 'floating-button',
@@ -120,7 +119,6 @@ function createSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings
     disabledTuiAgents: [],
     skipDeleteWorktreeConfirm: false,
     skipCloseTerminalWithRunningProcessConfirm: false,
-    skipDeleteAutomationConfirm: false,
     skipCodexRateLimitResetConfirm: false,
     defaultTaskViewPreset: 'all',
     defaultTaskSource: 'github',
@@ -171,13 +169,6 @@ function createStore(settings: GlobalSettings) {
       }
       return settings
     })
-  }
-}
-
-function createRateLimits() {
-  return {
-    refreshForCodexAccountChange: vi.fn().mockResolvedValue(undefined),
-    evictInactiveCodexCache: vi.fn()
   }
 }
 
@@ -264,11 +255,10 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    new CodexAccountService(store as never, rateLimits as never, runtimeHome as never)
+    new CodexAccountService(store as never, runtimeHome as never)
 
     expect(readFileSync(join(managedHomePath, 'config.toml'), 'utf-8')).toBe(canonicalConfig)
     expect(readFileSync(join(managedHomePath, 'auth.json'), 'utf-8')).toBe(
@@ -306,11 +296,10 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    new CodexAccountService(store as never, rateLimits as never, runtimeHome as never)
+    new CodexAccountService(store as never, runtimeHome as never)
 
     expect(statSync(managedConfigPath).mtimeMs).toBeLessThan(Date.now() - 60_000)
   })
@@ -355,11 +344,10 @@ describe('CodexAccountService config sync', () => {
       ]
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
-    new CodexAccountService(store as never, rateLimits as never, runtimeHome as never)
+    new CodexAccountService(store as never, runtimeHome as never)
 
     expect(readFileSync(join(firstManagedHomePath, 'config.toml'), 'utf-8')).toBe(
       'sandbox_mode = "danger-full-access"\n'
@@ -394,13 +382,11 @@ describe('CodexAccountService config sync', () => {
       ]
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -409,7 +395,6 @@ describe('CodexAccountService config sync', () => {
     await service.selectAccount('account-1')
 
     expect(readFileSync(join(managedHomePath, 'config.toml'), 'utf-8')).toBe(canonicalConfig)
-    expect(rateLimits.refreshForCodexAccountChange).toHaveBeenCalledTimes(1)
     expect(runtimeHome.syncForCurrentSelection).toHaveBeenCalledTimes(1)
   })
 
@@ -436,14 +421,13 @@ describe('CodexAccountService config sync', () => {
       ]
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { CodexAccountService } = await import('./service')
 
     expect(
-      () => new CodexAccountService(store as never, rateLimits as never, runtimeHome as never)
+      () => new CodexAccountService(store as never, runtimeHome as never)
     ).not.toThrow()
     expect(readFileSync(join(managedHomePath, 'config.toml'), 'utf-8')).toBe(
       'approval_policy = "on-request"\n'
@@ -501,13 +485,11 @@ describe('CodexAccountService config sync', () => {
 
     const settings = createSettings()
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -575,14 +557,12 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -630,14 +610,12 @@ describe('CodexAccountService config sync', () => {
       ]
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -676,14 +654,12 @@ describe('CodexAccountService config sync', () => {
       ]
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -772,14 +748,12 @@ describe('CodexAccountService config sync', () => {
 
     const settings = createSettings()
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     try {
       const { CodexAccountService } = await import('./service')
       const service = new CodexAccountService(
         store as never,
-        rateLimits as never,
         runtimeHome as never
       )
 
@@ -850,14 +824,12 @@ describe('CodexAccountService config sync', () => {
 
     const settings = createSettings()
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     try {
       const { CodexAccountService } = await import('./service')
       const service = new CodexAccountService(
         store as never,
-        rateLimits as never,
         runtimeHome as never
       )
 
@@ -970,14 +942,12 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     try {
       const { CodexAccountService } = await import('./service')
       const service = new CodexAccountService(
         store as never,
-        rateLimits as never,
         runtimeHome as never
       )
 
@@ -1082,7 +1052,6 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
@@ -1090,7 +1059,6 @@ describe('CodexAccountService config sync', () => {
       const { CodexAccountService } = await import('./service')
       const service = new CodexAccountService(
         store as never,
-        rateLimits as never,
         runtimeHome as never
       )
 
@@ -1164,14 +1132,12 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     try {
       const { CodexAccountService } = await import('./service')
       const service = new CodexAccountService(
         store as never,
-        rateLimits as never,
         runtimeHome as never
       )
 
@@ -1180,7 +1146,6 @@ describe('CodexAccountService config sync', () => {
       expect(result.accounts).toHaveLength(0)
       expect(existsSync(wslManagedHomePath)).toBe(false)
       expect(existsSync(join(testState.userDataDir, 'wsl-account'))).toBe(false)
-      expect(rateLimits.evictInactiveCodexCache).toHaveBeenCalledWith('account-1')
     } finally {
       Object.defineProperty(process, 'platform', {
         configurable: true,
@@ -1213,13 +1178,11 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -1227,7 +1190,6 @@ describe('CodexAccountService config sync', () => {
 
     expect(result.activeAccountId).toBe(null)
     expect(runtimeHome.syncForCurrentSelection).toHaveBeenCalled()
-    expect(rateLimits.refreshForCodexAccountChange).toHaveBeenCalled()
   })
 
   it('selectAccount immediately rewrites the shared runtime auth for existing terminals', async () => {
@@ -1273,7 +1235,6 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
 
     const { CodexRuntimeHomeService } = await import('./runtime-home-service')
     const runtimeHome = new CodexRuntimeHomeService(store as never)
@@ -1283,7 +1244,6 @@ describe('CodexAccountService config sync', () => {
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -1341,13 +1301,11 @@ describe('CodexAccountService config sync', () => {
       }
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -1392,13 +1350,11 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'account-1'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -1434,13 +1390,11 @@ describe('CodexAccountService config sync', () => {
       activeCodexManagedAccountId: 'nonexistent-id'
     })
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
@@ -1453,63 +1407,15 @@ describe('CodexAccountService config sync', () => {
   it('rejects paths that escape the managed accounts root', async () => {
     const settings = createSettings()
     const store = createStore(settings)
-    const rateLimits = createRateLimits()
     const runtimeHome = createRuntimeHome()
 
     const { CodexAccountService } = await import('./service')
     const service = new CodexAccountService(
       store as never,
-      rateLimits as never,
       runtimeHome as never
     )
 
     await expect(service.removeAccount('nonexistent')).rejects.toThrow('no longer exists')
-  })
-
-  it('serializes concurrent mutations', async () => {
-    const managedHomePath = createManagedHome(
-      testState.userDataDir,
-      'account-1',
-      '',
-      '{"account":"managed"}\n'
-    )
-    const settings = createSettings({
-      codexManagedAccounts: [
-        {
-          id: 'account-1',
-          email: 'user@example.com',
-          managedHomePath,
-          providerAccountId: null,
-          workspaceLabel: null,
-          workspaceAccountId: null,
-          createdAt: 1,
-          updatedAt: 1,
-          lastAuthenticatedAt: 1
-        }
-      ]
-    })
-    const store = createStore(settings)
-    const callOrder: string[] = []
-    const rateLimits = {
-      refreshForCodexAccountChange: vi.fn(async () => {
-        callOrder.push('refresh')
-      }),
-      evictInactiveCodexCache: vi.fn()
-    }
-    const runtimeHome = createRuntimeHome()
-
-    const { CodexAccountService } = await import('./service')
-    const service = new CodexAccountService(
-      store as never,
-      rateLimits as never,
-      runtimeHome as never
-    )
-
-    const p1 = service.selectAccount('account-1')
-    const p2 = service.selectAccount(null)
-    await Promise.all([p1, p2])
-
-    expect(rateLimits.refreshForCodexAccountChange).toHaveBeenCalledTimes(2)
   })
 
   it('removes command listeners when Codex login times out', async () => {
@@ -1535,12 +1441,10 @@ describe('CodexAccountService config sync', () => {
     try {
       const settings = createSettings()
       const store = createStore(settings)
-      const rateLimits = createRateLimits()
       const runtimeHome = createRuntimeHome()
       const { CodexAccountService } = await import('./service')
       const service = new CodexAccountService(
         store as never,
-        rateLimits as never,
         runtimeHome as never
       )
       const loginPromise = (

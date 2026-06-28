@@ -217,11 +217,11 @@ describe('keybinding-file', () => {
   })
 
   it('migrates legacy settings once when no file exists', () => {
-    migrateLegacyKeybindings(filePath, 'linux', { 'view.tasks': ['Ctrl+Alt+T'] })
-    migrateLegacyKeybindings(filePath, 'linux', { 'view.tasks': ['Ctrl+Alt+X'] })
+    migrateLegacyKeybindings(filePath, 'linux', { 'terminal.search': ['Ctrl+Alt+T'] })
+    migrateLegacyKeybindings(filePath, 'linux', { 'terminal.search': ['Ctrl+Alt+X'] })
 
     expect(readKeybindingFile(filePath, 'linux').overrides).toEqual({
-      'view.tasks': ['Ctrl+Alt+T']
+      'terminal.search': ['Ctrl+Alt+T']
     })
   })
 })

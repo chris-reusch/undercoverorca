@@ -22,7 +22,6 @@ import { prepareLocalWorktreeRootsForRepos } from '../worktree-root-preparation'
 // with the persisted value. Electron doesn't reactively re-render menu
 // items when the backing state changes.
 const APPEARANCE_MENU_KEYS: readonly (keyof GlobalSettings)[] = [
-  'showAutomationsButton',
   'showMobileButton',
   'showTitlebarAppName'
 ]

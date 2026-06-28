@@ -54,7 +54,6 @@ async function readCapturedCredentials(
   const { ClaudeAccountService } = await import('./service')
   const service = new ClaudeAccountService(
     createService() as never,
-    createService() as never,
     createService() as never
   )
   return (
@@ -152,7 +151,6 @@ describe('ClaudeAccountService credential capture', () => {
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       createService() as never,
-      createService() as never,
       createService() as never
     )
     const testService = service as unknown as {
@@ -203,11 +201,9 @@ describe('ClaudeAccountService credential capture', () => {
         throw new Error('materialize failed')
       })
     }
-    const rateLimits = { evictInactiveClaudeCache: vi.fn(), refreshForClaudeAccountChange: vi.fn() }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
     ;(
@@ -276,11 +272,9 @@ describe('ClaudeAccountService credential capture', () => {
         throw new Error('materialize failed')
       })
     }
-    const rateLimits = { evictInactiveClaudeCache: vi.fn(), refreshForClaudeAccountChange: vi.fn() }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
     ;(
@@ -348,11 +342,9 @@ describe('ClaudeAccountService credential capture', () => {
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {}),
       syncForCurrentSelection: vi.fn()
     }
-    const rateLimits = { evictInactiveClaudeCache: vi.fn(), refreshForClaudeAccountChange: vi.fn() }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
     ;(
@@ -428,11 +420,9 @@ describe('ClaudeAccountService credential capture', () => {
         throw new Error('materialize failed')
       })
     }
-    const rateLimits = { evictInactiveClaudeCache: vi.fn(), refreshForClaudeAccountChange: vi.fn() }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
     ;(
@@ -458,7 +448,7 @@ describe('ClaudeAccountService credential capture', () => {
     warn.mockRestore()
   })
 
-  it('refreshes rate limits without recaching a removed active account', async () => {
+  it('clears the active selection when the active account is removed', async () => {
     setPlatform('linux')
     tempDir = '/tmp/orca-claude-service-test'
     rmSync(tempDir, { recursive: true, force: true })
@@ -493,30 +483,21 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      evictInactiveClaudeCache: vi.fn(),
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
 
     await service.removeAccount('account-1')
 
-    expect(rateLimits.evictInactiveClaudeCache).toHaveBeenCalledWith('account-1')
-    expect(rateLimits.refreshForClaudeAccountChange).toHaveBeenCalledWith('account-1', {
-      runtime: 'host'
-    })
     expect(settings).toMatchObject({
       claudeManagedAccounts: [],
       activeClaudeManagedAccountId: null
     })
   })
 
-  it('evicts inactive rate-limit cache after successful reauth', async () => {
+  it('updates the account email after successful reauth', async () => {
     setPlatform('linux')
     tempDir = '/tmp/orca-claude-service-test'
     rmSync(tempDir, { recursive: true, force: true })
@@ -553,14 +534,9 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      evictInactiveClaudeCache: vi.fn(),
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
     ;(
@@ -579,10 +555,6 @@ describe('ClaudeAccountService credential capture', () => {
 
     await service.reauthenticateAccount('account-1')
 
-    expect(rateLimits.evictInactiveClaudeCache).toHaveBeenCalledWith('account-1')
-    expect(rateLimits.refreshForClaudeAccountChange).toHaveBeenCalledWith(undefined, {
-      runtime: 'host'
-    })
     expect(settings.claudeManagedAccounts[0].email).toBe('new@example.com')
   })
 
@@ -624,15 +596,10 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      evictInactiveClaudeCache: vi.fn(),
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const { markClaudePtyExited, markClaudePtySpawned } = await import('./live-pty-gate')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
     ;(
@@ -664,10 +631,6 @@ describe('ClaudeAccountService credential capture', () => {
       wsl: { Ubuntu: null }
     })
     expect(runtimeAuth.syncForCurrentSelection).not.toHaveBeenCalled()
-    expect(rateLimits.refreshForClaudeAccountChange).not.toHaveBeenCalled()
-    expect(rateLimits.evictInactiveClaudeCache).toHaveBeenCalledWith(
-      settings.claudeManagedAccounts[1].id
-    )
   })
 
   it('switches the active Claude account while PTYs are live', async () => {
@@ -723,14 +686,10 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const { markClaudePtyExited, markClaudePtySpawned } = await import('./live-pty-gate')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
 
@@ -747,9 +706,6 @@ describe('ClaudeAccountService credential capture', () => {
       wsl: {}
     })
     expect(runtimeAuth.syncForCurrentSelection).toHaveBeenCalledWith({ runtime: 'host' })
-    expect(rateLimits.refreshForClaudeAccountChange).toHaveBeenCalledWith('account-1', {
-      runtime: 'host'
-    })
   })
 
   it('restores the previous selection when a Claude account switch fails', async () => {
@@ -807,13 +763,9 @@ describe('ClaudeAccountService credential capture', () => {
       }),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
 
@@ -825,7 +777,6 @@ describe('ClaudeAccountService credential capture', () => {
       wsl: {}
     })
     expect(runtimeAuth.forceMaterializeCurrentSelectionForRollback).toHaveBeenCalled()
-    expect(rateLimits.refreshForClaudeAccountChange).not.toHaveBeenCalled()
   })
 
   it('selects a WSL account without changing the Windows active account', async () => {
@@ -881,13 +832,9 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
 
@@ -906,10 +853,6 @@ describe('ClaudeAccountService credential capture', () => {
       wsl: { Ubuntu: 'wsl-account' }
     })
     expect(runtimeAuth.syncForCurrentSelection).toHaveBeenCalledWith({
-      runtime: 'wsl',
-      wslDistro: 'Ubuntu'
-    })
-    expect(rateLimits.refreshForClaudeAccountChange).toHaveBeenCalledWith(null, {
       runtime: 'wsl',
       wslDistro: 'Ubuntu'
     })
@@ -949,13 +892,9 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
 
@@ -963,7 +902,6 @@ describe('ClaudeAccountService credential capture', () => {
       service.selectAccountForTarget('wsl-account', { runtime: 'host' })
     ).rejects.toThrow('different runtime')
     expect(runtimeAuth.syncForCurrentSelection).not.toHaveBeenCalled()
-    expect(rateLimits.refreshForClaudeAccountChange).not.toHaveBeenCalled()
   })
 
   it('removes a WSL account without clearing the Windows active account', async () => {
@@ -1023,14 +961,9 @@ describe('ClaudeAccountService credential capture', () => {
       syncForCurrentSelection: vi.fn(async () => {}),
       forceMaterializeCurrentSelectionForRollback: vi.fn(async () => {})
     }
-    const rateLimits = {
-      evictInactiveClaudeCache: vi.fn(),
-      refreshForClaudeAccountChange: vi.fn(async () => ({ accounts: [], activeAccountId: null }))
-    }
     const { ClaudeAccountService } = await import('./service')
     const service = new ClaudeAccountService(
       store as never,
-      rateLimits as never,
       runtimeAuth as never
     )
 
@@ -1040,11 +973,6 @@ describe('ClaudeAccountService credential capture', () => {
     expect(settings.activeClaudeManagedAccountIdsByRuntime).toEqual({
       host: 'host-account',
       wsl: { Ubuntu: null }
-    })
-    expect(rateLimits.evictInactiveClaudeCache).toHaveBeenCalledWith('wsl-account')
-    expect(rateLimits.refreshForClaudeAccountChange).toHaveBeenCalledWith('wsl-account', {
-      runtime: 'wsl',
-      wslDistro: 'Ubuntu'
     })
   })
 
@@ -1065,7 +993,6 @@ describe('ClaudeAccountService credential capture', () => {
     try {
       const { ClaudeAccountService } = await import('./service')
       const service = new ClaudeAccountService(
-        createService() as never,
         createService() as never,
         createService() as never
       )
