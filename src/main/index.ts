@@ -1498,7 +1498,6 @@ app.whenReady().then(async () => {
       const settings = store?.getSettings()
       const ui = store?.getUI()
       return {
-        showTasksButton: settings?.showTasksButton !== false,
         showAutomationsButton: settings?.showAutomationsButton !== false,
         showMobileButton: settings?.showMobileButton !== false,
         showTitlebarAppName: settings?.showTitlebarAppName !== false,

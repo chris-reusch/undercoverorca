@@ -39,7 +39,6 @@ export type WindowShortcutAction =
   | { type: 'openNewWorkspace' }
   | { type: 'deleteCurrentWorkspace' }
   | { type: 'openWorkspaceBoard' }
-  | { type: 'openTasks' }
   | { type: 'switchRecentTab' }
   | { type: 'jumpToWorktreeIndex'; index: number }
   | { type: 'jumpToTabIndex'; index: number }
@@ -214,10 +213,6 @@ export function resolveWindowShortcutAction(
     return { type: 'dictationKeyDown' }
   }
 
-  if (actionMatches('view.tasks', input, platform, keybindings, options)) {
-    return { type: 'openTasks' }
-  }
-
   if (actionMatches('tab.previousRecent', input, platform, keybindings, options)) {
     return { type: 'switchRecentTab' }
   }
@@ -283,8 +278,6 @@ export function getWindowShortcutActionId(action: WindowShortcutAction): Keybind
       return 'workspace.delete'
     case 'openWorkspaceBoard':
       return 'workspace.openBoard'
-    case 'openTasks':
-      return 'view.tasks'
     case 'switchRecentTab':
       return 'tab.previousRecent'
     case 'worktreeHistoryNavigate':

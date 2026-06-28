@@ -31,14 +31,7 @@ import { activateWorktreeFromSidebar } from '@/lib/sidebar-worktree-activation'
 import { isFolderRepo } from '../../../../shared/repo-kind'
 import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 import { hostedReviewInfoFromGitHubPRInfo } from '../../../../shared/hosted-review-github'
-import type {
-  GitHubWorkItem,
-  Worktree,
-  Repo,
-  IssueInfo,
-  LinearIssue,
-  PRInfo
-} from '../../../../shared/types'
+import type { Worktree, Repo, IssueInfo, LinearIssue, PRInfo } from '../../../../shared/types'
 import { CONFLICT_OPERATION_LABELS } from './WorktreeCardHelpers'
 import {
   WorktreeCardDetailsHover,
@@ -237,7 +230,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   statusPrDisplay = null
 }: WorktreeCardProps) {
   const openModal = useAppStore((s) => s.openModal)
-  const openTaskPage = useAppStore((s) => s.openTaskPage)
   const openAutomationsPage = useAppStore((s) => s.openAutomationsPage)
   const setPendingAutomationRunNavigation = useAppStore((s) => s.setPendingAutomationRunNavigation)
   const updateWorktreeMeta = useAppStore((s) => s.updateWorktreeMeta)
@@ -1040,52 +1032,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
     agentActivityDisplayMode === 'compact' &&
     compactInlineAgentRows.length > 0
   const showAggregateCacheTimer = !compactCards && !compactInlineAgentRowsVisible
-  const handleOpenGitHubIssueInOrca = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      const issueUrl = hoverIssue && 'url' in hoverIssue ? hoverIssue.url : undefined
-      if (!repo || !hoverIssue || !issueUrl) {
-        return
-      }
-      const item: GitHubWorkItem = {
-        id: issueUrl,
-        type: 'issue',
-        number: hoverIssue.number,
-        title: hoverIssue.title,
-        state: 'state' in hoverIssue ? (hoverIssue.state ?? 'open') : 'open',
-        url: issueUrl,
-        labels: 'labels' in hoverIssue ? (hoverIssue.labels ?? []) : [],
-        updatedAt: new Date().toISOString(),
-        author: null,
-        repoId: repo.id
-      }
-      openTaskPage({ taskSource: 'github', preselectedRepoId: repo.id, openGitHubWorkItem: item })
-    },
-    [hoverIssue, openTaskPage, repo]
-  )
-  const handleOpenReviewInOrca = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (!repo || !hoverReview?.url || hoverReview.provider !== 'github') {
-        return
-      }
-      const item: GitHubWorkItem = {
-        id: hoverReview.url,
-        type: 'pr',
-        number: hoverReview.number,
-        title: hoverReview.title,
-        state: hoverReview.state ?? 'open',
-        url: hoverReview.url,
-        labels: [],
-        updatedAt: 'updatedAt' in hoverReview ? hoverReview.updatedAt : new Date().toISOString(),
-        author: null,
-        headSha: 'headSha' in hoverReview ? hoverReview.headSha : undefined,
-        repoId: repo.id
-      }
-      openTaskPage({ taskSource: 'github', preselectedRepoId: repo.id, openGitHubWorkItem: item })
-    },
-    [hoverReview, openTaskPage, repo]
-  )
   const hasExplicitLinkedReview =
     (hoverReview?.provider === 'github' && worktree.linkedPR !== null) ||
     (hoverReview?.provider === 'gitlab' && linkedGitLabMR !== null) ||
@@ -1114,16 +1060,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
         break
     }
   }, [hoverReview?.provider, updateWorktreeMeta, worktree.id])
-  const handleOpenLinearIssueInOrca = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (!linearIssue) {
-        return
-      }
-      openTaskPage({ taskSource: 'linear', openLinearIssue: linearIssue })
-    },
-    [linearIssue, openTaskPage]
-  )
   const hasDetails = hasWorktreeCardDetails({
     issue: metaIssue,
     linearIssue: metaLinearIssue,
@@ -1235,17 +1171,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
             hoverControl={detailsHoverControl}
             onEditIssue={affiliateListMode ? undefined : handleEditIssue}
             onEditComment={affiliateListMode ? undefined : handleEditComment}
-            onOpenGitHubIssueInOrca={
-              metaIssue && 'url' in metaIssue && metaIssue.url
-                ? handleOpenGitHubIssueInOrca
-                : undefined
-            }
-            onOpenLinearIssueInOrca={linearIssue?.url ? handleOpenLinearIssueInOrca : undefined}
-            onOpenReviewInOrca={
-              metaReview?.url && metaReview.provider === 'github'
-                ? handleOpenReviewInOrca
-                : undefined
-            }
             onOpenAutomation={affiliateListMode ? undefined : handleOpenAutomation}
             onOpenAutomationRun={affiliateListMode ? undefined : handleOpenAutomationRun}
             // Why: compact mode hides the metadata badge row, so title hover
@@ -1300,13 +1225,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
         hoverControl={detailsHoverControl}
         onEditIssue={affiliateListMode ? undefined : handleEditIssue}
         onEditComment={affiliateListMode ? undefined : handleEditComment}
-        onOpenGitHubIssueInOrca={
-          metaIssue && 'url' in metaIssue && metaIssue.url ? handleOpenGitHubIssueInOrca : undefined
-        }
-        onOpenLinearIssueInOrca={linearIssue?.url ? handleOpenLinearIssueInOrca : undefined}
-        onOpenReviewInOrca={
-          metaReview?.url && metaReview.provider === 'github' ? handleOpenReviewInOrca : undefined
-        }
         onOpenAutomation={affiliateListMode ? undefined : handleOpenAutomation}
         onOpenAutomationRun={affiliateListMode ? undefined : handleOpenAutomationRun}
         // Why: branch lookup can show a review without persisted metadata. Only
@@ -1789,15 +1707,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
         hoverControl={detailsHoverControl}
         onEditIssue={affiliateListMode ? undefined : handleEditIssue}
         onEditComment={affiliateListMode ? undefined : handleEditComment}
-        onOpenGitHubIssueInOrca={
-          hoverIssue && 'url' in hoverIssue && hoverIssue.url
-            ? handleOpenGitHubIssueInOrca
-            : undefined
-        }
-        onOpenLinearIssueInOrca={linearIssue?.url ? handleOpenLinearIssueInOrca : undefined}
-        onOpenReviewInOrca={
-          hoverReview?.url && hoverReview.provider === 'github' ? handleOpenReviewInOrca : undefined
-        }
         onOpenAutomation={affiliateListMode ? undefined : handleOpenAutomation}
         onOpenAutomationRun={affiliateListMode ? undefined : handleOpenAutomationRun}
         // Why: branch lookup can show a review without persisted metadata. Only

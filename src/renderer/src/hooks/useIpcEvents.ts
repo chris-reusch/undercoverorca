@@ -5,7 +5,6 @@ import { useAppStore } from '../store'
 import { getWorktreeMapFromState, getRepoMapFromState } from '@/store/selectors'
 import { applyUIZoom } from '@/lib/ui-zoom'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
-import { buildLinearIssueLinkedWorkItem } from '@/lib/linear-linked-work-item'
 import { runWorktreeDelete } from '@/components/sidebar/delete-worktree-flow'
 import { runSleepWorktree } from '@/components/sidebar/sleep-worktree-flow'
 import { OPEN_WORKSPACE_BOARD_EVENT } from '@/components/sidebar/useWorkspaceBoardPanel'
@@ -59,7 +58,6 @@ import {
   resolveAgentStatusIdentity,
   shouldSuppressInheritedTerminalStatus
 } from '../../../shared/agent-status-identity'
-import { isGitRepoKind } from '../../../shared/repo-kind'
 import { TOGGLE_FLOATING_TERMINAL_EVENT } from '@/lib/floating-terminal'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import { activateTabAndFocusPane } from '@/lib/activate-tab-and-focus-pane'
@@ -86,7 +84,6 @@ import { makePaneKey, parsePaneKey } from '../../../shared/stable-pane-id'
 import { collectLeafIdsInOrder } from '@/components/terminal-pane/layout-serialization'
 import { singlePaneLayoutSnapshot } from '@/store/slices/terminal-helpers'
 import { buildWorkspaceSessionPayload } from '@/lib/workspace-session'
-import { getLinearIssueWorkspaceName } from '../../../shared/workspace-name'
 import type { RuntimeClientEvent } from '../../../shared/runtime-client-events'
 import type { AppState } from '../store/types'
 import { guardPinnedTabClose, resolvePinnedTabLabel } from '../store/pinned-tab-close-guard'
@@ -649,35 +646,19 @@ type BrowserSessionTabTarget =
 
 type NewWorkspaceShortcutModalData = {
   telemetrySource: 'shortcut'
-  prefilledName?: string
-  linkedWorkItem?: ReturnType<typeof buildLinearIssueLinkedWorkItem>
 }
 
-export function buildNewWorkspaceShortcutModalData(
-  state: Pick<AppState, 'activeView' | 'taskPageData'>
-): NewWorkspaceShortcutModalData {
-  const linearIssue =
-    state.activeView === 'tasks' ? (state.taskPageData.openLinearIssue ?? null) : null
-  if (!linearIssue) {
-    return { telemetrySource: 'shortcut' }
-  }
-
-  return {
-    telemetrySource: 'shortcut',
-    prefilledName: getLinearIssueWorkspaceName(linearIssue),
-    // Why: Cmd+N from a Linear issue should behave like the issue's Start
-    // workspace action; otherwise the agent launches without source context.
-    linkedWorkItem: buildLinearIssueLinkedWorkItem(linearIssue)
-  }
+export function buildNewWorkspaceShortcutModalData(): NewWorkspaceShortcutModalData {
+  return { telemetrySource: 'shortcut' }
 }
 
 export function openNewWorkspaceFromShortcut(
-  state: Pick<AppState, 'activeModal' | 'activeView' | 'taskPageData' | 'openModal'>
+  state: Pick<AppState, 'activeModal' | 'openModal'>
 ): void {
   if (state.activeModal === 'new-workspace-composer') {
     return
   }
-  state.openModal('new-workspace-composer', buildNewWorkspaceShortcutModalData(state))
+  state.openModal('new-workspace-composer', buildNewWorkspaceShortcutModalData())
 }
 
 export function resolveBrowserSessionTabTarget(
@@ -1247,16 +1228,6 @@ export function useIpcEvents(): void {
         })
       )
     }
-
-    unsubs.push(
-      window.api.ui.onOpenTasks(() => {
-        const store = useAppStore.getState()
-        if (store.activeView === 'settings' || !store.repos.some((repo) => isGitRepoKind(repo))) {
-          return
-        }
-        store.openTaskPage()
-      })
-    )
 
     unsubs.push(
       window.api.ui.onJumpToWorktreeIndex((index) => {

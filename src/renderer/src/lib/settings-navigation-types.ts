@@ -11,7 +11,6 @@ export type SettingsNavTarget =
   | 'accounts'
   | 'browser'
   | 'git'
-  | 'tasks'
   | 'appearance'
   | 'input'
   | 'floating-workspace'

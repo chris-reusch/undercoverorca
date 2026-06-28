@@ -480,33 +480,6 @@ export function AppearancePane({
 
           <SearchableSetting
             title={translate(
-              'auto.components.settings.AppearancePane.cf81907069',
-              'Show Tasks Button'
-            )}
-            description={translate(
-              'auto.components.settings.AppearancePane.661942ab7f',
-              'Show the Tasks button at the top of the left sidebar.'
-            )}
-            keywords={getSidebarEntries()[0]?.keywords ?? ['tasks', 'sidebar', 'button']}
-          >
-            <SettingsSwitchRow
-              label={translate(
-                'auto.components.settings.AppearancePane.cf81907069',
-                'Show Tasks Button'
-              )}
-              description={translate(
-                'auto.components.settings.AppearancePane.661942ab7f',
-                'Show the Tasks button at the top of the left sidebar.'
-              )}
-              checked={settings.showTasksButton !== false}
-              onChange={() =>
-                updateSettings({ showTasksButton: !(settings.showTasksButton !== false) })
-              }
-            />
-          </SearchableSetting>
-
-          <SearchableSetting
-            title={translate(
               'auto.components.settings.AppearancePane.511f270ebb',
               'Show Automations Button'
             )}

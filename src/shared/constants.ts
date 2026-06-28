@@ -271,7 +271,6 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     sourceControlViewMode: 'list',
     sourceControlGroupOrder: DEFAULT_SOURCE_CONTROL_GROUP_ORDER,
     showTitlebarAppName: true,
-    showTasksButton: true,
     showAutomationsButton: true,
     // Privacy-hardened fork: mobile companion is turned off, so hide its entry point.
     showMobileButton: false,

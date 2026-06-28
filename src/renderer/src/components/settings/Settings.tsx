@@ -38,7 +38,6 @@ import { AgentsPane } from './AgentsPane'
 import { OrchestrationPane } from './OrchestrationPane'
 import { AccountsPane } from './AccountsPane'
 import { IntegrationsPane } from './IntegrationsPane'
-import { TasksPane } from './TasksPane'
 import { QuickCommandsPane } from './QuickCommandsPane'
 import { DeveloperPermissionsPane } from './DeveloperPermissionsPane'
 import { ComputerUsePane } from './ComputerUsePane'
@@ -1247,20 +1246,6 @@ function Settings(): React.JSX.Element {
                       />
                       <GitProviderApiBudgetPane settingsSearchQuery={settingsSearchQuery} />
                     </>
-                  ) : null}
-                </SettingsSection>
-
-                <SettingsSection
-                  id="tasks"
-                  title={translate('auto.components.settings.Settings.11faa2f7dd', 'Task Sources')}
-                  description={translate(
-                    'auto.components.settings.Settings.dd72ed437a',
-                    'Choose which task providers appear in the Tasks page and sidebar.'
-                  )}
-                  searchEntries={getSectionSearchEntries('tasks')}
-                >
-                  {isSectionMounted('tasks') ? (
-                    <TasksPane settings={settings} updateSettings={updateSettings} />
                   ) : null}
                 </SettingsSection>
 

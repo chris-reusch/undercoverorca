@@ -208,11 +208,11 @@ describe('keybindings', () => {
   it('reports conflicts across default and customized actions', () => {
     expect(findKeybindingConflicts('linux')).toEqual([])
 
-    const conflicts = findKeybindingConflicts('linux', { 'view.tasks': ['Mod+P'] })
+    const conflicts = findKeybindingConflicts('linux', { 'workspace.delete': ['Mod+P'] })
 
     expect(conflicts).toContainEqual({
       binding: 'Mod+P',
-      actionIds: expect.arrayContaining(['worktree.quickOpen', 'view.tasks'])
+      actionIds: expect.arrayContaining(['worktree.quickOpen', 'workspace.delete'])
     })
   })
 
@@ -1171,11 +1171,11 @@ describe('keybindings', () => {
     // are in customizedActions and the conflict detector must flag them.
     const conflicts = findKeybindingConflicts('darwin', {
       'worktree.quickOpen': ['DoubleTap+Shift'],
-      'view.tasks': ['DoubleTap+Shift']
+      'workspace.delete': ['DoubleTap+Shift']
     })
     expect(conflicts).toContainEqual({
       binding: 'DoubleTap+Shift',
-      actionIds: expect.arrayContaining(['worktree.quickOpen', 'view.tasks'])
+      actionIds: expect.arrayContaining(['worktree.quickOpen', 'workspace.delete'])
     })
   })
 
@@ -1183,21 +1183,21 @@ describe('keybindings', () => {
     expect(
       findKeybindingConflicts('darwin', {
         'worktree.quickOpen': ['DoubleTap+Mod'],
-        'view.tasks': ['DoubleTap+Cmd']
+        'workspace.delete': ['DoubleTap+Cmd']
       })
     ).toContainEqual({
       binding: 'DoubleTap+Mod',
-      actionIds: expect.arrayContaining(['worktree.quickOpen', 'view.tasks'])
+      actionIds: expect.arrayContaining(['worktree.quickOpen', 'workspace.delete'])
     })
 
     expect(
       findKeybindingConflicts('linux', {
         'worktree.quickOpen': ['DoubleTap+Mod'],
-        'view.tasks': ['DoubleTap+Ctrl']
+        'workspace.delete': ['DoubleTap+Ctrl']
       })
     ).toContainEqual({
       binding: 'DoubleTap+Mod',
-      actionIds: expect.arrayContaining(['worktree.quickOpen', 'view.tasks'])
+      actionIds: expect.arrayContaining(['worktree.quickOpen', 'workspace.delete'])
     })
   })
 

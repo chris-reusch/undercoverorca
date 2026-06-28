@@ -13,7 +13,6 @@ import {
   GitBranch,
   Globe,
   Keyboard,
-  ListChecks,
   Lock,
   Mic,
   MousePointerClick,
@@ -44,7 +43,6 @@ import { getIntegrationsPaneSearchEntries } from '@/components/settings/integrat
 import { getGitPaneSearchEntries } from '@/components/settings/git-search'
 import { getGitProviderApiBudgetSearchEntries } from '@/components/settings/git-provider-api-budget-search'
 import { getCommitMessageAiPaneSearchEntries } from '@/components/settings/commit-message-ai-search'
-import { getTasksPaneSearchEntries } from '@/components/settings/tasks-search'
 import { getFloatingWorkspaceSearchEntries } from '@/components/settings/floating-workspace-search'
 import { getAppearancePaneSearchEntries } from '@/components/settings/appearance-search'
 import { getInputPaneSearchEntries } from '@/components/settings/input-search'
@@ -241,17 +239,6 @@ export function buildSettingsNavigationMetadata({
         ...getCommitMessageAiPaneSearchEntries(),
         ...getGitProviderApiBudgetSearchEntries()
       ],
-      group: 'workflows'
-    },
-    {
-      id: 'tasks',
-      title: translate('auto.hooks.useSettingsNavigationMetadata.85f4fd7710', 'Task Sources'),
-      description: translate(
-        'auto.hooks.useSettingsNavigationMetadata.5235c215ca',
-        'Choose which task providers appear in the Tasks page and sidebar.'
-      ),
-      icon: ListChecks,
-      searchEntries: getTasksPaneSearchEntries(),
       group: 'workflows'
     },
     {

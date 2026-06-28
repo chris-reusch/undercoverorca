@@ -68,7 +68,7 @@ function makeStore(overrides: Partial<ReturnType<typeof baseStore>> = {}) {
 
 function baseStore() {
   return {
-    activeView: 'tasks' as const,
+    activeView: 'automations' as const,
     repos: [repo],
     pendingWorktreeCreations: {},
     sshConnectionStates: new Map(),
@@ -419,7 +419,7 @@ describe('createGitHubWorkItemWorkspaceInBackground', () => {
     expect(result).toEqual({ kind: 'fallback', reason: 'agent-startup' })
     expect(deps.toastError).toHaveBeenCalledWith('Could not build the agent launch command.')
     expect(deps.removePendingCreate).toHaveBeenCalledWith('creation-1')
-    expect(deps.setActiveView).toHaveBeenCalledWith('tasks')
+    expect(deps.setActiveView).toHaveBeenCalledWith('automations')
     expect(openModalFallback).toHaveBeenCalledTimes(1)
     expect(deps.continueBackgroundCreate).not.toHaveBeenCalled()
   })
@@ -500,7 +500,7 @@ describe('createGitHubWorkItemWorkspaceInBackground', () => {
     expect(result).toEqual({ kind: 'fallback', reason: 'setup-ask' })
     expect(openModalFallback).toHaveBeenCalledTimes(1)
     expect(deps.removePendingCreate).toHaveBeenCalledWith('creation-1')
-    expect(deps.setActiveView).toHaveBeenCalledWith('tasks')
+    expect(deps.setActiveView).toHaveBeenCalledWith('automations')
     expect(deps.continueBackgroundCreate).not.toHaveBeenCalled()
   })
 
@@ -540,7 +540,7 @@ describe('createGitHubWorkItemWorkspaceInBackground', () => {
     expect(deps.toastError).toHaveBeenCalledWith('No PR head')
     expect(openModalFallback).toHaveBeenCalledTimes(1)
     expect(deps.removePendingCreate).toHaveBeenCalledWith('creation-1')
-    expect(deps.setActiveView).toHaveBeenCalledWith('tasks')
+    expect(deps.setActiveView).toHaveBeenCalledWith('automations')
     expect(deps.continueBackgroundCreate).not.toHaveBeenCalled()
   })
 
