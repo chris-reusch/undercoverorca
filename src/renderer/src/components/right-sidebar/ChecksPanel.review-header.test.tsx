@@ -33,20 +33,17 @@ function renderHeader({
   showSystemBrowserHint = true
 }: {
   canUnlinkPullRequest?: boolean
-  provider?: 'github' | 'gitlab'
+  provider?: 'github'
   showSystemBrowserHint?: boolean
 } = {}): string {
-  const isGitLab = provider === 'gitlab'
   return renderToStaticMarkup(
     <ChecksPanelReviewHeader
       review={{
         provider,
-        number: isGitLab ? 31 : 2964,
-        title: isGitLab ? 'Fix GitLab MR creation' : 'fix: pr-bug-scan validated finding',
+        number: 2964,
+        title: 'fix: pr-bug-scan validated finding',
         state: 'open',
-        url: isGitLab
-          ? 'https://gitlab.com/acme/orca/-/merge_requests/31'
-          : 'https://github.com/stablyai/orca/pull/2964',
+        url: 'https://github.com/stablyai/orca/pull/2964',
         status: 'pending',
         updatedAt: '2026-05-31T22:58:01Z',
         mergeable: 'UNKNOWN'
@@ -101,15 +98,5 @@ describe('ChecksPanelReviewHeader', () => {
 
     expect(markup).toContain('data-disabled="true"')
     expect(markup).toContain('unlink PR')
-  })
-
-  it('shows GitLab MR identity without GitHub-only link management actions', () => {
-    const markup = renderHeader({ provider: 'gitlab' })
-
-    expect(markup).toContain('Open on GitLab')
-    expect(markup).toContain('!31')
-    expect(markup).not.toContain('More PR actions')
-    expect(markup).not.toContain('unlink PR')
-    expect(markup).not.toContain('Link another PR')
   })
 })

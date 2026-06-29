@@ -8,106 +8,41 @@ import {
 } from './task-providers'
 
 describe('task providers', () => {
-  it('normalizes provider lists while preserving supported order', () => {
-    expect(normalizeVisibleTaskProviders(['gitlab', 'unknown', 'gitlab', 'github'])).toEqual([
-      'gitlab',
-      'github'
-    ])
+  it('normalizes provider lists to the supported set', () => {
+    expect(normalizeVisibleTaskProviders(['github', 'unknown', 'github'])).toEqual(['github'])
   })
 
   it('falls back to all providers when none are visible', () => {
-    expect(normalizeVisibleTaskProviders([])).toEqual(['github', 'gitlab'])
-  })
-
-  it('restores a valid saved default when provider settings drifted', () => {
-    expect(
-      normalizeTaskProviderSettings({
-        visibleTaskProviders: ['gitlab'],
-        defaultTaskSource: 'github'
-      })
-    ).toEqual({
-      defaultTaskSource: 'github',
-      visibleTaskProviders: ['github', 'gitlab']
-    })
+    expect(normalizeVisibleTaskProviders([])).toEqual(['github'])
   })
 
   it('normalizes invalid saved defaults to the first visible provider', () => {
     expect(
       normalizeTaskProviderSettings({
-        visibleTaskProviders: ['gitlab'],
+        visibleTaskProviders: ['github'],
         defaultTaskSource: 'bitbucket'
       })
     ).toEqual({
-      defaultTaskSource: 'gitlab',
-      visibleTaskProviders: ['gitlab']
+      defaultTaskSource: 'github',
+      visibleTaskProviders: ['github']
     })
   })
 
-  it('resolves hidden preferred providers to the first visible provider', () => {
-    expect(resolveVisibleTaskProvider('github', ['gitlab'])).toBe('gitlab')
+  it('resolves preferred providers to the first visible provider', () => {
+    expect(resolveVisibleTaskProvider('github', ['github'])).toBe('github')
   })
 
-  it('filters runtime-unavailable providers without changing preference normalization', () => {
+  it('keeps GitHub available regardless of runtime detection', () => {
+    expect(filterAvailableTaskProviders(['github'], { gitlabInstalled: false })).toEqual(['github'])
+  })
+
+  it('restores the saved default while normalizing visible providers', () => {
     expect(
-      filterAvailableTaskProviders(['github', 'gitlab'], {
-        gitlabInstalled: false
-      })
+      restoreAvailableDefaultTaskProvider(['github'], { gitlabInstalled: false }, 'github')
     ).toEqual(['github'])
   })
 
-  it('keeps an available saved default visible when provider visibility drifted', () => {
-    expect(
-      restoreAvailableDefaultTaskProvider(
-        ['gitlab'],
-        {
-          gitlabInstalled: true
-        },
-        'github'
-      )
-    ).toEqual(['github', 'gitlab'])
-  })
-
-  it('preserves intentionally narrowed providers when the saved default matches them', () => {
-    expect(
-      restoreAvailableDefaultTaskProvider(
-        ['gitlab'],
-        {
-          gitlabInstalled: true
-        },
-        'gitlab'
-      )
-    ).toEqual(['gitlab'])
-  })
-
-  it('does not restore an unavailable saved default', () => {
-    expect(
-      restoreAvailableDefaultTaskProvider(
-        ['github'],
-        {
-          gitlabInstalled: false
-        },
-        'gitlab'
-      )
-    ).toEqual(['github'])
-  })
-
-  it('ignores invalid saved defaults while restoring visible providers', () => {
-    expect(
-      restoreAvailableDefaultTaskProvider(
-        ['gitlab'],
-        {
-          gitlabInstalled: false
-        },
-        'bitbucket'
-      )
-    ).toEqual(['github'])
-  })
-
-  it('falls back to GitHub when every preferred provider is unavailable', () => {
-    expect(
-      filterAvailableTaskProviders(['gitlab'], {
-        gitlabInstalled: false
-      })
-    ).toEqual(['github'])
+  it('falls back to GitHub when no preferred provider is available', () => {
+    expect(filterAvailableTaskProviders([], { gitlabInstalled: false })).toEqual(['github'])
   })
 })

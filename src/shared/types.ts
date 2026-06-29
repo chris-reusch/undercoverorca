@@ -11,7 +11,6 @@ import type {
 import type { VoiceSettings } from './speech-types'
 import type { WorkspaceCleanupUIState } from './workspace-cleanup'
 import type { LargeDiffRenderLimit } from './large-diff-render-limit'
-import type { GitLabProjectSettings } from './gitlab-types'
 import type { TaskProvider } from './task-providers'
 import type { FeatureTipId } from './feature-tips'
 import type { ContextualTourId } from './contextual-tours'
@@ -1705,48 +1704,6 @@ export type ClassifiedError = {
 // can continue using the short local name.
 export type GitHubOwnerRepo = GitHubRepositoryIdentity
 
-// Why: GitLab-specific types live in `./gitlab-types` so they can grow
-// independently from the central types file (which is touched by every
-// upstream feature). Re-exported here so existing call sites
-// (`from '../shared/types'`) keep working without changes.
-export type {
-  GitLabAssignableUser,
-  GitLabAuthDiagnostic,
-  GitLabCommentResult,
-  GitLabDiscussionResolveResult,
-  GitLabIssueInfo,
-  GitLabIssueState,
-  GitLabIssueUpdate,
-  GitLabJobTraceResult,
-  GitLabRateLimitBucket,
-  GitLabRateLimitSnapshot,
-  GitLabMRApprovalRule,
-  GitLabMRApprovalState,
-  GitLabMRFile,
-  GitLabMRInlineCommentInput,
-  GitLabMRReviewersUpdateResult,
-  GitLabMRUpdate,
-  GitLabPagedResult,
-  GitLabPipelineJob,
-  GitLabProjectRef,
-  GitLabProjectSettings,
-  GitLabRetryJobResult,
-  GitLabReaction,
-  GitLabTodo,
-  GitLabTodoTargetType,
-  GitLabViewer,
-  GitLabWorkItem,
-  GitLabWorkItemDetails,
-  GetGitLabRateLimitResult,
-  ListMergeRequestsResult,
-  MRCheckDetail,
-  MRComment,
-  MRInfo,
-  MRListState,
-  MRMergeableState,
-  MRState
-} from './gitlab-types'
-
 /**
  * GitHub API rate-limit buckets surfaced in the TaskPage header so users can
  * see remaining budget before they hit the wall. `core` = REST (5000/hr),
@@ -2723,10 +2680,6 @@ export type GlobalSettings = {
   commitMessageAi?: CommitMessageAiSettings
   /** Source-control AI generation settings for commit messages and hosted-review drafts. */
   sourceControlAi?: SourceControlAiSettings
-  /** GitLab project preferences — pinned + recent project paths.
-   *  Optional for backward compatibility with profiles saved before
-   *  GitLab support; the persistence merge fills the empty default. */
-  gitlabProjects?: GitLabProjectSettings
   /** Local voice/dictation configuration (Phase 1 voice feature). Optional
    *  because profiles created before voice landed won't have the key;
    *  `getDefaultSettings()` hydrates `getDefaultVoiceSettings()` via the

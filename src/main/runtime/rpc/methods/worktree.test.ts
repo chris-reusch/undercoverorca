@@ -321,31 +321,6 @@ describe('worktree RPC methods', () => {
     })
   })
 
-  it('passes explicit repo selectors to MR base resolution', async () => {
-    const runtime = {
-      getRuntimeId: () => 'test-runtime',
-      resolveManagedMrBase: vi.fn().mockResolvedValue({ baseBranch: 'origin/mr-head' })
-    } as unknown as OrcaRuntimeService
-    const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
-
-    const response = await dispatcher.dispatch(
-      makeRequest('worktree.resolveMrBase', {
-        repo: 'id:repo-1',
-        mrIid: 42,
-        sourceBranch: 'feature/mr-head',
-        isCrossRepository: false
-      })
-    )
-
-    expect(response).toMatchObject({ ok: true })
-    expect(runtime.resolveManagedMrBase).toHaveBeenCalledWith({
-      repoSelector: 'id:repo-1',
-      mrIid: 42,
-      sourceBranch: 'feature/mr-head',
-      isCrossRepository: false
-    })
-  })
-
   it('forwards Linear metadata through worktree.set', async () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',

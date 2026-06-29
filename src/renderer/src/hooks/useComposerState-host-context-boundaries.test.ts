@@ -21,7 +21,7 @@ describe('useComposerState host-context boundaries', () => {
     const section = sourceBetween(
       HOOK_SOURCE,
       'const handleSmartGitHubItemSelect',
-      'const handleSmartGitLabItemSelect'
+      'const handleSmartBranchSelect'
     )
 
     expect(section).toContain('const runRepo = selectedRepo ??')
@@ -30,21 +30,6 @@ describe('useComposerState host-context boundaries', () => {
     expect(section).toContain('settings: itemRepoSettings')
     expect(section).not.toContain('repoId: repoForItem.id')
     expect(section).not.toContain('repo: repoForItem.id')
-  })
-
-  it('resolves GitLab MR bases against the selected run repo, not the source item repo', () => {
-    const section = sourceBetween(
-      HOOK_SOURCE,
-      'const handleSmartGitLabItemSelect',
-      'const handleSmartBranchSelect'
-    )
-
-    expect(section).toContain('const runRepo = selectedRepo ??')
-    expect(section).toContain('repoId: runRepo.id')
-    expect(section).toContain('getSettingsForRepoRuntimeOwner')
-    expect(section).toContain('worktree.resolveMrBase')
-    expect(section).toContain('repo: runRepo.id')
-    expect(section).not.toContain('repoId: repoForItem.id')
   })
 
   it('does not use local SSH gates for runtime-owned folder targets', () => {
@@ -146,7 +131,7 @@ describe('useComposerState host-context boundaries', () => {
     const submitLookup = sourceBetween(
       HOOK_SOURCE,
       'const resolvePendingSmartGitHubSubmit',
-      'const applyLinkedGitLabWorkItem'
+      'const handleSelectLinkedItem'
     )
     expect(submitLookup).toContain('resolveGitHubPrStartPointForRepo')
     expect(submitLookup).toContain("kind: 'pr-start-point'")
@@ -267,6 +252,8 @@ describe('useComposerState host-context boundaries', () => {
   })
 
   it('clears stale opposite-provider review fields when selecting linked work items', () => {
+    // Why: the GitHub apply path still clears the inert GitLab linked-state
+    // slots so legacy metadata cannot resurface after a GitHub selection.
     const githubApply = sourceBetween(
       HOOK_SOURCE,
       'const applyLinkedWorkItem = useCallback',
@@ -275,14 +262,6 @@ describe('useComposerState host-context boundaries', () => {
     expect(githubApply).toContain('setLinkedGitLabIssue(null)')
     expect(githubApply).toContain('setLinkedGitLabMR(null)')
 
-    const gitlabApply = sourceBetween(
-      HOOK_SOURCE,
-      'const applyLinkedGitLabWorkItem = useCallback',
-      'const handleSelectLinkedItem'
-    )
-    expect(gitlabApply).toContain("setLinkedIssue('')")
-    expect(gitlabApply).toContain('setLinkedPR(null)')
-
     const projectGroupSmartHandlers = sourceBetween(
       HOOK_SOURCE,
       'const handleSmartGitHubItemSelect',
@@ -290,8 +269,6 @@ describe('useComposerState host-context boundaries', () => {
     )
     expect(projectGroupSmartHandlers).toContain('setLinkedGitLabIssue(null)')
     expect(projectGroupSmartHandlers).toContain('setLinkedGitLabMR(null)')
-    expect(projectGroupSmartHandlers).toContain("setLinkedIssue('')")
-    expect(projectGroupSmartHandlers).toContain('setLinkedPR(null)')
   })
 
   it('disables repo-backed folder smart lookup when a folder target has no source repos', () => {

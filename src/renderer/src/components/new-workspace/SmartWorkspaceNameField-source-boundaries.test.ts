@@ -26,20 +26,20 @@ describe('SmartWorkspaceNameField repo-backed source boundaries', () => {
     expect(modeResetSection).toContain("setMode(availableModes[0]?.id ?? 'text')")
     expect(modeResetSection).toContain('repoBackedSourcesDisabled')
     expect(modeResetSection).toContain('setGithubItems([])')
-    expect(modeResetSection).toContain('setGitlabItems([])')
     expect(modeResetSection).toContain('setBranches([])')
     expect(modeResetSection).toContain('setCrossRepoPrompt(null)')
 
     const availableModesSection = sourceBetween(
       FIELD_SOURCE,
       'const availableModes = getSmartWorkspaceNameModes().filter',
-      'const mrStateFilters = getMrStateFilters()'
+      'useEffect(() => {\n    if (availableModes.some'
     )
     expect(availableModesSection).toContain('return !repoBackedSourcesDisabled')
-    expect(availableModesSection).toContain('return gitlabSourceAvailable')
+    // Why: GitLab work-item sources were removed; the gitlab tab is always hidden.
+    expect(availableModesSection).toContain("if (item.id === 'gitlab')")
+    expect(availableModesSection).toContain('return false')
     expect(availableModesSection).toContain('branchesEnabled && !repoBackedSourcesDisabled')
     expect(FIELD_SOURCE).toContain('repoBackedSourcesDisabled')
-    expect(FIELD_SOURCE).toContain('!textOnly &&\n    gitlabSourceAvailable')
 
     const placeholderSection = sourceBetween(
       FIELD_SOURCE,
@@ -71,7 +71,6 @@ describe('SmartWorkspaceNameField repo-backed source boundaries', () => {
 
     expect(targetSection).toContain('repoBackedSearchRepos.length > 0')
     expect(targetSection).toContain('githubSourceContext')
-    expect(targetSection).toContain('gitlabSourceContext')
 
     const githubLookupSection = sourceBetween(
       FIELD_SOURCE,

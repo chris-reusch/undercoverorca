@@ -1,4 +1,4 @@
-import type { BaseRefSearchResult, GitHubWorkItem, GitLabWorkItem } from '../../../../shared/types'
+import type { BaseRefSearchResult, GitHubWorkItem } from '../../../../shared/types'
 import { isClipboardTextByteLengthOverLimit } from '../../../../shared/clipboard-text'
 
 export type SmartNameMode = 'smart' | 'github' | 'gitlab' | 'branches' | 'text'
@@ -9,7 +9,6 @@ export type SmartWorkspaceSourceRow =
   | { kind: 'use-name'; value: string; name: string }
   | { kind: 'create-branch'; value: string; name: string }
   | { kind: 'github'; value: string; item: GitHubWorkItem }
-  | { kind: 'gitlab'; value: string; item: GitLabWorkItem }
   | { kind: 'branch'; value: string; refName: string; localBranchName: string }
 
 const EMPTY_HINT_BY_MODE: Record<SmartNameMode, string> = {
@@ -96,16 +95,12 @@ export function getVisibleBranchResults({
 export function buildSmartWorkspaceSourceRows({
   branches,
   githubItems,
-  gitlabAvailable,
-  gitlabItems,
   mode,
   resultLimit,
   value
 }: {
   branches: BaseRefSearchResult[]
   githubItems: GitHubWorkItem[]
-  gitlabAvailable: boolean
-  gitlabItems: GitLabWorkItem[]
   mode: SmartNameMode
   resultLimit: number
   value: string
@@ -126,15 +121,6 @@ export function buildSmartWorkspaceSourceRows({
       ...githubItems.map((item) => ({
         kind: 'github' as const,
         value: `github-${item.repoId}-${item.type}-${item.number}`,
-        item
-      }))
-    )
-  }
-  if (gitlabAvailable && (mode === 'smart' || mode === 'gitlab')) {
-    nextRows.push(
-      ...gitlabItems.map((item) => ({
-        kind: 'gitlab' as const,
-        value: `gitlab-${item.repoId}-${item.type}-${item.number}`,
         item
       }))
     )

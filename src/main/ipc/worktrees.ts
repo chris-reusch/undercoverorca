@@ -1211,33 +1211,6 @@ export function registerWorktreeHandlers(
     }
   )
 
-  // Why: keep desktop IPC and mobile/runtime RPC on the same MR base
-  // resolution path so SSH repos do not regress differently by surface.
-  ipcMain.handle(
-    'worktrees:resolveMrBase',
-    async (
-      _event,
-      args: {
-        repoId: string
-        mrIid: number
-        sourceBranch?: string
-        targetBranch?: string
-        isCrossRepository?: boolean
-      }
-    ): Promise<
-      | { baseBranch: string; compareBaseRef?: string; pushTarget?: GitPushTarget }
-      | { error: string }
-    > => {
-      return runtime.resolveManagedMrBase({
-        repoSelector: `id:${args.repoId}`,
-        mrIid: args.mrIid,
-        sourceBranch: args.sourceBranch,
-        targetBranch: args.targetBranch,
-        isCrossRepository: args.isCrossRepository
-      })
-    }
-  )
-
   const worktreeRemovalsInFlight = new Map<string, WorktreeRemovalInFlight>()
 
   ipcMain.handle(

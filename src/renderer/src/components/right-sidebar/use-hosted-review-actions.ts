@@ -61,20 +61,13 @@ export function useHostedReviewActions({
       setMerging(true)
       setActionError(null)
       try {
-        const result = isGitLab
-          ? await window.api.gl.mergeMR({
-              repoPath: repo.path,
-              repoId: repo.id,
-              iid: review.number,
-              method
-            })
-          : await window.api.gh.mergePR({
-              repoPath: repo.path,
-              repoId: repo.id,
-              prNumber: review.number,
-              method,
-              prRepo: githubPR?.prRepo ?? null
-            })
+        const result = await window.api.gh.mergePR({
+          repoPath: repo.path,
+          repoId: repo.id,
+          prNumber: review.number,
+          method,
+          prRepo: githubPR?.prRepo ?? null
+        })
         if (!result.ok) {
           setActionError(result.error)
         } else {
@@ -163,24 +156,12 @@ export function useHostedReviewActions({
       setStateUpdating(nextState)
       setActionError(null)
       try {
-        const result = isGitLab
-          ? isClosing
-            ? await window.api.gl.closeMR({
-                repoPath: repo.path,
-                repoId: repo.id,
-                iid: review.number
-              })
-            : await window.api.gl.reopenMR({
-                repoPath: repo.path,
-                repoId: repo.id,
-                iid: review.number
-              })
-          : await window.api.gh.updatePRState({
-              repoPath: repo.path,
-              repoId: repo.id,
-              prNumber: review.number,
-              updates: { state: nextState }
-            })
+        const result = await window.api.gh.updatePRState({
+          repoPath: repo.path,
+          repoId: repo.id,
+          prNumber: review.number,
+          updates: { state: nextState }
+        })
         if (!result.ok) {
           setActionError(result.error)
           toast.error(result.error)

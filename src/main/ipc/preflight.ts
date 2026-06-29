@@ -5,10 +5,6 @@ import path from 'path'
 import { getTuiAgentDetectCommands, TUI_AGENT_CONFIG } from '../../shared/tui-agent-config'
 import type { PathSource, ShellHydrationFailureReason } from '../../shared/types'
 import { hydrateShellPath, mergePathSegments } from '../startup/hydrate-shell-path'
-import { getAzureDevOpsAuthStatus } from '../azure-devops/client'
-import { getBitbucketAuthStatus } from '../bitbucket/client'
-import { getGiteaAuthStatus } from '../gitea/client'
-import { _resetKnownHostsCache } from '../gitlab/gl-utils'
 import { getActiveMultiplexer } from './ssh'
 import { detectWslCommandsOnPath, type WslPreflightTarget } from './preflight-wsl-agent-detection'
 import { runPreflightCommandInWsl } from './preflight-wsl-command'
@@ -22,26 +18,6 @@ const PREFLIGHT_COMMAND_TIMEOUT_MS = 5000
 export type PreflightStatus = {
   git: { installed: boolean }
   gh: { installed: boolean; authenticated: boolean }
-  // Why: optional so existing renderer call sites that only render git/gh
-  // status keep typechecking. Consumers that surface GitLab-specific
-  // affordances (the GitLab tab in the source picker, MR list, etc.)
-  // gate on `glab?.authenticated`.
-  glab?: { installed: boolean; authenticated: boolean }
-  bitbucket?: { configured: boolean; authenticated: boolean; account: string | null }
-  azureDevOps?: {
-    configured: boolean
-    authenticated: boolean
-    account: string | null
-    baseUrl: string | null
-    tokenConfigured: boolean
-  }
-  gitea?: {
-    configured: boolean
-    authenticated: boolean
-    account: string | null
-    baseUrl: string | null
-    tokenConfigured: boolean
-  }
 }
 
 // Why: cache the result so repeated Landing mounts don't re-spawn processes.
@@ -284,22 +260,6 @@ async function isGhAuthenticated(wslTarget?: WslPreflightTarget): Promise<boolea
   }
 }
 
-// Why: parallel to isGhAuthenticated for the glab CLI. glab writes auth
-// status to stderr in some versions and stdout in others; check both.
-async function isGlabAuthenticated(wslTarget?: WslPreflightTarget): Promise<boolean> {
-  try {
-    await (wslTarget
-      ? execCommandInWsl(wslTarget, `${shellQuote('glab')} auth status`)
-      : execLocalPreflightCommand('glab', ['auth', 'status']))
-    return true
-  } catch (error) {
-    const stdout = (error as { stdout?: string }).stdout ?? ''
-    const stderr = (error as { stderr?: string }).stderr ?? ''
-    const output = `${stdout}\n${stderr}`
-    return output.includes('Logged in')
-  }
-}
-
 export async function runPreflightCheck(
   force = false,
   context?: PreflightRuntimeContext
@@ -309,37 +269,16 @@ export async function runPreflightCheck(
     return cached
   }
 
-  if (force) {
-    // Why: the GitLab known-hosts cache (gl-utils) is populated lazily on the
-    // first GitLab request and never invalidated within a session. A user who
-    // runs `glab auth login` for a self-hosted host after Orca starts would
-    // otherwise see "No GitLab project found" until app relaunch. The Re-check
-    // path in IntegrationsPane forces preflight, so piggyback on that signal
-    // to refresh the host list too.
-    _resetKnownHostsCache()
-  }
-
-  const [gitProbe, ghProbe, glabProbe] = await Promise.all([
+  const [gitProbe, ghProbe] = await Promise.all([
     detectCommandRuntime('git', context),
-    detectCommandRuntime('gh', context),
-    detectCommandRuntime('glab', context)
+    detectCommandRuntime('gh', context)
   ])
 
-  const [ghAuthenticated, glabAuthenticated, bitbucket, azureDevOps, gitea] = await Promise.all([
-    ghProbe.installed ? isGhAuthenticated(ghProbe.wslTarget) : Promise.resolve(false),
-    glabProbe.installed ? isGlabAuthenticated(glabProbe.wslTarget) : Promise.resolve(false),
-    getBitbucketAuthStatus(),
-    getAzureDevOpsAuthStatus(),
-    getGiteaAuthStatus()
-  ])
+  const ghAuthenticated = ghProbe.installed ? await isGhAuthenticated(ghProbe.wslTarget) : false
 
   const result = {
     git: { installed: gitProbe.installed },
-    gh: { installed: ghProbe.installed, authenticated: ghAuthenticated },
-    glab: { installed: glabProbe.installed, authenticated: glabAuthenticated },
-    bitbucket,
-    azureDevOps,
-    gitea
+    gh: { installed: ghProbe.installed, authenticated: ghAuthenticated }
   }
 
   if (cacheable) {

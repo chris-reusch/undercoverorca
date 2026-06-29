@@ -8,7 +8,6 @@ import {
   WorktreePrefetchCreateBase,
   WorktreePsParams,
   WorktreeRemove,
-  WorktreeResolveMrBase,
   WorktreeResolvePrBase,
   WorktreeSelector,
   WorktreeSet,
@@ -183,18 +182,6 @@ export const WORKTREE_METHODS: RpcMethod[] = [
         prNumber: params.prNumber,
         headRefName: params.headRefName,
         baseRefName: params.baseRefName,
-        isCrossRepository: params.isCrossRepository
-      })
-  }),
-  defineMethod({
-    name: 'worktree.resolveMrBase',
-    params: WorktreeResolveMrBase,
-    handler: async (params, { runtime }) =>
-      runtime.resolveManagedMrBase({
-        repoSelector: params.repo,
-        mrIid: params.mrIid,
-        sourceBranch: params.sourceBranch,
-        targetBranch: params.targetBranch,
         isCrossRepository: params.isCrossRepository
       })
   }),

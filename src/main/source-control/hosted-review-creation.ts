@@ -16,21 +16,12 @@ import {
   supportsHostedReviewCreation,
   type HostedReviewCreationProvider
 } from '../../shared/hosted-review-creation-providers'
-import { isAzureDevOpsReviewCreationAuthenticated } from '../azure-devops/pull-request-creation'
-import { isGiteaReviewCreationAuthenticated } from '../gitea/pull-request-creation'
 import { acquire, ghExecFileAsync, gitExecFileAsync, release } from '../github/gh-utils'
 import { isNoUpstreamError, normalizeGitErrorMessage } from '../../shared/git-remote-error'
 import type { GitUpstreamStatus } from '../../shared/types'
 import { gitOptionalLocksDisabledEnv } from '../git/runner'
 import { resolveDefaultBaseRefViaExec } from '../git/repo'
 import { getUpstreamStatus } from '../git/upstream'
-import { getProjectSlug } from '../gitlab/client'
-import {
-  acquire as acquireGlab,
-  glabExecFileAsync,
-  glabRepoExecOptions,
-  release as releaseGlab
-} from '../gitlab/gl-utils'
 import { getSshGitProvider } from '../providers/ssh-git-dispatch'
 import { detectHostedReviewProvider, getForgeProviderForRepository } from './forge-provider'
 import { getHostedReviewForBranch } from './hosted-review'
@@ -70,29 +61,6 @@ async function isGitHubAuthenticated(
     return false
   } finally {
     release()
-  }
-}
-
-async function isGitLabAuthenticated(
-  repoPath: string,
-  connectionId?: string | null,
-  options: HostedReviewExecutionOptions = {}
-): Promise<boolean> {
-  const projectRef = await getProjectSlug(repoPath, connectionId, options)
-  if (!projectRef) {
-    return false
-  }
-  await acquireGlab()
-  try {
-    await glabExecFileAsync(['auth', 'status', '--hostname', projectRef.host], {
-      ...glabRepoExecOptions(repoPath, connectionId),
-      ...(connectionId ? {} : getHostedReviewLocalGitOptions(options))
-    })
-    return true
-  } catch {
-    return false
-  } finally {
-    releaseGlab()
   }
 }
 
@@ -188,36 +156,12 @@ async function getHostedReviewUpstreamStatus(
   }
 }
 
-function reviewCopy(provider: HostedReviewProvider): {
+function reviewCopy(_provider: HostedReviewProvider): {
   shortLabel: 'PR' | 'MR'
   reviewLabel: 'pull request' | 'merge request'
   providerName: string
   authInstruction: string
 } {
-  if (provider === 'gitlab') {
-    return {
-      shortLabel: 'MR',
-      reviewLabel: 'merge request',
-      providerName: 'GitLab',
-      authInstruction: 'Run glab auth login'
-    }
-  }
-  if (provider === 'azure-devops') {
-    return {
-      shortLabel: 'PR',
-      reviewLabel: 'pull request',
-      providerName: 'Azure DevOps',
-      authInstruction: 'Set ORCA_AZURE_DEVOPS_TOKEN'
-    }
-  }
-  if (provider === 'gitea') {
-    return {
-      shortLabel: 'PR',
-      reviewLabel: 'pull request',
-      providerName: 'Gitea',
-      authInstruction: 'Set ORCA_GITEA_TOKEN'
-    }
-  }
   return {
     shortLabel: 'PR',
     reviewLabel: 'pull request',
@@ -227,20 +171,11 @@ function reviewCopy(provider: HostedReviewProvider): {
 }
 
 async function isProviderAuthenticated(
-  provider: HostedReviewCreationProvider,
+  _provider: HostedReviewCreationProvider,
   repoPath: string,
   connectionId?: string | null,
   options: HostedReviewExecutionOptions = {}
 ): Promise<boolean> {
-  if (provider === 'gitlab') {
-    return isGitLabAuthenticated(repoPath, connectionId, options)
-  }
-  if (provider === 'azure-devops') {
-    return isAzureDevOpsReviewCreationAuthenticated()
-  }
-  if (provider === 'gitea') {
-    return isGiteaReviewCreationAuthenticated()
-  }
   return isGitHubAuthenticated(repoPath, connectionId, options)
 }
 

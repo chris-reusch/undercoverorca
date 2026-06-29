@@ -127,7 +127,6 @@ function renderCard(
         name=""
         onNameValueChange={() => {}}
         onSmartGitHubItemSelect={() => {}}
-        onSmartGitLabItemSelect={() => {}}
         onSmartBranchSelect={() => {}}
         smartNameSelection={null}
         onClearSmartNameSelection={() => {}}

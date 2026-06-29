@@ -15,7 +15,6 @@ import { presentGitHubPRMergeState } from '@/components/github-pr-merge-state'
 import type { PRInfo, Repo, Worktree } from '../../../../shared/types'
 import { resolveGitHubPRMergeMethods } from '../../../../shared/github-pr-merge-methods'
 import { runWorktreeDelete } from '../sidebar/delete-worktree-flow'
-import { presentGitLabMRMergeState } from './gitlab-mr-merge-state'
 import {
   ClosedReviewActions,
   HostedReviewActionError,
@@ -49,9 +48,6 @@ export default function HostedReviewActions({
   const shortLabel = isGitLab ? 'MR' : 'PR'
   const reviewLabel = isGitLab ? 'merge request' : 'pull request'
   const mergePresentation = useMemo(() => {
-    if (isGitLab) {
-      return { ...presentGitLabMRMergeState(review), autoMergeAction: null }
-    }
     return presentGitHubPRMergeState({
       ...githubPR,
       state: review.state,

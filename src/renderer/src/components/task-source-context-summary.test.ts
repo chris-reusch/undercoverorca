@@ -122,42 +122,6 @@ describe('task source context summary', () => {
     )
   })
 
-  it('summarizes multiple repo-backed hosts without hiding the selected count', () => {
-    const summary = getTaskSourceContextSummary({
-      provider: 'gitlab',
-      providerLabel: 'GitLab',
-      selectedRepoCount: 3,
-      repoContexts: [
-        {
-          kind: 'task-source',
-          provider: 'gitlab',
-          projectId: 'project-a',
-          hostId: 'local',
-          repoId: 'repo-a'
-        },
-        {
-          kind: 'task-source',
-          provider: 'gitlab',
-          projectId: 'project-b',
-          hostId: 'ssh:build',
-          repoId: 'repo-b'
-        },
-        {
-          kind: 'task-source',
-          provider: 'gitlab',
-          projectId: 'project-c',
-          hostId: 'runtime:linux',
-          repoId: 'repo-c'
-        }
-      ]
-    })
-
-    expect(summary.label).toBe(`GitLab · ${LOCAL_HOST_LABEL} +2 · 3 projects`)
-    expect(summary.title).toBe(
-      `GitLab · Host: ${LOCAL_HOST_LABEL}, build, linux · 3 selected projects`
-    )
-  })
-
   it('shows blocked remote-server source-host availability', () => {
     const summary = getTaskSourceContextSummary({
       provider: 'github',

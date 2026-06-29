@@ -122,7 +122,7 @@ function createSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings
     skipCodexRateLimitResetConfirm: false,
     defaultTaskViewPreset: 'all',
     defaultTaskSource: 'github',
-    visibleTaskProviders: ['github', 'gitlab'],
+    visibleTaskProviders: ['github'],
     defaultRepoSelection: null,
     defaultLinearTeamSelection: null,
     opencodeSessionCookie: '',

@@ -4,34 +4,9 @@ import type {
   HostedReviewInfo,
   HostedReviewProvider
 } from '../../shared/hosted-review'
-import {
-  getAzureDevOpsPullRequest,
-  getAzureDevOpsPullRequestForBranch,
-  getAzureDevOpsRepoSlug
-} from '../azure-devops/client'
-import { createAzureDevOpsPullRequest } from '../azure-devops/pull-request-creation'
-import {
-  getBitbucketPullRequest,
-  getBitbucketPullRequestForBranch,
-  getBitbucketRepoSlug
-} from '../bitbucket/client'
-import {
-  getGiteaPullRequest,
-  getGiteaPullRequestForBranch,
-  getGiteaRepoSlug
-} from '../gitea/client'
-import { createGiteaPullRequest } from '../gitea/pull-request-creation'
 import { getPRForBranch, getRepoSlug } from '../github/client'
 import { createGitHubPullRequest } from '../github/create-pr'
-import { getMergeRequest, getMergeRequestForBranch, getProjectSlug } from '../gitlab/client'
-import { createGitLabMergeRequest } from '../gitlab/merge-request-creation'
-import {
-  mapAzureDevOpsReview,
-  mapBitbucketReview,
-  mapGiteaReview,
-  mapGitHubReview,
-  mapGitLabReview
-} from './forge-review-mappers'
+import { mapGitHubReview } from './forge-review-mappers'
 import {
   hasHostedReviewLocalGitOptions,
   getHostedReviewLocalGitOptions,
@@ -76,33 +51,6 @@ function hostedReviewExecutionArgs(
     ? [{ localGitExecOptions: getHostedReviewLocalGitOptions(options) }]
     : []
 }
-
-const gitLabForgeProvider = {
-  id: 'gitlab',
-  supportsReviewCreation: true,
-  resolveRepository: (context) =>
-    getProjectSlug(context.repoPath, context.connectionId, ...hostedReviewExecutionArgs(context)),
-  async getReviewForBranch(input) {
-    const mr = await getMergeRequestForBranch(
-      input.repoPath,
-      input.branch,
-      input.linkedReviewNumber ?? null,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return mr ? mapGitLabReview(mr) : null
-  },
-  async getReviewByNumber(input) {
-    const mr = await getMergeRequest(
-      input.repoPath,
-      input.number,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return mr ? mapGitLabReview(mr) : null
-  },
-  createReview: createGitLabMergeRequest
-} satisfies ForgeProvider
 
 const gitHubForgeProvider = {
   id: 'github',
@@ -161,103 +109,7 @@ const gitHubForgeProvider = {
   createReview: createGitHubPullRequest
 } satisfies ForgeProvider
 
-const bitbucketForgeProvider = {
-  id: 'bitbucket',
-  supportsReviewCreation: false,
-  resolveRepository: (context) =>
-    getBitbucketRepoSlug(
-      context.repoPath,
-      context.connectionId,
-      ...hostedReviewExecutionArgs(context)
-    ),
-  async getReviewForBranch(input) {
-    const pr = await getBitbucketPullRequestForBranch(
-      input.repoPath,
-      input.branch,
-      input.linkedReviewNumber ?? null,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return pr ? mapBitbucketReview(pr) : null
-  },
-  async getReviewByNumber(input) {
-    const pr = await getBitbucketPullRequest(
-      input.repoPath,
-      input.number,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return pr ? mapBitbucketReview(pr) : null
-  }
-} satisfies ForgeProvider
-
-const azureDevOpsForgeProvider = {
-  id: 'azure-devops',
-  supportsReviewCreation: true,
-  resolveRepository: (context) =>
-    getAzureDevOpsRepoSlug(
-      context.repoPath,
-      context.connectionId,
-      ...hostedReviewExecutionArgs(context)
-    ),
-  async getReviewForBranch(input) {
-    const pr = await getAzureDevOpsPullRequestForBranch(
-      input.repoPath,
-      input.branch,
-      input.linkedReviewNumber ?? null,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return pr ? mapAzureDevOpsReview(pr) : null
-  },
-  async getReviewByNumber(input) {
-    const pr = await getAzureDevOpsPullRequest(
-      input.repoPath,
-      input.number,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return pr ? mapAzureDevOpsReview(pr) : null
-  },
-  createReview: createAzureDevOpsPullRequest
-} satisfies ForgeProvider
-
-const giteaForgeProvider = {
-  id: 'gitea',
-  supportsReviewCreation: true,
-  resolveRepository: (context) =>
-    getGiteaRepoSlug(context.repoPath, context.connectionId, ...hostedReviewExecutionArgs(context)),
-  async getReviewForBranch(input) {
-    const pr = await getGiteaPullRequestForBranch(
-      input.repoPath,
-      input.branch,
-      input.linkedReviewNumber ?? null,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return pr ? mapGiteaReview(pr) : null
-  },
-  async getReviewByNumber(input) {
-    const pr = await getGiteaPullRequest(
-      input.repoPath,
-      input.number,
-      input.connectionId,
-      ...hostedReviewExecutionArgs(input)
-    )
-    return pr ? mapGiteaReview(pr) : null
-  },
-  createReview: createGiteaPullRequest
-} satisfies ForgeProvider
-
-// Why: provider order preserves existing branch-status behavior when remotes
-// could be interpreted by more than one hosting integration.
-export const FORGE_PROVIDERS = [
-  gitLabForgeProvider,
-  gitHubForgeProvider,
-  bitbucketForgeProvider,
-  azureDevOpsForgeProvider,
-  giteaForgeProvider
-] as const satisfies readonly ForgeProvider[]
+export const FORGE_PROVIDERS = [gitHubForgeProvider] as const satisfies readonly ForgeProvider[]
 
 export function getForgeProviderById(id: ForgeProviderId): ForgeProvider {
   return FORGE_PROVIDERS.find((provider) => provider.id === id) ?? gitHubForgeProvider

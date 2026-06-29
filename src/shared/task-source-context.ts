@@ -8,21 +8,13 @@ import {
 } from './execution-host'
 import type { GlobalSettings, ProjectProviderIdentity, Repo } from './types'
 
-export type TaskProvider = 'github' | 'gitlab'
+export type TaskProvider = 'github'
 
 export type GitHubTaskProviderIdentity = ProjectProviderIdentity & {
   provider: 'github'
 }
 
-export type GitLabTaskProviderIdentity = {
-  provider: 'gitlab'
-  projectId?: string | null
-  namespace?: string | null
-  project?: string | null
-  webUrl?: string | null
-}
-
-export type TaskProviderIdentity = GitHubTaskProviderIdentity | GitLabTaskProviderIdentity
+export type TaskProviderIdentity = GitHubTaskProviderIdentity
 
 export type TaskSourceContext = {
   kind: 'task-source'
@@ -158,13 +150,7 @@ function getRepoHostId(repo: Pick<Repo, 'connectionId' | 'executionHostId'>): Ex
 }
 
 function normalizeTaskProvider(value: string): TaskProvider | null {
-  switch (value) {
-    case 'github':
-    case 'gitlab':
-      return value
-    default:
-      return null
-  }
+  return value === 'github' ? 'github' : null
 }
 
 function normalizeTaskProviderIdentity(
@@ -186,12 +172,7 @@ function providerIdentityCachePart(identity: TaskProviderIdentity | null | undef
   if (!identity) {
     return ''
   }
-  switch (identity.provider) {
-    case 'github':
-      return [identity.owner, identity.repo].join('/')
-    case 'gitlab':
-      return identity.projectId ?? [identity.namespace, identity.project].filter(Boolean).join('/')
-  }
+  return [identity.owner, identity.repo].join('/')
 }
 
 function encodeCachePart(value: string): string {

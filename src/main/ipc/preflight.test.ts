@@ -9,9 +9,6 @@ const {
   hydrateShellPathMock,
   mergePathSegmentsMock,
   getActiveMultiplexerMock,
-  getBitbucketAuthStatusMock,
-  getAzureDevOpsAuthStatusMock,
-  getGiteaAuthStatusMock,
   resolveCliCommandsMock,
   mergePersistedWindowsPathMock
 } = vi.hoisted(() => ({
@@ -21,9 +18,6 @@ const {
   hydrateShellPathMock: vi.fn(),
   mergePathSegmentsMock: vi.fn(),
   getActiveMultiplexerMock: vi.fn(),
-  getBitbucketAuthStatusMock: vi.fn(),
-  getAzureDevOpsAuthStatusMock: vi.fn(),
-  getGiteaAuthStatusMock: vi.fn(),
   resolveCliCommandsMock: vi.fn(),
   mergePersistedWindowsPathMock: vi.fn()
 }))
@@ -61,18 +55,6 @@ vi.mock('./ssh', () => ({
   getActiveMultiplexer: getActiveMultiplexerMock
 }))
 
-vi.mock('../bitbucket/client', () => ({
-  getBitbucketAuthStatus: getBitbucketAuthStatusMock
-}))
-
-vi.mock('../azure-devops/client', () => ({
-  getAzureDevOpsAuthStatus: getAzureDevOpsAuthStatusMock
-}))
-
-vi.mock('../gitea/client', () => ({
-  getGiteaAuthStatus: getGiteaAuthStatusMock
-}))
-
 import {
   _resetPreflightCache,
   detectInstalledAgents,
@@ -86,21 +68,6 @@ type HandlerMap = Record<string, (_event?: unknown, args?: unknown) => Promise<u
 describe('preflight', () => {
   const originalPlatform = process.platform
   const handlers: HandlerMap = {}
-  const defaultBitbucketStatus = { configured: false, authenticated: false, account: null }
-  const defaultAzureDevOpsStatus = {
-    configured: false,
-    authenticated: false,
-    account: null,
-    baseUrl: null,
-    tokenConfigured: false
-  }
-  const defaultGiteaStatus = {
-    configured: false,
-    authenticated: false,
-    account: null,
-    baseUrl: null,
-    tokenConfigured: false
-  }
 
   beforeEach(() => {
     handleMock.mockReset()
@@ -109,9 +76,6 @@ describe('preflight', () => {
     hydrateShellPathMock.mockResolvedValue({ segments: [], ok: false, failureReason: 'no_shell' })
     mergePathSegmentsMock.mockReset()
     getActiveMultiplexerMock.mockReset()
-    getBitbucketAuthStatusMock.mockReset()
-    getAzureDevOpsAuthStatusMock.mockReset()
-    getGiteaAuthStatusMock.mockReset()
     mergePersistedWindowsPathMock.mockReset()
     // Why: existing tests should keep treating `which` as the only source
     // unless a case explicitly exercises the install-dir fallback.
@@ -119,9 +83,6 @@ describe('preflight', () => {
     resolveCliCommandsMock.mockImplementation(
       (commands: string[]) => new Map(commands.map((command) => [command, command]))
     )
-    getBitbucketAuthStatusMock.mockResolvedValue(defaultBitbucketStatus)
-    getAzureDevOpsAuthStatusMock.mockResolvedValue(defaultAzureDevOpsStatus)
-    getGiteaAuthStatusMock.mockResolvedValue(defaultGiteaStatus)
     _resetPreflightCache()
     Object.defineProperty(process, 'platform', {
       configurable: true,
@@ -145,31 +106,20 @@ describe('preflight', () => {
   })
 
   // Why: every preflight run probes (in order) `git --version`, `gh --version`,
-  // `glab --version`, then in parallel `gh auth status` + `glab auth status` —
-  // five execFile calls per cycle. Tests below provide values for all five.
+  // then `gh auth status` — three execFile calls per cycle.
   it('marks gh as authenticated when gh auth status exits successfully', async () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockResolvedValueOnce({ stdout: 'github.com\n  - Active account: true\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     const status = await runPreflightCheck()
 
     expect(status).toEqual({
       git: { installed: true },
-      gh: { installed: true, authenticated: true },
-      glab: { installed: true, authenticated: true },
-      bitbucket: defaultBitbucketStatus,
-      azureDevOps: defaultAzureDevOpsStatus,
-      gitea: defaultGiteaStatus
+      gh: { installed: true, authenticated: true }
     })
-    expect(execFileAsyncMock).toHaveBeenNthCalledWith(4, 'gh', ['auth', 'status'], {
-      encoding: 'utf-8',
-      timeout: 5000
-    })
-    expect(execFileAsyncMock).toHaveBeenNthCalledWith(5, 'glab', ['auth', 'status'], {
+    expect(execFileAsyncMock).toHaveBeenNthCalledWith(3, 'gh', ['auth', 'status'], {
       encoding: 'utf-8',
       timeout: 5000
     })
@@ -179,9 +129,7 @@ describe('preflight', () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockRejectedValueOnce({ stderr: 'You are not logged into any GitHub hosts.\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     const status = await runPreflightCheck()
 
@@ -192,41 +140,11 @@ describe('preflight', () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockRejectedValueOnce({ stderr: 'Logged in to github.com account octocat\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     const status = await runPreflightCheck()
 
     expect(status.gh).toEqual({ installed: true, authenticated: true })
-  })
-
-  it('marks glab as not installed when `glab --version` fails', async () => {
-    execFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockRejectedValueOnce(new Error('command not found: glab'))
-      .mockResolvedValueOnce({ stdout: 'github.com\n  - Active account: true\n' })
-
-    const status = await runPreflightCheck()
-
-    expect(status.glab).toEqual({ installed: false, authenticated: false })
-    // Why: with glab uninstalled, glab auth status must not run — that
-    // would surface a misleading "command not found" error in logs.
-    expect(execFileAsyncMock).toHaveBeenCalledTimes(4)
-  })
-
-  it('marks glab as installed but unauthenticated when auth status fails', async () => {
-    execFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
-      .mockResolvedValueOnce({ stdout: 'github.com\n  - Active account: true\n' })
-      .mockRejectedValueOnce({ stderr: 'You are not logged into any GitLab hosts.\n' })
-
-    const status = await runPreflightCheck()
-
-    expect(status.glab).toEqual({ installed: true, authenticated: false })
   })
 
   it('times out hung local preflight probes', async () => {
@@ -238,9 +156,6 @@ describe('preflight', () => {
         }
         if (command === 'gh' && Array.isArray(args) && args[0] === '--version') {
           return new Promise(() => {})
-        }
-        if (command === 'glab') {
-          return Promise.reject(new Error('command not found: glab'))
         }
         throw new Error(`unexpected command ${String(command)}`)
       })
@@ -262,8 +177,7 @@ describe('preflight', () => {
       expect(settled).toBe(true)
       await expect(statusPromise).resolves.toMatchObject({
         git: { installed: true },
-        gh: { installed: false },
-        glab: { installed: false }
+        gh: { installed: false }
       })
     } finally {
       vi.useRealTimers()
@@ -281,9 +195,6 @@ describe('preflight', () => {
       }
       if (command === 'gh') {
         throw Object.assign(new Error('spawn gh ENOENT'), { code: 'ENOENT' })
-      }
-      if (command === 'glab') {
-        throw Object.assign(new Error('spawn glab ENOENT'), { code: 'ENOENT' })
       }
       if (command === 'wsl.exe') {
         const script = String(args[5])
@@ -324,9 +235,7 @@ describe('preflight', () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockResolvedValueOnce({ stdout: 'github.com\n  - Active account: true\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     const status = await runPreflightCheck()
 
@@ -352,7 +261,7 @@ describe('preflight', () => {
         if (command === 'git') {
           return Promise.resolve({ stdout: 'git version 2.0.0\n' })
         }
-        if (command === 'gh' || command === 'glab') {
+        if (command === 'gh') {
           return Promise.reject(Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }))
         }
         if (
@@ -361,13 +270,6 @@ describe('preflight', () => {
           String(args.at(-1)).includes("'gh' --version")
         ) {
           return new Promise(() => {})
-        }
-        if (
-          command === 'wsl.exe' &&
-          Array.isArray(args) &&
-          String(args.at(-1)).includes("'glab' --version")
-        ) {
-          return Promise.reject(Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' }))
         }
         throw new Error(`unexpected command ${String(command)}`)
       })
@@ -383,8 +285,7 @@ describe('preflight', () => {
 
       expect(settled).toBe(true)
       await expect(statusPromise).resolves.toMatchObject({
-        gh: { installed: false },
-        glab: { installed: false }
+        gh: { installed: false }
       })
     } finally {
       vi.useRealTimers()
@@ -395,30 +296,24 @@ describe('preflight', () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockRejectedValueOnce({ stderr: 'You are not logged into any GitHub hosts.\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockResolvedValueOnce({ stdout: 'github.com\n  - Active account: true\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     const firstStatus = await runPreflightCheck()
     const refreshedStatus = await runPreflightCheck(true)
 
     expect(firstStatus.gh).toEqual({ installed: true, authenticated: false })
     expect(refreshedStatus.gh).toEqual({ installed: true, authenticated: true })
-    expect(execFileAsyncMock).toHaveBeenCalledTimes(10)
+    expect(execFileAsyncMock).toHaveBeenCalledTimes(6)
   })
 
   it('registers the preflight handler', async () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockResolvedValueOnce({ stdout: 'github.com\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     registerPreflightHandlers()
 
@@ -426,11 +321,7 @@ describe('preflight', () => {
 
     expect(status).toEqual({
       git: { installed: true },
-      gh: { installed: true, authenticated: true },
-      glab: { installed: true, authenticated: true },
-      bitbucket: defaultBitbucketStatus,
-      azureDevOps: defaultAzureDevOpsStatus,
-      gitea: defaultGiteaStatus
+      gh: { installed: true, authenticated: true }
     })
   })
 
@@ -438,14 +329,10 @@ describe('preflight', () => {
     execFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockRejectedValueOnce({ stderr: 'You are not logged into any GitHub hosts.\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
       .mockResolvedValueOnce({ stdout: 'git version 2.0.0\n' })
       .mockResolvedValueOnce({ stdout: 'gh version 2.0.0\n' })
-      .mockResolvedValueOnce({ stdout: 'glab version 1.92.1\n' })
       .mockResolvedValueOnce({ stdout: 'github.com\n  - Active account: true\n' })
-      .mockResolvedValueOnce({ stdout: 'Logged in to gitlab.com\n' })
 
     registerPreflightHandlers()
 
@@ -454,19 +341,11 @@ describe('preflight', () => {
 
     expect(firstStatus).toEqual({
       git: { installed: true },
-      gh: { installed: true, authenticated: false },
-      glab: { installed: true, authenticated: true },
-      bitbucket: defaultBitbucketStatus,
-      azureDevOps: defaultAzureDevOpsStatus,
-      gitea: defaultGiteaStatus
+      gh: { installed: true, authenticated: false }
     })
     expect(refreshedStatus).toEqual({
       git: { installed: true },
-      gh: { installed: true, authenticated: true },
-      glab: { installed: true, authenticated: true },
-      bitbucket: defaultBitbucketStatus,
-      azureDevOps: defaultAzureDevOpsStatus,
-      gitea: defaultGiteaStatus
+      gh: { installed: true, authenticated: true }
     })
   })
 
@@ -776,7 +655,7 @@ describe('preflight', () => {
     })
     execFileAsyncMock.mockImplementation(async (command, args) => {
       expect(command).not.toBe('wsl.exe')
-      if (command === 'git' || command === 'gh' || command === 'glab') {
+      if (command === 'git' || command === 'gh') {
         return { stdout: `${String(command)} ok\n` }
       }
       throw new Error(`unexpected command ${String(command)} ${JSON.stringify(args)}`)

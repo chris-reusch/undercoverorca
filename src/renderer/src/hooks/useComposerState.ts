@@ -36,7 +36,6 @@ import {
 import type {
   GitHubWorkItem,
   GitPushTarget,
-  GitLabWorkItem,
   OrcaHooks,
   SetupDecision,
   SetupRunPolicy,
@@ -111,7 +110,6 @@ import {
   getLinkedItemDisplayName,
   getSmartNameSelection as getFolderSmartNameSelection,
   toGitHubLinkedWorkItem,
-  toGitLabLinkedWorkItem,
   toLinkedWorkItemPromptInput
 } from '@/components/sidebar/folder-workspace-composer-helpers'
 import { useFolderWorkspaceComposerPathStatus } from '@/components/sidebar/folder-workspace-composer-path-status'
@@ -231,16 +229,8 @@ export type ComposerCardProps = {
   name: string
   onNameValueChange: (value: string) => void
   onSmartGitHubItemSelect: (item: GitHubWorkItem) => void
-  onSmartGitLabItemSelect: (item: GitLabWorkItem) => void
   onSmartBranchSelect: (refName: string, localBranchName: string) => void
   smartNameGitHubSourceContext?: TaskSourceContext | null
-  /** GitLab parallel of onBaseBranchPrSelect. */
-  onBaseBranchMrSelect?: (
-    baseBranch: string,
-    item: GitLabWorkItem,
-    pushTarget?: GitPushTarget,
-    compareBaseRef?: string
-  ) => void
   smartNameSelection: SmartWorkspaceNameSelection | null
   onClearSmartNameSelection: () => void
   /** True when the selected source is an existing LOCAL branch that can be
@@ -1806,54 +1796,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
       settings
     ])
 
-  // Why: GitHub/GitLab review routing prefers one provider identity. Clear
-  // the opposite provider slots so stale hidden fields cannot win later.
-  const applyLinkedGitLabWorkItem = useCallback(
-    (item: GitLabWorkItem): void => {
-      if (item.type === 'issue') {
-        setLinkedGitLabIssue(item.number)
-        setLinkedGitLabMR(null)
-      } else {
-        setLinkedGitLabIssue(null)
-        setLinkedGitLabMR(item.number)
-      }
-      setLinkedIssue('')
-      setLinkedPR(null)
-      setLinkedWorkItem({
-        type: item.type,
-        provider: 'gitlab',
-        number: item.number,
-        title: item.title,
-        url: item.url
-      })
-      // Why: GitLabWorkItem.branchName lines up with GitHubWorkItem.branchName
-      // structurally; cast to the suggested-name helper's input shape so we
-      // reuse the existing naming heuristic without forking it.
-      const suggestedName = getLinkedWorkItemSuggestedName({
-        type: item.type === 'mr' ? 'pr' : 'issue',
-        number: item.number,
-        title: item.title,
-        branchName: item.branchName
-      } as unknown as GitHubWorkItem)
-      const titleName = getLinkedWorkItemWorkspaceName({
-        type: item.type,
-        provider: 'gitlab',
-        number: item.number,
-        title: item.title
-      })
-      const nextName = titleName?.seedName ?? suggestedName
-      if (
-        nextName &&
-        (!name.trim() || name === lastAutoNameRef.current || isWorkItemLookupText(name))
-      ) {
-        setName(nextName)
-        lastAutoNameRef.current = nextName
-      }
-      setBranchNameOverride(undefined)
-    },
-    [name]
-  )
-
   const handleSelectLinkedItem = useCallback(
     (item: GitHubWorkItem): void => {
       applyLinkedWorkItem(item)
@@ -2377,35 +2319,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     [applyLinkedWorkItem]
   )
 
-  // Why: GitLab parallel of handleBaseBranchPrSelect. Same shape, same
-  // semantics — except the note prefill uses GitLab's `!N` MR convention
-  // so a glance at the worktree sidebar makes the provider obvious.
-  const handleBaseBranchMrSelect = useCallback(
-    (
-      nextBaseBranch: string,
-      item: GitLabWorkItem,
-      nextPushTarget?: GitPushTarget,
-      nextCompareBaseRef?: string
-    ): void => {
-      setBaseBranch(nextBaseBranch)
-      setCompareBaseRef(nextCompareBaseRef)
-      setPushTarget(nextPushTarget)
-      setBranchNameOverride(undefined)
-      branchAutoNameRef.current = ''
-      setStartFromResetHint(null)
-      applyLinkedGitLabWorkItem(item)
-      if (item.type === 'mr') {
-        const suggestedNote = `MR !${item.number} — ${item.title}`
-        const currentNote = noteRef.current
-        if (!currentNote.trim() || currentNote === lastAutoNoteRef.current) {
-          setNote(suggestedNote)
-          lastAutoNoteRef.current = suggestedNote
-        }
-      }
-    },
-    [applyLinkedGitLabWorkItem]
-  )
-
   const handleSmartGitHubItemSelect = useCallback(
     (item: GitHubWorkItem): void => {
       if (isProjectGroupTarget) {
@@ -2483,94 +2396,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
       applyLinkedWorkItem,
       eligibleRepos,
       handleBaseBranchPrSelect,
-      isProjectGroupTarget,
-      name,
-      selectedRepo,
-      settings
-    ]
-  )
-
-  // Why: GitLab parallel of handleSmartGitHubItemSelect. For a picked
-  // MR, resolves the base branch via worktrees:resolveMrBase (which uses
-  // refs/merge-requests/<iid>/head for fork MRs the same way the gh side
-  // uses refs/pull/<N>/head). Issue selections short-circuit since
-  // there's no branch-resolution step to run.
-  const handleSmartGitLabItemSelect = useCallback(
-    (item: GitLabWorkItem): void => {
-      if (isProjectGroupTarget) {
-        const linkedItem = toGitLabLinkedWorkItem(item)
-        setLinkedGitLabIssue(item.type === 'issue' ? item.number : null)
-        setLinkedGitLabMR(item.type === 'mr' ? item.number : null)
-        setLinkedIssue('')
-        setLinkedPR(null)
-        setLinkedWorkItem(linkedItem)
-        const nextName = getLinkedItemDisplayName(linkedItem)
-        if (
-          nextName &&
-          (!name.trim() || name === lastAutoNameRef.current || isWorkItemLookupText(name))
-        ) {
-          setName(nextName)
-          lastAutoNameRef.current = nextName
-        }
-        return
-      }
-      applyLinkedGitLabWorkItem(item)
-      setStartFromResetHint(null)
-      setBranchNameOverride(undefined)
-      setForkPushWarning(null)
-      branchAutoNameRef.current = ''
-      // Why: MR metadata can be sourced from one host/account while the
-      // workspace is created on another host for the same logical project.
-      const runRepo = selectedRepo ?? eligibleRepos.find((repo) => repo.id === item.repoId)
-      if (item.type !== 'mr' || !runRepo) {
-        setCompareBaseRef(undefined)
-        return
-      }
-      setCompareBaseRef(undefined)
-      const itemRepoSettings = getSettingsForRepoRuntimeOwner(
-        { repos: [runRepo], settings },
-        runRepo.id
-      )
-      const target = getActiveRuntimeTarget(itemRepoSettings)
-      const resolveMrBase =
-        target.kind === 'local'
-          ? window.api.worktrees.resolveMrBase({
-              repoId: runRepo.id,
-              mrIid: item.number,
-              ...(item.branchName ? { sourceBranch: item.branchName } : {}),
-              ...(item.baseRefName ? { targetBranch: item.baseRefName } : {}),
-              ...(item.isCrossRepository !== undefined
-                ? { isCrossRepository: item.isCrossRepository }
-                : {})
-            })
-          : callRuntimeRpc<
-              | { baseBranch: string; compareBaseRef?: string; pushTarget?: GitPushTarget }
-              | { error: string }
-            >(
-              target,
-              'worktree.resolveMrBase',
-              {
-                repo: runRepo.id,
-                mrIid: item.number,
-                ...(item.branchName ? { sourceBranch: item.branchName } : {}),
-                ...(item.baseRefName ? { targetBranch: item.baseRefName } : {}),
-                ...(item.isCrossRepository !== undefined
-                  ? { isCrossRepository: item.isCrossRepository }
-                  : {})
-              },
-              { timeoutMs: 30_000 }
-            )
-      void resolveMrBase.then((result) => {
-        if ('error' in result) {
-          return
-        }
-        handleBaseBranchMrSelect(result.baseBranch, item, result.pushTarget, result.compareBaseRef)
-      })
-    },
-    [
-      applyLinkedGitLabWorkItem,
-      eligibleRepos,
-      handleBaseBranchMrSelect,
       isProjectGroupTarget,
       name,
       selectedRepo,
@@ -2683,15 +2508,8 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
       return getFolderSmartNameSelection(linkedWorkItem)
     }
     if (linkedWorkItem) {
-      const provider = getLinkedWorkItemProvider(linkedWorkItem)
       const kind: SmartWorkspaceNameSelection['kind'] =
-        provider === 'gitlab'
-          ? linkedWorkItem.type === 'mr'
-            ? 'gitlab-mr'
-            : 'gitlab-issue'
-          : linkedWorkItem.type === 'pr'
-            ? 'github-pr'
-            : 'github-issue'
+        linkedWorkItem.type === 'pr' ? 'github-pr' : 'github-issue'
       return {
         kind,
         label:
@@ -3620,7 +3438,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     name,
     onNameValueChange: handleNameValueChange,
     onSmartGitHubItemSelect: handleSmartGitHubItemSelect,
-    onSmartGitLabItemSelect: handleSmartGitLabItemSelect,
     onSmartBranchSelect: isProjectGroupTarget ? () => {} : handleSmartBranchSelect,
     smartNameGitHubSourceContext: selectedRepoGitHubSourceContext,
     smartNameSelection,
@@ -3668,7 +3485,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     baseBranch: isProjectGroupTarget ? undefined : baseBranch,
     onBaseBranchChange: isProjectGroupTarget ? () => {} : handleBaseBranchChange,
     onBaseBranchPrSelect: isProjectGroupTarget ? () => {} : handleBaseBranchPrSelect,
-    onBaseBranchMrSelect: isProjectGroupTarget ? () => {} : handleBaseBranchMrSelect,
     baseBranchLinkedPrNumber:
       linkedWorkItem?.type === 'pr' && baseBranch ? linkedWorkItem.number : null,
     selectedRepoPath: isProjectGroupTarget ? null : (selectedRepo?.path ?? null),

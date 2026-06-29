@@ -9,7 +9,6 @@ import {
   ExternalLink,
   GitBranch,
   GitBranchPlus,
-  GitMerge,
   GitPullRequest,
   LoaderCircle,
   Search,
@@ -42,11 +41,6 @@ import {
   lookupGitHubWorkItemForSource
 } from '@/lib/github-work-item-source-lookup'
 import { lookupSmartGitHubSubmitItem } from '@/lib/smart-github-submit'
-import {
-  listGitLabMRsForSource,
-  lookupGitLabWorkItemByPathForSource
-} from '@/lib/gitlab-work-item-source-lookup'
-import { parseGitLabIssueOrMRLink } from '@/lib/gitlab-links'
 import { getLocalPreflightContext, localPreflightContextKey } from '@/lib/local-preflight-context'
 import { getRepoOwnerRoutedSettings } from '@/lib/repo-runtime-owner'
 import { cn } from '@/lib/utils'
@@ -60,15 +54,11 @@ import {
   type SmartNameMode,
   type SmartWorkspaceSourceRow
 } from './smart-workspace-source-results'
-import type { BaseRefSearchResult, GitHubWorkItem, GitLabWorkItem } from '../../../../shared/types'
+import type { BaseRefSearchResult, GitHubWorkItem } from '../../../../shared/types'
 import { resolveSmartWorkspaceCommandValue } from './smart-workspace-command-value'
 import { isComposerFieldToFieldFocus } from './smart-workspace-source-popover-focus'
 import { translate } from '@/i18n/i18n'
-import {
-  getMrStateFilters,
-  getSmartWorkspaceNameModes,
-  type MrStateFilter
-} from './smart-workspace-localized-options'
+import { getSmartWorkspaceNameModes } from './smart-workspace-localized-options'
 import {
   buildTaskSourceContextFromRepo,
   type TaskSourceContext
@@ -85,9 +75,6 @@ type SmartWorkspaceNameFieldProps = {
   value: string
   onValueChange: (value: string) => void
   onGitHubItemSelect: (item: GitHubWorkItem) => void
-  /** Optional so callers that pre-date GitLab support don't need to wire
-   *  it. When omitted, GitLab paste-URL detection is silently skipped. */
-  onGitLabItemSelect?: (item: GitLabWorkItem) => void
   onBranchSelect: (refName: string, localBranchName: string) => void
   selectedSource: SmartWorkspaceNameSelection | null
   onClearSelectedSource: () => void
@@ -106,7 +93,7 @@ type SmartWorkspaceNameFieldProps = {
 }
 
 export type SmartWorkspaceNameSelection = {
-  kind: 'github-pr' | 'github-issue' | 'gitlab-mr' | 'gitlab-issue' | 'branch'
+  kind: 'github-pr' | 'github-issue' | 'branch'
   label: string
   url?: string
 }
@@ -152,7 +139,6 @@ export default function SmartWorkspaceNameField({
   value,
   onValueChange,
   onGitHubItemSelect,
-  onGitLabItemSelect,
   onBranchSelect,
   selectedSource,
   onClearSelectedSource,
@@ -177,7 +163,6 @@ export default function SmartWorkspaceNameField({
     fetchWorkItems,
     fetchWorkItemsAcrossRepos,
     getCachedWorkItems,
-    preflightStatus,
     preflightStatusChecked,
     preflightStatusContextKey,
     expectedPreflightContextKey,
@@ -189,7 +174,6 @@ export default function SmartWorkspaceNameField({
       fetchWorkItems: s.fetchWorkItems,
       fetchWorkItemsAcrossRepos: s.fetchWorkItemsAcrossRepos,
       getCachedWorkItems: s.getCachedWorkItems,
-      preflightStatus: s.preflightStatus,
       preflightStatusChecked: s.preflightStatusChecked,
       preflightStatusContextKey: s.preflightStatusContextKey,
       expectedPreflightContextKey: localPreflightContextKey(getLocalPreflightContext(s)),
@@ -217,17 +201,6 @@ export default function SmartWorkspaceNameField({
         })
       : null
   }, [githubSourceContextOverride, selectedRepo])
-  const gitlabSourceContext = useMemo(
-    () =>
-      selectedRepo
-        ? buildTaskSourceContextFromRepo({
-            provider: 'gitlab',
-            projectId: selectedRepo.id,
-            repo: selectedRepo
-          })
-        : null,
-    [selectedRepo]
-  )
   const repoBackedSearchTargets = useMemo(
     () =>
       (repoBackedSearchRepos.length > 0
@@ -244,31 +217,20 @@ export default function SmartWorkspaceNameField({
                 provider: 'github',
                 projectId: repo.id,
                 repo
-              }),
-        gitlabSourceContext:
-          repo.id === selectedRepo?.id && gitlabSourceContext?.provider === 'gitlab'
-            ? gitlabSourceContext
-            : buildTaskSourceContextFromRepo({
-                provider: 'gitlab',
-                projectId: repo.id,
-                repo
               })
       })),
-    [githubSourceContext, gitlabSourceContext, repoBackedSearchRepos, selectedRepo]
+    [githubSourceContext, repoBackedSearchRepos, selectedRepo]
   )
   const [mode, setMode] = useState<SmartNameMode>(textOnly ? 'text' : 'smart')
-  const [mrStateFilter, setMrStateFilter] = useState<MrStateFilter>('opened')
   const [open, setOpen] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState(value)
   const [githubItems, setGithubItems] = useState<GitHubWorkItem[]>([])
-  const [gitlabItems, setGitlabItems] = useState<GitLabWorkItem[]>([])
   const [branches, setBranches] = useState<BaseRefSearchResult[]>([])
   const [branchResultsSource, setBranchResultsSource] = useState<{
     repoId: string
     query: string
   } | null>(null)
   const [githubLoading, setGithubLoading] = useState(false)
-  const [gitlabLoading, setGitlabLoading] = useState(false)
   const [branchesLoading, setBranchesLoading] = useState(false)
   const [commandValue, setCommandValue] = useState('')
   const localInputRef = useRef<HTMLInputElement | null>(null)
@@ -290,14 +252,6 @@ export default function SmartWorkspaceNameField({
     onActiveSourceModeChange?.(mode)
   }, [mode, onActiveSourceModeChange])
   const preflightStatusCurrent = preflightStatusContextKey === expectedPreflightContextKey
-  const localGitlabAvailable = preflightStatusCurrent && preflightStatus?.glab?.installed === true
-  const gitlabSourceAvailable = repoBackedSearchTargets.some((target) =>
-    canUseGitLabSmartSource({
-      localGitlabAvailable,
-      repoBackedSourcesDisabled,
-      sourceHostId: target.gitlabSourceContext?.hostId
-    })
-  )
   const availableModes = getSmartWorkspaceNameModes().filter((item) => {
     if (textOnly) {
       return item.id === 'text'
@@ -305,15 +259,16 @@ export default function SmartWorkspaceNameField({
     if (item.id === 'github') {
       return !repoBackedSourcesDisabled
     }
+    // Why: GitLab work-item sources were removed from the renderer; never
+    // surface the GitLab tab even if the localized mode list still lists it.
     if (item.id === 'gitlab') {
-      return gitlabSourceAvailable
+      return false
     }
     if (item.id === 'branches') {
       return branchesEnabled && !repoBackedSourcesDisabled
     }
     return true
   })
-  const mrStateFilters = getMrStateFilters()
 
   useEffect(() => {
     if (availableModes.some((item) => item.id === mode)) {
@@ -327,10 +282,8 @@ export default function SmartWorkspaceNameField({
       return
     }
     setGithubItems([])
-    setGitlabItems([])
     setBranches([])
     setGithubLoading(false)
-    setGitlabLoading(false)
     setBranchesLoading(false)
     setBranchResultsSource(null)
     setCrossRepoPrompt(null)
@@ -420,19 +373,8 @@ export default function SmartWorkspaceNameField({
         setMode('text')
       }
       setOpen(false)
-      return
     }
-    if (mode === 'gitlab' && gitlabSourceAvailable) {
-      return
-    }
-    if (mode !== 'gitlab') {
-      return
-    }
-    setMode('smart')
-    setGitlabItems([])
-    setGitlabLoading(false)
-    setCommandValue('')
-  }, [gitlabSourceAvailable, mode, textOnly])
+  }, [mode, textOnly])
 
   useEffect(() => {
     if (!disabled) {
@@ -440,11 +382,9 @@ export default function SmartWorkspaceNameField({
     }
     setOpen(false)
     setGithubItems([])
-    setGitlabItems([])
     setBranches([])
     setBranchResultsSource(null)
     setGithubLoading(false)
-    setGitlabLoading(false)
     setBranchesLoading(false)
     setCommandValue('')
     setCrossRepoPrompt(null)
@@ -777,148 +717,6 @@ export default function SmartWorkspaceNameField({
     }
   }, [branchSearchRequest, selectedRepoOwnerSettings])
 
-  // Why: GitLab paste-URL flow. Watches the debounced query for a GitLab
-  // issue/MR URL (parseGitLabIssueOrMRLink already filters non-GitLab URLs
-  // via the project-internal `/-/` separator) and resolves it to a
-  // GitLabWorkItem via the IPC. Skipped silently when the host hook
-  // hasn't supplied an onGitLabItemSelect handler.
-  const parsedGlLink = useMemo(
-    () => (sourceQueryWithinLimit ? parseGitLabIssueOrMRLink(debouncedQuery) : null),
-    [debouncedQuery, sourceQueryWithinLimit]
-  )
-  const shouldQueryGitlab =
-    sourceQueryWithinLimit &&
-    !repoBackedSourcesDisabled &&
-    !textOnly &&
-    gitlabSourceAvailable &&
-    repoBackedSearchTargets.length > 0 &&
-    (mode === 'smart' || mode === 'gitlab')
-  useEffect(() => {
-    if (!shouldQueryGitlab || disabled || !onGitLabItemSelect) {
-      // Why: don't clobber list-mode items here — the listMRs effect below
-      // is the sole writer when the user is in 'gitlab' mode without a URL.
-      if (!shouldQueryGitlab || (parsedGlLink === null && mode !== 'gitlab')) {
-        setGitlabItems([])
-      }
-      setGitlabLoading(false)
-      return
-    }
-    if (parsedGlLink === null) {
-      // Same reason: only clear when leaving the gitlab/smart context.
-      if (mode !== 'gitlab') {
-        setGitlabItems([])
-      }
-      setGitlabLoading(false)
-      return
-    }
-    let stale = false
-    setGitlabLoading(true)
-    void Promise.all(
-      repoBackedSearchTargets.map((target) =>
-        lookupGitLabWorkItemByPathForSource({
-          repoPath: target.repo.path,
-          repoId: target.repo.id,
-          sourceContext: target.gitlabSourceContext,
-          // Why: self-hosted GitLab URLs must resolve against their pasted
-          // hostname; gitlab.com is only one possible GitLab instance.
-          host: parsedGlLink.slug.host,
-          path: parsedGlLink.slug.path,
-          iid: parsedGlLink.number,
-          type: parsedGlLink.type
-        }).catch(() => null)
-      )
-    )
-      .then((items) => {
-        if (stale) {
-          return
-        }
-        setGitlabItems(items.filter((item): item is GitLabWorkItem => item !== null))
-      })
-      .catch(() => {
-        if (!stale) {
-          setGitlabItems([])
-        }
-      })
-      .finally(() => {
-        if (!stale) {
-          setGitlabLoading(false)
-        }
-      })
-    return () => {
-      stale = true
-    }
-  }, [disabled, mode, onGitLabItemSelect, parsedGlLink, repoBackedSearchTargets, shouldQueryGitlab])
-
-  // Why: when the user is on the GitLab tab (or in 'smart' mix) and
-  // hasn't pasted a URL, surface the project's MRs filtered by the
-  // current state chip. Default 'opened' matches gitlab.com's default
-  // MR list view. Smart mode includes GitLab MRs alongside GitHub
-  // items so the unified picker actually surfaces both providers.
-  useEffect(() => {
-    if (!shouldQueryGitlab || disabled || !onGitLabItemSelect) {
-      if (!shouldQueryGitlab) {
-        setGitlabItems([])
-        setGitlabLoading(false)
-      }
-      return
-    }
-    if (repoBackedSearchTargets.length === 0) {
-      setGitlabItems([])
-      setGitlabLoading(false)
-      return
-    }
-    if (parsedGlLink !== null) {
-      // Why: paste-URL effect owns the list while a URL is in the input.
-      return
-    }
-    let stale = false
-    setGitlabLoading(true)
-    void Promise.all(
-      repoBackedSearchTargets.map((target) =>
-        listGitLabMRsForSource({
-          repoPath: target.repo.path,
-          repoId: target.repo.id,
-          sourceContext: target.gitlabSourceContext,
-          state: mrStateFilter,
-          page: 1,
-          perPage: RESULT_LIMIT
-        }).catch(() => ({ items: [], hasMore: false }))
-      )
-    )
-      .then((results) => {
-        if (stale) {
-          return
-        }
-        setGitlabItems(
-          results
-            .flatMap((result) => result.items)
-            .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-            .slice(0, RESULT_LIMIT)
-        )
-      })
-      .catch(() => {
-        if (!stale) {
-          setGitlabItems([])
-        }
-      })
-      .finally(() => {
-        if (!stale) {
-          setGitlabLoading(false)
-        }
-      })
-    return () => {
-      stale = true
-    }
-  }, [
-    disabled,
-    mode,
-    mrStateFilter,
-    onGitLabItemSelect,
-    parsedGlLink,
-    repoBackedSearchTargets,
-    shouldQueryGitlab
-  ])
-
   const rows = useMemo<RowEntry[]>(
     () =>
       buildSmartWorkspaceSourceRows({
@@ -931,22 +729,11 @@ export default function SmartWorkspaceNameField({
           value
         }),
         githubItems,
-        gitlabAvailable: gitlabSourceAvailable,
-        gitlabItems,
         mode,
         resultLimit: RESULT_LIMIT,
         value
       }),
-    [
-      branches,
-      branchResultsSource,
-      githubItems,
-      gitlabSourceAvailable,
-      gitlabItems,
-      mode,
-      selectedRepo?.id,
-      value
-    ]
+    [branches, branchResultsSource, githubItems, mode, selectedRepo?.id, value]
   )
   const { typedTextActionRow, searchResultRows } = useMemo(() => {
     const typedTextRow = rows.find(isTypedTextSourceRow) ?? null
@@ -973,12 +760,11 @@ export default function SmartWorkspaceNameField({
   const isQueryStale = trimmedValue.length > 0 && trimmedDebouncedQuery !== trimmedValue
 
   // Why: when the typed value is unambiguously a source reference — a
-  // GitHub issue/PR shorthand ("#1234"), a github.com issue/pull URL, or a
-  // GitLab issue/MR URL — the user is clearly looking up that specific source
-  // rather than naming a workspace. Once a matching row appears in the
-  // results, snap the highlight onto it so Enter picks it instead of the
-  // typed-text fallback.
-  const sourceIntent = useMemo<'github' | 'gitlab' | null>(() => {
+  // GitHub issue/PR shorthand ("#1234") or a github.com issue/pull URL — the
+  // user is clearly looking up that specific source rather than naming a
+  // workspace. Once a matching row appears in the results, snap the highlight
+  // onto it so Enter picks it instead of the typed-text fallback.
+  const sourceIntent = useMemo<'github' | null>(() => {
     if (!isSmartWorkspaceSourceQueryWithinLimit(value)) {
       return null
     }
@@ -988,9 +774,6 @@ export default function SmartWorkspaceNameField({
     }
     if (/^#\d+$/.test(trimmed) || parseGitHubIssueOrPRLink(trimmed) !== null) {
       return 'github'
-    }
-    if (parseGitLabIssueOrMRLink(trimmed) !== null) {
-      return 'gitlab'
     }
     return null
   }, [value])
@@ -1002,7 +785,7 @@ export default function SmartWorkspaceNameField({
     sourceIntent
   })
 
-  const loading = githubLoading || gitlabLoading || branchesLoading
+  const loading = githubLoading || branchesLoading
   const ActiveInputIcon = mode === 'text' ? CaseSensitive : loading ? LoaderCircle : Search
 
   const handleSelect = useCallback(
@@ -1014,16 +797,12 @@ export default function SmartWorkspaceNameField({
         onValueChange(row.name)
       } else if (row.kind === 'github') {
         onGitHubItemSelect(row.item)
-      } else if (row.kind === 'gitlab') {
-        // Why: optional handler — guarded so the surface degrades to a
-        // no-op for hosts that haven't wired GitLab support yet.
-        onGitLabItemSelect?.(row.item)
       } else {
         onBranchSelect(row.refName, row.localBranchName)
       }
       setOpen(false)
     },
-    [onBranchSelect, onGitHubItemSelect, onGitLabItemSelect, onValueChange]
+    [onBranchSelect, onGitHubItemSelect, onValueChange]
   )
 
   const acceptGitHubLink = useCallback(
@@ -1423,28 +1202,6 @@ export default function SmartWorkspaceNameField({
               }
             }}
           >
-            {mode === 'gitlab' ? (
-              // Why: GitLab MR-state filter — Open / Merged / Closed / All —
-              // mirrors the gitlab.com merge-requests page tab strip so users
-              // arriving from the web UI find a familiar control.
-              <div
-                className="flex shrink-0 items-center gap-1 border-b border-border/40 px-2 py-1.5"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                {mrStateFilters.map(({ id, label }) => (
-                  <Button
-                    key={id}
-                    type="button"
-                    variant={mrStateFilter === id ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setMrStateFilter(id)}
-                    className="h-6 px-2 text-xs"
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
             <CommandList className="!max-h-none min-h-0 flex-1 scrollbar-sleek">
               {typedTextActionRow ? (
                 <div
@@ -1558,19 +1315,6 @@ function RowIcon({ row }: { row: RowEntry }): React.JSX.Element {
       <CircleDot className="size-3.5 shrink-0 text-muted-foreground" />
     )
   }
-  if (row.kind === 'gitlab') {
-    // Why: GitLab MRs use GitMerge (arrow-merge-into-line) rather than
-    // GitPullRequest so the row visually disambiguates from branches
-    // (GitBranch's fork shape reads similar to GitPullRequest at this
-    // size). GitMerge also matches gitlab.com's own MR iconography,
-    // so users coming from the web UI find it familiar. Issues stay
-    // on CircleDot — the shape is provider-agnostic.
-    return row.item.type === 'mr' ? (
-      <GitMerge className="size-3.5 shrink-0 text-muted-foreground" />
-    ) : (
-      <CircleDot className="size-3.5 shrink-0 text-muted-foreground" />
-    )
-  }
   return <GitBranch className="size-3.5 shrink-0 text-muted-foreground" />
 }
 
@@ -1578,12 +1322,7 @@ function SelectionIcon({ kind }: { kind: SmartWorkspaceNameSelection['kind'] }):
   if (kind === 'github-pr') {
     return <GitPullRequest className="size-3.5 shrink-0 text-muted-foreground" />
   }
-  if (kind === 'gitlab-mr') {
-    // Why: see RowIcon — GitMerge keeps MRs distinct from PRs and
-    // branches.
-    return <GitMerge className="size-3.5 shrink-0 text-muted-foreground" />
-  }
-  if (kind === 'github-issue' || kind === 'gitlab-issue') {
+  if (kind === 'github-issue') {
     return <CircleDot className="size-3.5 shrink-0 text-muted-foreground" />
   }
   return <GitBranch className="size-3.5 shrink-0 text-muted-foreground" />
@@ -1621,21 +1360,6 @@ function RowLabel({ row }: { row: RowEntry }): React.JSX.Element {
     return (
       <span className="min-w-0 truncate">
         <span className="font-medium text-foreground">#{row.item.number}</span> {row.item.title}
-      </span>
-    )
-  }
-  if (row.kind === 'gitlab') {
-    // Why: GitLab uses `!N` for MRs and `#N` for issues — show the
-    // appropriate prefix so the row is unambiguous to users coming from
-    // gitlab.com's UI.
-    const prefix = row.item.type === 'mr' ? '!' : '#'
-    return (
-      <span className="min-w-0 truncate">
-        <span className="font-medium text-foreground">
-          {prefix}
-          {row.item.number}
-        </span>{' '}
-        {row.item.title}
       </span>
     )
   }

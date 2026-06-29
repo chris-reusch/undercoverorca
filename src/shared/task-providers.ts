@@ -1,6 +1,6 @@
-export type TaskProvider = 'github' | 'gitlab'
+export type TaskProvider = 'github'
 
-export const TASK_PROVIDERS: readonly TaskProvider[] = ['github', 'gitlab']
+export const TASK_PROVIDERS: readonly TaskProvider[] = ['github']
 
 const TASK_PROVIDER_SET = new Set<TaskProvider>(TASK_PROVIDERS)
 

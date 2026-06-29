@@ -12,10 +12,12 @@ describe('isWorkItemLookupText', () => {
     expect(isWorkItemLookupText('#4900')).toBe(true)
   })
 
-  it('detects GitLab issue and MR URLs on any host', () => {
-    expect(isWorkItemLookupText('https://gitlab.com/group/project/-/merge_requests/7')).toBe(true)
+  it('does not treat GitLab URLs as lookup text', () => {
+    // Why: GitLab work-item integration was removed from the renderer, so a
+    // pasted GitLab URL is just an ordinary string, not a lookup query.
+    expect(isWorkItemLookupText('https://gitlab.com/group/project/-/merge_requests/7')).toBe(false)
     expect(isWorkItemLookupText('https://gitlab.example.com/group/sub/project/-/issues/42')).toBe(
-      true
+      false
     )
   })
 

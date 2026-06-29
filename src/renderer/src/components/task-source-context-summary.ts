@@ -46,7 +46,6 @@ export function getTaskSourceContextSummary(args: {
 }): TaskSourceContextSummary {
   switch (args.provider) {
     case 'github':
-    case 'gitlab':
       return getRepoBackedTaskSourceSummary(args)
   }
 }
@@ -143,10 +142,6 @@ function getProviderIdentityLabel(
   switch (identity.provider) {
     case 'github':
       return `${identity.owner}/${identity.repo}`
-    case 'gitlab':
-      return identity.namespace && identity.project
-        ? `${identity.namespace}/${identity.project}`
-        : (identity.projectId ?? null)
   }
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createTestStore, makeWorktree } from './store-test-helpers'
 import type { AppState } from '../types'
-import type { WorktreeLineage } from '../../../../shared/types'
+import type { GlobalSettings, WorktreeLineage } from '../../../../shared/types'
 import { toast } from 'sonner'
 import {
   MIN_COMPATIBLE_RUNTIME_SERVER_VERSION,
@@ -142,23 +142,25 @@ beforeEach(() => {
 describe('createSettingsSlice runtime switching', () => {
   it('repairs drifted task provider settings before sending updates', async () => {
     settingsSet.mockResolvedValueOnce({
-      visibleTaskProviders: ['github', 'gitlab'],
+      visibleTaskProviders: ['github'],
       defaultTaskSource: 'github'
     })
     const store = createTestStore()
     store.setState({
       settings: {
-        visibleTaskProviders: ['gitlab'],
+        // Why: simulate a drifted profile holding an unsupported provider that
+        // normalization must repair back to the supported set.
+        visibleTaskProviders: ['unsupported-provider'],
         defaultTaskSource: 'github'
-      } as AppState['settings']
+      } as unknown as AppState['settings']
     })
 
     await store.getState().updateSettings({
-      visibleTaskProviders: ['gitlab']
-    })
+      visibleTaskProviders: ['unsupported-provider']
+    } as unknown as Partial<GlobalSettings>)
 
     expect(settingsSet).toHaveBeenCalledWith({
-      visibleTaskProviders: ['github', 'gitlab'],
+      visibleTaskProviders: ['github'],
       defaultTaskSource: 'github'
     })
   })

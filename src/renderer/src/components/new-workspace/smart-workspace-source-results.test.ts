@@ -92,8 +92,6 @@ describe('Branch source results', () => {
       value: '',
       branches: [{ refName: 'origin/old-result', localBranchName: 'old-result' }],
       githubItems: [],
-      gitlabItems: [],
-      gitlabAvailable: false,
       resultLimit: 12
     })
 
@@ -148,8 +146,6 @@ describe('Branch source results', () => {
         { refName: 'origin/feature/autofill', localBranchName: 'feature/autofill' }
       ],
       githubItems: [],
-      gitlabItems: [],
-      gitlabAvailable: false,
       resultLimit: 12
     })
 
@@ -173,34 +169,12 @@ describe('Branch source results', () => {
         { repoId: 'repo-a', type: 'issue', number: 123, title: 'Repo A issue' } as never,
         { repoId: 'repo-b', type: 'issue', number: 123, title: 'Repo B issue' } as never
       ],
-      gitlabItems: [],
-      gitlabAvailable: false,
       resultLimit: 12
     })
 
     expect(rows.map((row) => row.value)).toEqual([
       'github-repo-a-issue-123',
       'github-repo-b-issue-123'
-    ])
-  })
-
-  it('keeps GitLab row values unique for the same item number across repos', () => {
-    const rows = buildSmartWorkspaceSourceRows({
-      mode: 'gitlab',
-      value: '',
-      branches: [],
-      githubItems: [],
-      gitlabItems: [
-        { repoId: 'repo-a', type: 'issue', number: 123, title: 'Repo A issue' } as never,
-        { repoId: 'repo-b', type: 'issue', number: 123, title: 'Repo B issue' } as never
-      ],
-      gitlabAvailable: true,
-      resultLimit: 12
-    })
-
-    expect(rows.map((row) => row.value)).toEqual([
-      'gitlab-repo-a-issue-123',
-      'gitlab-repo-b-issue-123'
     ])
   })
 
@@ -217,8 +191,6 @@ describe('Branch source results', () => {
             }
           } as never
         ],
-        gitlabItems: [],
-        gitlabAvailable: false,
         resultLimit: 12
       })
     ).toEqual([])

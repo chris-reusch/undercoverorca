@@ -31,7 +31,7 @@ import {
 import { getScreenSubmitModifierLabel } from '@/lib/screen-submit-shortcut'
 import { useContextualTour } from '@/components/contextual-tours/use-contextual-tour'
 import { filterEnabledTuiAgents } from '../../../shared/tui-agent-selection'
-import type { GitHubWorkItem, GitLabWorkItem, SparsePreset, TuiAgent } from '../../../shared/types'
+import type { GitHubWorkItem, SparsePreset, TuiAgent } from '../../../shared/types'
 import SparseCheckoutPresetSelect from '@/components/sparse/SparseCheckoutPresetSelect'
 import SmartWorkspaceNameField, {
   type SmartWorkspaceNameSelection
@@ -80,7 +80,6 @@ type NewWorkspaceComposerCardProps = {
   name: string
   onNameValueChange: (value: string) => void
   onSmartGitHubItemSelect: (item: GitHubWorkItem) => void
-  onSmartGitLabItemSelect: (item: GitLabWorkItem) => void
   onSmartBranchSelect: (refName: string, localBranchName: string) => void
   smartNameSelection: SmartWorkspaceNameSelection | null
   onClearSmartNameSelection: () => void
@@ -320,7 +319,6 @@ export default function NewWorkspaceComposerCard({
   name,
   onNameValueChange,
   onSmartGitHubItemSelect,
-  onSmartGitLabItemSelect,
   onSmartBranchSelect,
   smartNameSelection,
   onClearSmartNameSelection,
@@ -670,7 +668,6 @@ export default function NewWorkspaceComposerCard({
             value={name}
             onValueChange={onNameValueChange}
             onGitHubItemSelect={onSmartGitHubItemSelect}
-            onGitLabItemSelect={onSmartGitLabItemSelect}
             onBranchSelect={onSmartBranchSelect}
             selectedSource={smartNameSelection}
             onClearSelectedSource={onClearSmartNameSelection}

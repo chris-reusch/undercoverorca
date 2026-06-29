@@ -100,30 +100,16 @@ describe('task source context', () => {
     expect(local).not.toBe(differentRepo)
   })
 
-  it('serializes provider identities for GitLab cache scopes', () => {
-    const base = {
-      projectId: 'project-1',
-      hostId: LOCAL_EXECUTION_HOST_ID,
-      repoId: 'repo-1'
-    } as const
-
+  it('serializes provider identities for GitHub cache scopes', () => {
     expect(
       getTaskSourceCacheScope({
-        ...base,
-        provider: 'gitlab',
-        providerIdentity: { provider: 'gitlab', namespace: 'stably', project: 'orca' }
-      })
-    ).toContain(encodeURIComponent('stably/orca'))
-  })
-
-  it('drops provider identities that do not match the source provider', () => {
-    expect(
-      normalizeTaskSourceContext({
-        provider: 'gitlab',
         projectId: 'project-1',
+        hostId: LOCAL_EXECUTION_HOST_ID,
+        repoId: 'repo-1',
+        provider: 'github',
         providerIdentity: { provider: 'github', owner: 'stablyai', repo: 'orca' }
-      })?.providerIdentity
-    ).toBeNull()
+      })
+    ).toContain(encodeURIComponent('stablyai/orca'))
   })
 
   it('builds workspace run context from an explicit project host setup', () => {
