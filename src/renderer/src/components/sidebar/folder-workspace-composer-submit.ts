@@ -21,7 +21,8 @@ import type { LaunchSource } from '../../../../shared/agent-launch-source'
 import { folderWorkspaceKey } from '../../../../shared/workspace-scope'
 import {
   getLinkedItemDisplayName,
-  toFolderWorkspaceLinkedTask
+  toFolderWorkspaceLinkedTask,
+  toLinkedWorkItemPromptInput
 } from './folder-workspace-composer-helpers'
 
 type FolderWorkspaceCreateInput = {
@@ -71,7 +72,7 @@ function buildFolderWorkspaceLinkedStartupPlan(args: {
   platform: NodeJS.Platform
 }): AgentStartupPlan | null {
   const { prompt, draftPrompt } = resolveQuickCreateLinkedWorkItemPrompt(
-    args.linkedWorkItem,
+    toLinkedWorkItemPromptInput(args.linkedWorkItem),
     args.note
   )
   const linkedDraftPrompt = (draftPrompt ?? prompt.trim()) || null

@@ -1,13 +1,7 @@
-import type {
-  BaseRefSearchResult,
-  GitHubWorkItem,
-  GitLabWorkItem,
-  LinearCollectionResult,
-  LinearIssue
-} from '../../../../shared/types'
+import type { BaseRefSearchResult, GitHubWorkItem, GitLabWorkItem } from '../../../../shared/types'
 import { isClipboardTextByteLengthOverLimit } from '../../../../shared/clipboard-text'
 
-export type SmartNameMode = 'smart' | 'github' | 'gitlab' | 'branches' | 'linear' | 'text'
+export type SmartNameMode = 'smart' | 'github' | 'gitlab' | 'branches' | 'text'
 
 export const SMART_WORKSPACE_SOURCE_QUERY_MAX_BYTES = 2048
 
@@ -17,16 +11,12 @@ export type SmartWorkspaceSourceRow =
   | { kind: 'github'; value: string; item: GitHubWorkItem }
   | { kind: 'gitlab'; value: string; item: GitLabWorkItem }
   | { kind: 'branch'; value: string; refName: string; localBranchName: string }
-  | { kind: 'linear'; value: string; issue: LinearIssue }
-
-type LinearIssueSourceInput = LinearIssue[] | LinearCollectionResult<LinearIssue> | null | undefined
 
 const EMPTY_HINT_BY_MODE: Record<SmartNameMode, string> = {
   smart: 'Start typing to create a name or find a source.',
   github: 'Start typing to search GitHub PRs and issues.',
   gitlab: 'Start typing to search GitLab MRs and issues.',
   branches: 'No matching branches.',
-  linear: 'Start typing to search Linear issues.',
   text: ''
 }
 
@@ -108,8 +98,6 @@ export function buildSmartWorkspaceSourceRows({
   githubItems,
   gitlabAvailable,
   gitlabItems,
-  linearAvailable,
-  linearIssues,
   mode,
   resultLimit,
   value
@@ -118,8 +106,6 @@ export function buildSmartWorkspaceSourceRows({
   githubItems: GitHubWorkItem[]
   gitlabAvailable: boolean
   gitlabItems: GitLabWorkItem[]
-  linearAvailable: boolean
-  linearIssues: LinearIssueSourceInput
   mode: SmartNameMode
   resultLimit: number
   value: string
@@ -167,22 +153,6 @@ export function buildSmartWorkspaceSourceRows({
         value: `branch-${branch.refName}`,
         refName: branch.refName,
         localBranchName: branch.localBranchName
-      }))
-    )
-  }
-  if (linearAvailable && (mode === 'smart' || mode === 'linear')) {
-    // Why: mixed-version runtime responses may briefly carry the paginated
-    // collection shape into this render path; rendering must stay recoverable.
-    const resolvedLinearIssues = Array.isArray(linearIssues)
-      ? linearIssues
-      : Array.isArray(linearIssues?.items)
-        ? linearIssues.items
-        : []
-    nextRows.push(
-      ...resolvedLinearIssues.map((issue) => ({
-        kind: 'linear' as const,
-        value: `linear-${issue.id}`,
-        issue
       }))
     )
   }

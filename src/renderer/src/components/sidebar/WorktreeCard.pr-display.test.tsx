@@ -395,7 +395,6 @@ describe('WorktreeCard linked PR display', () => {
     )
 
     expect(markup).toContain('Linked issue #123')
-    expect(markup).toContain('Linked Linear ENG-123')
     expect(markup).toContain('PR: Open')
     expect(markup).not.toContain('Linked PR #456')
     expect(markup).toContain('Workspace notes')
@@ -423,7 +422,6 @@ describe('WorktreeCard linked PR display', () => {
     )
 
     expect(markup).toContain('Linked issue #123')
-    expect(markup).toContain('Linked Linear ENG-123')
     expect(markup).not.toContain('Linked PR #456')
     expect(markup).toContain('Workspace notes')
     expect(markup).not.toContain('data-worktree-card-meta-row=""')

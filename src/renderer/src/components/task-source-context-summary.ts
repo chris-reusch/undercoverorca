@@ -43,19 +43,11 @@ export function getTaskSourceContextSummary(args: {
   hostLabelById?: HostLabelLookup
   accountHostId?: ExecutionHostScope | null
   selectedRepoCount?: number
-  linearWorkspaceName?: string | null
 }): TaskSourceContextSummary {
   switch (args.provider) {
     case 'github':
     case 'gitlab':
       return getRepoBackedTaskSourceSummary(args)
-    case 'linear':
-      return getAccountBackedTaskSourceSummary(args.providerLabel, {
-        accountLabel: args.linearWorkspaceName,
-        accountHostId: args.accountHostId,
-        hostLabelById: args.hostLabelById,
-        hostAvailability: args.hostAvailability
-      })
   }
 }
 
@@ -142,37 +134,6 @@ function getRepoBackedTaskSourceSummary(args: {
   }
 }
 
-function getAccountBackedTaskSourceSummary(
-  providerLabel: string,
-  args: {
-    accountLabel: string | null | undefined
-    accountHostId: ExecutionHostScope | null | undefined
-    hostLabelById?: HostLabelLookup
-    hostAvailability?: readonly TaskSourceHostAvailability[]
-  }
-): TaskSourceContextSummary {
-  const target = args.accountLabel?.trim() || 'Current account'
-  const hostLabel = getHostLabel(args.accountHostId ?? 'local', args.hostLabelById)
-  const unavailableHosts = getUnavailableHosts(args.hostAvailability ?? [], args.hostLabelById)
-  const availabilityLabel = getAvailabilityLabel(unavailableHosts)
-  const titleParts = [
-    `${providerLabel} source`,
-    `Host: ${hostLabel}`,
-    availabilityLabel
-      ? `Availability: ${formatLongList(
-          unavailableHosts.map((host) => `${host.hostLabel} ${host.statusLabel}`)
-        )}`
-      : null,
-    `Account: ${target}`
-  ].filter((part): part is string => Boolean(part))
-  return {
-    label: [providerLabel, hostLabel, availabilityLabel, target]
-      .filter((part): part is string => Boolean(part))
-      .join(' · '),
-    title: titleParts.join(' · ')
-  }
-}
-
 function getProviderIdentityLabel(
   identity: TaskProviderIdentity | null | undefined
 ): string | null {
@@ -186,8 +147,6 @@ function getProviderIdentityLabel(
       return identity.namespace && identity.project
         ? `${identity.namespace}/${identity.project}`
         : (identity.projectId ?? null)
-    case 'linear':
-      return identity.workspaceName ?? identity.workspaceId ?? null
   }
 }
 

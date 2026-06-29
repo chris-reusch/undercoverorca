@@ -3,11 +3,6 @@ import { RpcDispatcher } from '../runtime/rpc/dispatcher'
 import type { RpcResponse } from '../runtime/rpc/core'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { formatRemoteCli } from './ssh-remote-cli-format'
-import {
-  RemoteCliArgumentError,
-  getRemoteLinearHelp,
-  tryDispatchRemoteLinearCli
-} from './ssh-remote-linear-cli'
 
 export type RemoteOrcaCliRequest = {
   argv: string[]
@@ -25,6 +20,17 @@ export type RemoteOrcaCliResult = {
 type ParsedRemoteCli = {
   commandPath: string[]
   flags: Map<string, string | boolean>
+}
+
+// Why: argument-validation errors carry a stable `code` so the CLI envelope
+// can surface a typed failure instead of a generic runtime error.
+class RemoteCliArgumentError extends Error {
+  constructor(
+    readonly code: string,
+    message: string
+  ) {
+    super(message)
+  }
 }
 
 const REMOTE_BOOLEAN_FLAGS = new Set([
@@ -53,13 +59,9 @@ export async function runRemoteOrcaCli(
   const dispatcher = new RpcDispatcher({ runtime })
   const parsed = parseRemoteCliArgs(request.argv)
   const json = parsed.flags.has('json')
-  const help = getRemoteLinearHelp(parsed)
-  if (help) {
-    return { stdout: `${help}\n`, stderr: '', exitCode: 0 }
-  }
 
   try {
-    const response = await dispatchRemoteCli(dispatcher, parsed, request.env, request.stdin)
+    const response = await dispatchRemoteCli(dispatcher, parsed, request.env)
     const formatted = json
       ? { stdout: `${JSON.stringify(response, null, 2)}\n`, stderr: '' }
       : formatRemoteCli(response)
@@ -71,13 +73,9 @@ export async function runRemoteOrcaCli(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     const code =
-      err instanceof RemoteCliArgumentError
-        ? err.code
-        : err instanceof Error &&
-            'code' in err &&
-            typeof (err as { code: unknown }).code === 'string'
-          ? (err as { code: string }).code
-          : 'runtime_error'
+      err instanceof Error && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+        ? (err as { code: string }).code
+        : 'runtime_error'
     if (json) {
       return {
         stdout: `${JSON.stringify(buildLocalError(message, code), null, 2)}\n`,
@@ -92,14 +90,9 @@ export async function runRemoteOrcaCli(
 async function dispatchRemoteCli(
   dispatcher: RpcDispatcher,
   parsed: ParsedRemoteCli,
-  env: Record<string, string>,
-  stdin?: string
+  env: Record<string, string>
 ): Promise<RpcResponse> {
   const command = parsed.commandPath.join(' ')
-  const linearResponse = await tryDispatchRemoteLinearCli(dispatcher, parsed, env, stdin)
-  if (linearResponse) {
-    return linearResponse
-  }
   switch (command) {
     case 'status': {
       const response = await call(dispatcher, 'status.get')

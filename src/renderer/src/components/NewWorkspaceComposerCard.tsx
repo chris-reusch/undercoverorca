@@ -31,13 +31,7 @@ import {
 import { getScreenSubmitModifierLabel } from '@/lib/screen-submit-shortcut'
 import { useContextualTour } from '@/components/contextual-tours/use-contextual-tour'
 import { filterEnabledTuiAgents } from '../../../shared/tui-agent-selection'
-import type {
-  GitHubWorkItem,
-  GitLabWorkItem,
-  LinearIssue,
-  SparsePreset,
-  TuiAgent
-} from '../../../shared/types'
+import type { GitHubWorkItem, GitLabWorkItem, SparsePreset, TuiAgent } from '../../../shared/types'
 import SparseCheckoutPresetSelect from '@/components/sparse/SparseCheckoutPresetSelect'
 import SmartWorkspaceNameField, {
   type SmartWorkspaceNameSelection
@@ -88,7 +82,6 @@ type NewWorkspaceComposerCardProps = {
   onSmartGitHubItemSelect: (item: GitHubWorkItem) => void
   onSmartGitLabItemSelect: (item: GitLabWorkItem) => void
   onSmartBranchSelect: (refName: string, localBranchName: string) => void
-  onSmartLinearIssueSelect: (issue: LinearIssue) => void
   smartNameSelection: SmartWorkspaceNameSelection | null
   onClearSmartNameSelection: () => void
   /** True when an existing local branch is selected and can be reused. */
@@ -329,7 +322,6 @@ export default function NewWorkspaceComposerCard({
   onSmartGitHubItemSelect,
   onSmartGitLabItemSelect,
   onSmartBranchSelect,
-  onSmartLinearIssueSelect,
   smartNameSelection,
   onClearSmartNameSelection,
   canReuseSelectedBranch,
@@ -680,7 +672,6 @@ export default function NewWorkspaceComposerCard({
             onGitHubItemSelect={onSmartGitHubItemSelect}
             onGitLabItemSelect={onSmartGitLabItemSelect}
             onBranchSelect={onSmartBranchSelect}
-            onLinearIssueSelect={onSmartLinearIssueSelect}
             selectedSource={smartNameSelection}
             onClearSelectedSource={onClearSmartNameSelection}
             githubSourceContext={smartNameGitHubSourceContext}
@@ -857,7 +848,7 @@ export default function NewWorkspaceComposerCard({
               )}
             >
               {smartNameSelection ? (
-                // Why: when a source (PR/issue/Linear/branch) is picked the
+                // Why: when a source (PR/issue/MR/branch) is picked the
                 // smart field shows a pill instead of an editable name, so
                 // surface the auto-derived workspace name here under Advanced
                 // where it can be reviewed/overridden. When the user typed an

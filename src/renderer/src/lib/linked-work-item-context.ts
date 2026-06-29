@@ -75,11 +75,9 @@ function isLinearWorkItemReference(
     | null
     | undefined
 ): boolean {
-  return (
-    args?.provider === 'linear' ||
-    Boolean(args?.linearIdentifier?.trim()) ||
-    args?.linkedContext?.provider === 'linear'
-  )
+  // Why: linkedLinearIssue stays as inert worktree-metadata plumbing; a stored
+  // identifier is the only remaining signal for a linked Linear-style item.
+  return Boolean(args?.linearIdentifier?.trim())
 }
 
 // Why: Linear ticket prose is third-party source data; terminal drafts may

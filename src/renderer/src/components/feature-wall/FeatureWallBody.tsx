@@ -15,7 +15,7 @@ import { EditorAnimatedVisual } from './EditorAnimatedVisual'
 import { BrowserAnimatedVisual } from './BrowserAnimatedVisual'
 import { AgentsOrchestrationVisual } from './AgentsOrchestrationVisual'
 import { ReviewAnimatedVisual } from './ReviewAnimatedVisual'
-import { GitHubRow, LinearRow } from '../onboarding/IntegrationsStep'
+import { GitHubRow } from '../onboarding/IntegrationsStep'
 import { OrchestrationSetupCard } from '../settings/OrchestrationSetupCard'
 import { BrowserUseSkillSetupCard } from './BrowserUseSkillSetupCard'
 import { AiCommitPrSettingsCard } from './AiCommitPrSettingsCard'
@@ -107,7 +107,6 @@ export function FeatureWallBody(props: {
   const setupTerminalHeightPx = source === 'onboarding' ? 140 : 240
   const settingContent = isTasks ? (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <LinearRow compact />
       <GitHubRow compact />
     </div>
   ) : isAgentsStatuses && props.settings ? (

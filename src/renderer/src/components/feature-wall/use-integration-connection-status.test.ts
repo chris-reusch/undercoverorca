@@ -32,10 +32,6 @@ function statusFacts(overrides: Partial<StatusFacts> = {}): StatusFacts {
     preflightStatusError: null,
     preflightStatusLoading: false,
     expectedPreflightContextKey: 'host',
-    linearStatus: { connected: false },
-    linearStatusChecked: true,
-    linearStatusContextKey: 'local#0',
-    providerRuntimeContextKey: 'local#0',
     ...overrides
   }
 }
@@ -96,7 +92,7 @@ describe('deriveIntegrationStepStates', () => {
   })
 
   it('marks tasks done if a tracker is already connected before a code host', () => {
-    // A pre-existing Linear connection is a real, truthful task source even
+    // A pre-existing tracker connection is a real, truthful task source even
     // if the user has not yet connected a code host for review.
     expect(
       deriveIntegrationStepStates({
@@ -166,61 +162,6 @@ describe('deriveIntegrationConnectionStatus', () => {
     })
   })
 
-  it('does not expose cached Linear tracker readiness while checks are stale', () => {
-    const staleTrackerFacts: Partial<StatusFacts>[] = [
-      {
-        linearStatus: { connected: true },
-        linearStatusContextKey: 'runtime:old#0'
-      },
-      {
-        linearStatus: { connected: true },
-        linearStatusChecked: false
-      }
-    ]
-
-    for (const overrides of staleTrackerFacts) {
-      expect(deriveIntegrationConnectionStatus(statusFacts(overrides))).toMatchObject({
-        trackerProviderName: null,
-        trackerChecking: true
-      })
-    }
-  })
-
-  it('keeps a current connected Linear tracker usable', () => {
-    expect(
-      deriveIntegrationConnectionStatus(
-        statusFacts({
-          linearStatus: { connected: true }
-        })
-      )
-    ).toMatchObject({
-      trackerConnected: true,
-      trackerProviderName: 'Linear',
-      trackerChecking: false,
-      checking: false
-    })
-  })
-
-  it('does not report task-source checking when a tracker is usable but preflight is stale', () => {
-    expect(
-      deriveIntegrationConnectionStatus(
-        statusFacts({
-          preflightStatus: {
-            gh: { installed: true, authenticated: true },
-            glab: { installed: false, authenticated: false }
-          },
-          preflightStatusContextKey: 'wsl:Ubuntu',
-          linearStatus: { connected: true }
-        })
-      )
-    ).toMatchObject({
-      reviewConnected: false,
-      trackerConnected: true,
-      trackerProviderName: 'Linear',
-      checking: false
-    })
-  })
-
   it('exposes provider readiness once the relevant checks are resolved and current', () => {
     expect(
       deriveIntegrationConnectionStatus(
@@ -228,8 +169,7 @@ describe('deriveIntegrationConnectionStatus', () => {
           preflightStatus: {
             gh: { installed: true, authenticated: true },
             glab: { installed: false, authenticated: false }
-          },
-          linearStatus: { connected: true }
+          }
         })
       )
     ).toMatchObject({
@@ -237,27 +177,26 @@ describe('deriveIntegrationConnectionStatus', () => {
       reviewProviderName: 'GitHub',
       codeHostTaskProviderName: 'GitHub',
       trackerConnected: true,
-      trackerProviderName: 'Linear',
-      // Trackers lead, but the code host stays listed so task summaries do not
-      // under-report what is usable.
-      taskSourceNames: ['Linear', 'GitHub'],
+      trackerProviderName: null,
+      taskSourceNames: ['GitHub'],
+      trackerChecking: false,
       checking: false
     })
   })
 
-  it('lists every connected task source with trackers before code hosts', () => {
+  it('lists every connected code-host task source', () => {
     expect(
       deriveIntegrationConnectionStatus(
         statusFacts({
           preflightStatus: {
             gh: { installed: true, authenticated: true },
             glab: { installed: true, authenticated: true }
-          },
-          linearStatus: { connected: true }
+          }
         })
       )
     ).toMatchObject({
-      taskSourceNames: ['Linear', 'GitHub', 'GitLab']
+      trackerProviderName: null,
+      taskSourceNames: ['GitHub', 'GitLab']
     })
 
     expect(
@@ -393,33 +332,7 @@ describe('deriveCliProviderCardState', () => {
 })
 
 describe('deriveIntegrationFlowState', () => {
-  it('does not complete progress from the code host while tracker facts are unresolved', () => {
-    const status = deriveIntegrationConnectionStatus(
-      statusFacts({
-        preflightStatus: {
-          gh: { installed: true, authenticated: true },
-          glab: { installed: false, authenticated: false }
-        },
-        linearStatus: { connected: true },
-        linearStatusContextKey: 'runtime:old#0'
-      })
-    )
-
-    expect(
-      deriveIntegrationFlowState({
-        reviewConnected: status.reviewConnected,
-        trackerProviderName: status.trackerProviderName,
-        codeHostTaskProviderName: status.codeHostTaskProviderName,
-        trackerChecking: status.trackerChecking
-      })
-    ).toMatchObject({
-      review: 'done',
-      task: 'active',
-      complete: false
-    })
-  })
-
-  it('completes the flow from a connected code host once tracker checks settle', () => {
+  it('completes the flow from a connected code host', () => {
     const status = deriveIntegrationConnectionStatus(
       statusFacts({
         preflightStatus: {
@@ -444,17 +357,27 @@ describe('deriveIntegrationFlowState', () => {
     })
   })
 
-  it('keeps tracker-before-code-host completion scoped to the task step only', () => {
+  it('leaves the task step active when review is connected without a task source', () => {
+    const status = deriveIntegrationConnectionStatus(
+      statusFacts({
+        preflightStatus: {
+          gh: { installed: false, authenticated: false },
+          glab: { installed: false, authenticated: false },
+          bitbucket: { configured: true, authenticated: true }
+        }
+      })
+    )
+
     expect(
       deriveIntegrationFlowState({
-        reviewConnected: false,
-        trackerProviderName: 'Linear',
-        codeHostTaskProviderName: null,
-        trackerChecking: false
+        reviewConnected: status.reviewConnected,
+        trackerProviderName: status.trackerProviderName,
+        codeHostTaskProviderName: status.codeHostTaskProviderName,
+        trackerChecking: status.trackerChecking
       })
     ).toMatchObject({
-      review: 'active',
-      task: 'done',
+      review: 'done',
+      task: 'active',
       complete: false
     })
   })

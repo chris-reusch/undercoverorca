@@ -1221,17 +1221,13 @@ describe('createUISlice hydratePersistedUI', () => {
         taskResumeState: {
           githubMode: 'project',
           githubItemsPreset: 'invalid',
-          githubItemsQuery: 42,
-          linearPreset: 'completed',
-          linearQuery: 'label:bug'
+          githubItemsQuery: 42
         } as unknown as PersistedUIState['taskResumeState']
       })
     )
 
     expect(store.getState().taskResumeState).toEqual({
-      githubMode: 'project',
-      linearPreset: 'completed',
-      linearQuery: 'label:bug'
+      githubMode: 'project'
     })
   })
 
@@ -1416,10 +1412,10 @@ describe('createUISlice hydratePersistedUI', () => {
     vi.stubGlobal('window', { api: { ui: { set: setUI } } })
     const store = createUIStore()
 
-    store.setState({ taskResumeState: { githubMode: 'project', linearPreset: 'all' } })
+    store.setState({ taskResumeState: { githubMode: 'project', githubItemsQuery: 'all' } })
     store.getState().setTaskResumeState({ githubItemsPreset: 'my-prs' })
 
-    const expected = { githubMode: 'project', linearPreset: 'all', githubItemsPreset: 'my-prs' }
+    const expected = { githubMode: 'project', githubItemsQuery: 'all', githubItemsPreset: 'my-prs' }
     expect(store.getState().taskResumeState).toEqual(expected)
     expect(setUI).toHaveBeenCalledWith({ taskResumeState: expected })
   })

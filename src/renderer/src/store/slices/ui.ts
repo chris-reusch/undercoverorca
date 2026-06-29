@@ -260,18 +260,6 @@ const VALID_TASK_PRESETS = new Set<TaskViewPresetId>([
   'my-prs',
   'prs'
 ])
-const VALID_LINEAR_PRESETS = new Set<NonNullable<TaskResumeState['linearPreset']>>([
-  'assigned',
-  'created',
-  'all',
-  'completed'
-])
-const VALID_LINEAR_MODES = new Set<NonNullable<TaskResumeState['linearMode']>>([
-  'issues',
-  'projects',
-  'views'
-])
-
 function resolvePaneKeyWorktreeIdFromTabs(state: AppState, paneKey: string): string | null {
   const parsed = parsePaneKey(paneKey)
   if (!parsed) {
@@ -436,39 +424,6 @@ function sanitizeTaskResumeState(value: unknown): TaskResumeState | undefined {
   }
   if (typeof input.githubItemsQuery === 'string') {
     next.githubItemsQuery = input.githubItemsQuery
-  }
-  if (
-    typeof input.linearPreset === 'string' &&
-    VALID_LINEAR_PRESETS.has(input.linearPreset as NonNullable<TaskResumeState['linearPreset']>)
-  ) {
-    next.linearPreset = input.linearPreset as NonNullable<TaskResumeState['linearPreset']>
-  }
-  if (
-    typeof input.linearMode === 'string' &&
-    VALID_LINEAR_MODES.has(input.linearMode as NonNullable<TaskResumeState['linearMode']>)
-  ) {
-    next.linearMode = input.linearMode as NonNullable<TaskResumeState['linearMode']>
-  }
-  if (typeof input.linearQuery === 'string') {
-    next.linearQuery = input.linearQuery
-  }
-  if (input.linearContext && typeof input.linearContext === 'object') {
-    const context = input.linearContext as Record<string, unknown>
-    if (
-      (context.kind === 'project' || context.kind === 'view') &&
-      typeof context.id === 'string' &&
-      context.id.trim() &&
-      typeof context.workspaceId === 'string' &&
-      context.workspaceId.trim() &&
-      context.workspaceId !== 'all'
-    ) {
-      next.linearContext = {
-        kind: context.kind,
-        id: context.id,
-        workspaceId: context.workspaceId,
-        model: context.model === 'issue' || context.model === 'project' ? context.model : undefined
-      }
-    }
   }
   return Object.keys(next).length > 0 ? next : undefined
 }

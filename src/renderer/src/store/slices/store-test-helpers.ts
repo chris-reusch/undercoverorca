@@ -18,7 +18,6 @@ import { createSettingsSlice } from './settings'
 import { createKeybindingsSlice } from './keybindings'
 import { createGitHubSlice } from './github'
 import { createHostedReviewSlice } from './hosted-review'
-import { createLinearSlice } from './linear'
 import { createPreflightSlice } from './preflight'
 import { createEditorSlice } from './editor'
 import { createStatsSlice } from './stats'
@@ -58,7 +57,6 @@ export function createTestStore() {
     ...createKeybindingsSlice(...a),
     ...createGitHubSlice(...a),
     ...createHostedReviewSlice(...a),
-    ...createLinearSlice(...a),
     ...createPreflightSlice(...a),
     ...createEditorSlice(...a),
     ...createStatsSlice(...a),

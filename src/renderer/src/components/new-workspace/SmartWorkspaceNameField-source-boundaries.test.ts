@@ -46,9 +46,8 @@ describe('SmartWorkspaceNameField repo-backed source boundaries', () => {
       'const smartPlaceholder = repoBackedSourcesDisabled',
       'return ('
     )
-    expect(placeholderSection).toContain('Type a name or Linear URL')
     expect(placeholderSection).toContain('Type a workspace name')
-    expect(placeholderSection).toContain('Type a name, #1234, branch, GitHub/GitLab or Linear URL')
+    expect(placeholderSection).toContain('Type a name, #1234, branch, GitHub or GitLab URL')
     expect(placeholderSection).toContain('Search GitLab MRs and issues')
   })
 
@@ -67,7 +66,7 @@ describe('SmartWorkspaceNameField repo-backed source boundaries', () => {
     const targetSection = sourceBetween(
       FIELD_SOURCE,
       'const repoBackedSearchTargets = useMemo',
-      'const linearSourceContext = useMemo'
+      'const [mode, setMode] = useState'
     )
 
     expect(targetSection).toContain('repoBackedSearchRepos.length > 0')

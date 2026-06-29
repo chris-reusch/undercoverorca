@@ -12,7 +12,6 @@ describe('smart-workspace-localized-options', () => {
     expect(getSmartWorkspaceNameModes().map((mode) => mode.label)).toEqual([
       'Smart',
       'GitHub',
-      'Linear',
       'GitLab',
       'Branch',
       'Name'
@@ -23,7 +22,6 @@ describe('smart-workspace-localized-options', () => {
     expect(getSmartWorkspaceNameModes().map((mode) => mode.label)).toEqual([
       '智能',
       'GitHub',
-      'Linear',
       'GitLab',
       '分支',
       '姓名'
@@ -34,7 +32,6 @@ describe('smart-workspace-localized-options', () => {
     expect(getSmartWorkspaceNameModes().map((mode) => mode.label)).toEqual([
       'Smart',
       'GitHub',
-      'Linear',
       'GitLab',
       'Branch',
       'Name'

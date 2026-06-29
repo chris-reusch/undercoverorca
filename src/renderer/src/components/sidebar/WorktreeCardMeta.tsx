@@ -1,10 +1,8 @@
 import React from 'react'
-import { Badge } from '@/components/ui/badge'
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card'
-import { CircleDot, ExternalLink, MonitorUp, Pencil, StickyNote } from 'lucide-react'
+import { CircleDot, Pencil, StickyNote } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { LinearIcon } from '@/components/icons/LinearIcon'
 import { SelectedTextCopyMenu } from '@/components/SelectedTextCopyMenu'
 import CommentMarkdown from './CommentMarkdown'
 import { WORKTREE_NATIVE_CONTEXT_MENU_ATTR } from './WorktreeContextMenu'
@@ -13,12 +11,10 @@ import {
   WorktreeCardDetailSectionContent
 } from './WorktreeCardDetailSection'
 import { DetailHeader, MetaIconBadge, MetadataActionIcon } from './WorktreeCardMetadataControls'
-import { LinearStateBadge } from './WorktreeCardMetadataStatusBadges'
 import { useWorktreeCardDetailsHoverControl } from './worktree-card-details-hover-state'
 import { getReviewLabel, ReviewIcon } from './worktree-review-helpers'
 import type {
   WorktreeCardIssueDisplay,
-  WorktreeCardLinearIssueDisplay,
   WorktreeCardMetaBadgesProps,
   WorktreeCardMetaBadgesRootProps,
   WorktreeCardDetailsHoverProps
@@ -29,7 +25,6 @@ import { WorktreeCardIssueDetailSection } from './WorktreeCardIssueDetailSection
 
 export type {
   WorktreeCardIssueDisplay,
-  WorktreeCardLinearIssueDisplay,
   WorktreeCardMetaBadgesProps,
   WorktreeCardMetaBadgesRootProps,
   WorktreeCardDetailsHoverProps
@@ -41,21 +36,20 @@ function hasComment(comment: string | null): boolean {
 
 export function hasWorktreeCardDetails({
   issue,
-  linearIssue,
   review,
   comment
 }: WorktreeCardMetaBadgesProps): boolean {
-  return Boolean(issue || linearIssue || review || hasComment(comment))
+  return Boolean(issue || review || hasComment(comment))
 }
 
 export const WorktreeCardMetaBadges = React.forwardRef<
   HTMLDivElement,
   WorktreeCardMetaBadgesRootProps
 >(function WorktreeCardMetaBadges(
-  { issue, linearIssue, review, comment, className, ...props },
+  { issue, review, comment, className, ...props },
   ref
 ): React.JSX.Element | null {
-  if (!hasWorktreeCardDetails({ issue, linearIssue, review, comment })) {
+  if (!hasWorktreeCardDetails({ issue, review, comment })) {
     return null
   }
 
@@ -92,17 +86,6 @@ export const WorktreeCardMetaBadges = React.forwardRef<
           <CircleDot className="text-muted-foreground" />
         </MetaIconBadge>
       )}
-      {linearIssue && (
-        <MetaIconBadge
-          label={translate(
-            'auto.components.sidebar.WorktreeCardMeta.b105fd3057',
-            'Linked Linear {{value0}}',
-            { value0: linearIssue.identifier }
-          )}
-        >
-          <LinearIcon className="text-muted-foreground" />
-        </MetaIconBadge>
-      )}
       {review && (
         <MetaIconBadge
           label={translate(
@@ -120,7 +103,6 @@ export const WorktreeCardMetaBadges = React.forwardRef<
 
 export function WorktreeCardDetailsHover({
   issue,
-  linearIssue,
   review,
   comment,
   children,
@@ -133,7 +115,6 @@ export function WorktreeCardDetailsHover({
   onEditIssue,
   onEditComment,
   onOpenGitHubIssueInOrca,
-  onOpenLinearIssueInOrca,
   onOpenReviewInOrca,
   onUnlinkReview,
   hoverControl
@@ -195,11 +176,7 @@ export function WorktreeCardDetailsHover({
 
   const showIdentityHeader = Boolean(branchName || workspaceTitle)
 
-  if (
-    !showIdentityHeader &&
-    !hasWorktreeCardDetails({ issue, linearIssue, review, comment }) &&
-    !detailsAfter
-  ) {
+  if (!showIdentityHeader && !hasWorktreeCardDetails({ issue, review, comment }) && !detailsAfter) {
     return children
   }
 
@@ -264,63 +241,6 @@ export function WorktreeCardDetailsHover({
               onOpenGitHubIssueInOrca ? dismissAndRun(onOpenGitHubIssueInOrca) : undefined
             }
           />
-
-          {linearIssue && (
-            <WorktreeCardDetailSection>
-              <DetailHeader
-                icon={<LinearIcon className="size-3 text-muted-foreground" />}
-                label={translate(
-                  'auto.components.sidebar.WorktreeCardMeta.5e982e6128',
-                  'Linear {{value0}}',
-                  { value0: linearIssue.identifier }
-                )}
-                actions={
-                  <>
-                    {linearIssue.url && onOpenLinearIssueInOrca && (
-                      <MetadataActionIcon
-                        label={translate(
-                          'auto.components.sidebar.WorktreeCardMeta.2c67730e07',
-                          'Open in Orca'
-                        )}
-                        onClick={dismissAndRun(onOpenLinearIssueInOrca)}
-                      >
-                        <MonitorUp className="size-3" />
-                      </MetadataActionIcon>
-                    )}
-                    {linearIssue.url && (
-                      <MetadataActionIcon
-                        label={translate(
-                          'auto.components.sidebar.WorktreeCardMeta.e42941631a',
-                          'View on Linear'
-                        )}
-                        href={linearIssue.url}
-                      >
-                        <ExternalLink className="size-3" />
-                      </MetadataActionIcon>
-                    )}
-                  </>
-                }
-              />
-              <WorktreeCardDetailSectionContent className="space-y-1.5">
-                <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
-                  {linearIssue.title}
-                </div>
-                {((linearIssue.labels && linearIssue.labels.length > 0) ||
-                  linearIssue.stateName) && (
-                  <div className="flex flex-wrap gap-1">
-                    {linearIssue.stateName && (
-                      <LinearStateBadge stateName={linearIssue.stateName} />
-                    )}
-                    {(linearIssue.labels ?? []).map((label) => (
-                      <Badge key={label} variant="outline" className="h-4 px-1.5 text-[9px]">
-                        {label}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </WorktreeCardDetailSectionContent>
-            </WorktreeCardDetailSection>
-          )}
 
           <WorktreeCardReviewDetailSection
             review={review}

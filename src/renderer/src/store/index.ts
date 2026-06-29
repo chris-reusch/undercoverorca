@@ -10,7 +10,6 @@ import { createSettingsSlice } from './slices/settings'
 import { createKeybindingsSlice } from './slices/keybindings'
 import { createGitHubSlice } from './slices/github'
 import { createHostedReviewSlice } from './slices/hosted-review'
-import { createLinearSlice } from './slices/linear'
 import { createPreflightSlice } from './slices/preflight'
 import { createEditorSlice } from './slices/editor'
 import { createStatsSlice } from './slices/stats'
@@ -42,7 +41,6 @@ export const useAppStore = create<AppState>()((...a) => ({
   ...createKeybindingsSlice(...a),
   ...createGitHubSlice(...a),
   ...createHostedReviewSlice(...a),
-  ...createLinearSlice(...a),
   ...createPreflightSlice(...a),
   ...createEditorSlice(...a),
   ...createStatsSlice(...a),

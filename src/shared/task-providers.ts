@@ -1,6 +1,6 @@
-export type TaskProvider = 'github' | 'gitlab' | 'linear'
+export type TaskProvider = 'github' | 'gitlab'
 
-export const TASK_PROVIDERS: readonly TaskProvider[] = ['github', 'gitlab', 'linear']
+export const TASK_PROVIDERS: readonly TaskProvider[] = ['github', 'gitlab']
 
 const TASK_PROVIDER_SET = new Set<TaskProvider>(TASK_PROVIDERS)
 
@@ -54,7 +54,6 @@ export function normalizeVisibleTaskProviders(value: unknown): TaskProvider[] {
 
 export type TaskProviderAvailability = {
   gitlabInstalled: boolean
-  linearConnected: boolean
 }
 
 export function filterAvailableTaskProviders(
@@ -97,10 +96,7 @@ function isTaskProviderAvailable(
   if (provider === 'github') {
     return true
   }
-  if (provider === 'gitlab') {
-    return availability.gitlabInstalled
-  }
-  return availability.linearConnected
+  return availability.gitlabInstalled
 }
 
 export function resolveVisibleTaskProvider(

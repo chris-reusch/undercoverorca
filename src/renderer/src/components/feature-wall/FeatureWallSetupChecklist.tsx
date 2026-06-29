@@ -24,7 +24,6 @@ import { AgentStep } from '../onboarding/AgentStep'
 import { NotificationStep } from '../onboarding/NotificationStep'
 import { useAppStore } from '@/store'
 import type { TuiAgent } from '../../../../shared/types'
-import { getProviderRuntimeContextKey } from '@/lib/provider-runtime-context'
 import { translate } from '@/i18n/i18n'
 
 type FeatureWallSetupChecklistLayout = 'modal' | 'embedded'
@@ -226,14 +225,10 @@ function NotificationAction(): React.JSX.Element {
 
 function TaskSourcesAction(): React.JSX.Element {
   const refreshPreflightStatus = useAppStore((s) => s.refreshPreflightStatus)
-  const checkLinearConnection = useAppStore((s) => s.checkLinearConnection)
-  const settings = useAppStore((s) => s.settings)
-  const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
 
   useEffect(() => {
     void refreshPreflightStatus()
-    void checkLinearConnection()
-  }, [refreshPreflightStatus, checkLinearConnection, providerRuntimeContextKey])
+  }, [refreshPreflightStatus])
 
   return (
     <div className="space-y-5">

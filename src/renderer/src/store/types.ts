@@ -8,7 +8,6 @@ import type { SettingsSlice } from './slices/settings'
 import type { KeybindingsSlice } from './slices/keybindings'
 import type { GitHubSlice } from './slices/github'
 import type { HostedReviewSlice } from './slices/hosted-review'
-import type { LinearSlice } from './slices/linear'
 import type { PreflightSlice } from './slices/preflight'
 import type { EditorSlice } from './slices/editor'
 import type { StatsSlice } from './slices/stats'
@@ -37,7 +36,6 @@ export type AppState = RepoSlice &
   KeybindingsSlice &
   GitHubSlice &
   HostedReviewSlice &
-  LinearSlice &
   PreflightSlice &
   EditorSlice &
   StatsSlice &

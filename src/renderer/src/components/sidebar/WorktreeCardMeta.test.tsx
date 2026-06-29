@@ -33,7 +33,6 @@ describe('WorktreeCardDetailsHover', () => {
         branchName="bug-hold-to-talk-speech-to-text-option-no-longer-works"
         workspaceTitle="[Bug]: Hold-to-talk speech-to-text option no longer works"
         issue={null}
-        linearIssue={null}
         review={null}
         comment={null}
         onEditIssue={vi.fn()}
@@ -54,7 +53,6 @@ describe('WorktreeCardDetailsHover', () => {
         branchName="feature/local-branch"
         workspaceTitle="Fix stale GH PR"
         issue={null}
-        linearIssue={null}
         review={{
           provider: 'github',
           number: 456,
@@ -82,7 +80,6 @@ describe('WorktreeCardDetailsHover', () => {
     const markup = renderToStaticMarkup(
       <WorktreeCardDetailsHover
         issue={null}
-        linearIssue={null}
         review={{
           provider: 'github',
           number: 456,
@@ -127,7 +124,6 @@ describe('WorktreeCardDetailsHover', () => {
           url: 'https://github.com/acme/orca/issues/5518',
           labels: []
         }}
-        linearIssue={null}
         review={null}
         comment={null}
         onEditIssue={vi.fn()}
@@ -157,7 +153,6 @@ describe('WorktreeCardDetailsHover', () => {
     const markup = renderToStaticMarkup(
       <WorktreeCardDetailsHover
         issue={null}
-        linearIssue={null}
         review={{
           provider: 'gitlab',
           number: 77,
@@ -178,79 +173,5 @@ describe('WorktreeCardDetailsHover', () => {
     expect(markup).toContain('aria-label="More MR actions"')
     expect(markup).toContain('Unlink MR')
     expect(markup).toContain('View on GitLab')
-  })
-
-  it('displays Linear issue details with link', () => {
-    const markup = renderToStaticMarkup(
-      <WorktreeCardDetailsHover
-        issue={null}
-        linearIssue={{
-          identifier: 'ENG-123',
-          title: 'Add Linear ticket display feature',
-          url: 'https://linear.app/acme/issue/ENG-123',
-          stateName: 'In Progress',
-          labels: ['feature', 'ui']
-        }}
-        review={null}
-        comment={null}
-        onEditIssue={vi.fn()}
-        onEditComment={vi.fn()}
-        onOpenLinearIssueInOrca={vi.fn()}
-      >
-        <span>ENG-123</span>
-      </WorktreeCardDetailsHover>
-    )
-
-    expect(markup).toContain('ENG-123')
-    expect(markup).toContain('Add Linear ticket display feature')
-    expect(markup).toContain('https://linear.app/acme/issue/ENG-123')
-    expect(markup).toContain('View on Linear')
-    expect(markup).toContain('In Progress')
-  })
-
-  it('shows identifier when Linear issue URL is unavailable', () => {
-    const markup = renderToStaticMarkup(
-      <WorktreeCardDetailsHover
-        issue={null}
-        linearIssue={{
-          identifier: 'ENG-123',
-          title: 'Loading Linear issue...'
-        }}
-        review={null}
-        comment={null}
-        onEditIssue={vi.fn()}
-        onEditComment={vi.fn()}
-      >
-        <span>ENG-123</span>
-      </WorktreeCardDetailsHover>
-    )
-
-    expect(markup).toContain('ENG-123')
-    expect(markup).toContain('Loading Linear issue...')
-    expect(markup).not.toContain('View on Linear')
-  })
-
-  it('shows link when fallback URL is provided', () => {
-    const markup = renderToStaticMarkup(
-      <WorktreeCardDetailsHover
-        issue={null}
-        linearIssue={{
-          identifier: 'ENG-123',
-          title: 'Loading Linear issue...',
-          url: 'https://linear.app/acme/issue/ENG-123'
-        }}
-        review={null}
-        comment={null}
-        onEditIssue={vi.fn()}
-        onEditComment={vi.fn()}
-      >
-        <span>ENG-123</span>
-      </WorktreeCardDetailsHover>
-    )
-
-    expect(markup).toContain('ENG-123')
-    expect(markup).toContain('Loading Linear issue...')
-    expect(markup).toContain('https://linear.app/acme/issue/ENG-123')
-    expect(markup).toContain('View on Linear')
   })
 })

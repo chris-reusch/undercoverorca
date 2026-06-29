@@ -6,7 +6,6 @@ import { hasFeatureInteraction } from '../../../../shared/feature-interactions'
 import { checkRuntimeHooks } from '@/runtime/runtime-hooks-client'
 import { getLocalPreflightContext, localPreflightContextKey } from '@/lib/local-preflight-context'
 import { hasEffectiveSetupCommand } from '@/lib/setup-script-status'
-import { getProviderRuntimeContextKey } from '@/lib/provider-runtime-context'
 import {
   COMPUTER_USE_SKILL_NAME,
   ORCA_CLI_SKILL_NAME,
@@ -52,10 +51,6 @@ export function useSetupGuideProgress(
   const preflightStatusLoading = useAppStore((s) => s.preflightStatusLoading)
   const refreshPreflightStatus = useAppStore((s) => s.refreshPreflightStatus)
   const activeSkillRuntime = useActiveProjectSkillRuntime()
-  const linearStatus = useAppStore((s) => s.linearStatus)
-  const linearStatusChecked = useAppStore((s) => s.linearStatusChecked)
-  const linearStatusContextKey = useAppStore((s) => s.linearStatusContextKey)
-  const checkLinearConnection = useAppStore((s) => s.checkLinearConnection)
   const repos = useAppStore((s) => s.repos)
   const activeRepoId = useAppStore((s) => s.activeRepoId)
   const expectedPreflightContextKey = useAppStore((s) =>
@@ -90,8 +85,6 @@ export function useSetupGuideProgress(
     discoveryTarget: activeSkillRuntime.discoveryTarget,
     sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS
   })
-  const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
-  const linearStatusCurrent = linearStatusContextKey === providerRuntimeContextKey
   const preflightStatusCurrent = preflightStatusContextKey === expectedPreflightContextKey
 
   useEffect(() => {
@@ -101,19 +94,11 @@ export function useSetupGuideProgress(
     if (!preflightStatusCurrent || !preflightStatusChecked) {
       void refreshPreflightStatus()
     }
-    if (!linearStatusCurrent || !linearStatusChecked) {
-      void checkLinearConnection()
-    }
   }, [
-    checkLinearConnection,
-    linearStatusCurrent,
-    linearStatusChecked,
-    linearStatusContextKey,
     expectedPreflightContextKey,
     preflightStatusContextKey,
     preflightStatusCurrent,
     preflightStatusChecked,
-    providerRuntimeContextKey,
     refreshPreflightStatus,
     shouldRefreshCoreState
   ])
@@ -229,11 +214,7 @@ export function useSetupGuideProgress(
     preflightStatusContextKey,
     preflightStatusError,
     preflightStatusLoading,
-    expectedPreflightContextKey,
-    linearStatus,
-    linearStatusChecked,
-    linearStatusContextKey,
-    providerRuntimeContextKey
+    expectedPreflightContextKey
   })
   const hasConnectedTaskSource = taskSourceStatus.trackerConnected
   const gitRepoCount = orderedGitRepos.length
@@ -253,7 +234,6 @@ export function useSetupGuideProgress(
     // Why: task-source readiness is a capability group. Once any provider is
     // usable, unrelated stale provider checks should not hide setup progress.
     preflightStatusChecked: !taskSourceStatus.checking,
-    linearStatusChecked: true,
     browserUseSkillDiscoveryLoading: detectedBrowserUseSkillLoading,
     computerUseSkillDiscoveryLoading: computerUseSkillLoading,
     orchestrationSkillDiscoveryLoading: detectedOrchestrationSkillLoading,

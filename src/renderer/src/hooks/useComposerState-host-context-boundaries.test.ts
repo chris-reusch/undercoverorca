@@ -353,13 +353,13 @@ describe('useComposerState host-context boundaries', () => {
     expect(cardProps).toContain('allowSmartNameAddProject: !isProjectGroupTarget')
   })
 
-  it('preserves Linear linked items when switching from repo target to folder target', () => {
+  it('preserves inert linked-identifier items when switching from repo target to folder target', () => {
     const section = sourceBetween(
       HOOK_SOURCE,
       'const handleProjectChange = useCallback',
       'const handleSmartGitHubItemSelect'
     )
-    expect(section).toContain("linkedProvider !== 'linear'")
+    expect(section).toContain('!linkedWorkItem.linearIdentifier')
   })
 
   it('resolves quick-create base refs through the worktree-create precedence helper', () => {
@@ -407,18 +407,19 @@ describe('useComposerState host-context boundaries', () => {
     expect(quickSubmit).toContain(
       'const promptLinkedWorkItem = agent === null ? null : submitLinkedWorkItem'
     )
-    expect(quickSubmit).toContain('resolveQuickCreateLinkedWorkItemPrompt(promptLinkedWorkItem')
+    expect(quickSubmit).toContain('resolveQuickCreateLinkedWorkItemPrompt(')
+    expect(quickSubmit).toContain('toLinkedWorkItemPromptInput(promptLinkedWorkItem)')
     expect(quickSubmit).not.toContain('explicitAgentChoice')
     expect(quickSubmit).not.toContain('shouldPrepareQuickLinkedWorkItemAgentPrompt')
     expect(HOOK_SOURCE).not.toContain('resolveQuickWorkspaceSubmitAgent')
   })
 
-  it('keeps Linear starts out of issue-command templates without special draft routing', () => {
+  it('keeps inert linked-identifier starts out of issue-command templates without special draft routing', () => {
     expect(HOOK_SOURCE).not.toContain('isOrcaCliAvailableForLaunch')
     expect(HOOK_SOURCE).not.toContain('hasGeneratedLinearSourceContext')
     expect(HOOK_SOURCE).not.toContain('shouldDraftGeneratedLinearContext')
     expect(HOOK_SOURCE).toMatch(
-      /willApplyIssueCommandAsPrompt[\s\S]*linkedWorkItemProvider !== 'linear'/
+      /willApplyIssueCommandAsPrompt[\s\S]*!linkedWorkItem\?\.linearIdentifier/
     )
 
     const previewSection = sourceBetween(
@@ -426,16 +427,16 @@ describe('useComposerState host-context boundaries', () => {
       'const shouldApplyLinkedOnlyTemplate =',
       'const linkedOnlyTemplatePrompt'
     )
-    expect(previewSection).toContain("linkedWorkItemProvider !== 'linear'")
+    expect(previewSection).toContain('!linkedWorkItem?.linearIdentifier')
 
     const fullSubmit = sourceBetween(
       HOOK_SOURCE,
       'const submit = useCallback',
       'const submitQuick = useCallback'
     )
-    expect(fullSubmit).toContain("submitLinkedWorkItemProvider !== 'linear'")
+    expect(fullSubmit).toContain('!submitLinkedWorkItem?.linearIdentifier')
     expect(fullSubmit).toMatch(
-      /submitShouldRunIssueAutomation[\s\S]*submitLinkedWorkItemProvider !== 'linear'/
+      /submitShouldRunIssueAutomation[\s\S]*!submitLinkedWorkItem\?\.linearIdentifier/
     )
     expect(fullSubmit).toContain('prompt: submitStartupPrompt')
     expect(fullSubmit).toContain('const shouldSeedInitialAgentStatus =')

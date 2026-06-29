@@ -37,7 +37,6 @@ import type {
   GitHubWorkItem,
   GitPushTarget,
   GitLabWorkItem,
-  LinearIssue,
   OrcaHooks,
   SetupDecision,
   SetupRunPolicy,
@@ -71,11 +70,6 @@ import {
   resolveQuickCreateLinkedWorkItemPrompt
 } from '@/lib/linked-work-item-context'
 import { getLocalRepoProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
-import {
-  buildLinearIssueLinkedWorkItem,
-  isLinearLinkedWorkItem
-} from '@/lib/linear-linked-work-item'
-import { getLinearIssueWorkspaceName } from '../../../shared/workspace-name'
 import {
   getFullComposerCreateDisabled,
   getQuickComposerCreateDisabled
@@ -118,7 +112,7 @@ import {
   getSmartNameSelection as getFolderSmartNameSelection,
   toGitHubLinkedWorkItem,
   toGitLabLinkedWorkItem,
-  toLinearLinkedWorkItem
+  toLinkedWorkItemPromptInput
 } from '@/components/sidebar/folder-workspace-composer-helpers'
 import { useFolderWorkspaceComposerPathStatus } from '@/components/sidebar/folder-workspace-composer-path-status'
 import { submitFolderWorkspaceCreate } from '@/components/sidebar/folder-workspace-composer-submit'
@@ -239,7 +233,6 @@ export type ComposerCardProps = {
   onSmartGitHubItemSelect: (item: GitHubWorkItem) => void
   onSmartGitLabItemSelect: (item: GitLabWorkItem) => void
   onSmartBranchSelect: (refName: string, localBranchName: string) => void
-  onSmartLinearIssueSelect: (issue: LinearIssue) => void
   smartNameGitHubSourceContext?: TaskSourceContext | null
   /** GitLab parallel of onBaseBranchPrSelect. */
   onBaseBranchMrSelect?: (
@@ -474,9 +467,9 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
   const draftProjectHostSetupId = persistDraft
     ? (newWorkspaceDraft?.projectHostSetupId ?? null)
     : null
-  // Why: Tasks can start work from Linear source contexts that are not
-  // repo-backed. Seed the run target from the logical project/source host so
-  // the modal does not silently fall back to the ambient active repo.
+  // Why: Tasks can start work from source contexts that are not repo-backed.
+  // Seed the run target from the logical project/source host so the modal does
+  // not silently fall back to the ambient active repo.
   const initialRunSeed = resolveInitialWorkspaceRunSeed({
     draftProjectId,
     draftHostId,
@@ -1138,15 +1131,14 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     [selectedRepo, selectedRepoIsGit, yamlHooks]
   )
   const setupPolicy: SetupRunPolicy = selectedRepo?.hookSettings?.setupRunPolicy ?? 'run-by-default'
-  const linkedWorkItemProvider = linkedWorkItem ? getLinkedWorkItemProvider(linkedWorkItem) : null
   // Why: the "no prompt + linked item" path below rehydrates the issueCommand
-  // template into the main startup prompt. Linear starts never use that
-  // product-authored workflow text, so they should not wait for it either.
+  // template into the main startup prompt. Inert linked-identifier references
+  // carry only a neutral reference, so they should not wait for it either.
   const willApplyIssueCommandAsPrompt =
     enableIssueAutomation &&
     !agentPrompt.trim() &&
     Boolean(linkedWorkItem) &&
-    linkedWorkItemProvider !== 'linear'
+    !linkedWorkItem?.linearIdentifier
   const shouldWaitForIssueAutomationCheck =
     enableIssueAutomation &&
     (parsedLinkedIssueNumber !== null || willApplyIssueCommandAsPrompt) &&
@@ -1182,14 +1174,15 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
       }),
     [agentPrompt, fallbackCreatureName, linkedPR, name, parsedLinkedIssueNumber]
   )
-  // Why: Linear starts may include only the neutral issue reference; repo
-  // issue-command templates are product-authored workflow direction.
+  // Why: inert linked-identifier references carry only a neutral issue
+  // reference; repo issue-command templates are product-authored workflow
+  // direction that should not apply to them.
   const shouldApplyLinkedOnlyTemplate =
     enableIssueAutomation &&
     !agentPrompt.trim() &&
     Boolean(linkedWorkItem) &&
     hasLoadedIssueCommand &&
-    linkedWorkItemProvider !== 'linear'
+    !linkedWorkItem?.linearIdentifier
   const linkedOnlyTemplatePrompt = useMemo(() => {
     if (!shouldApplyLinkedOnlyTemplate || !linkedWorkItem) {
       return ''
@@ -2162,17 +2155,17 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
           hint = `was ${baseBranch}`
         }
       }
-      const preserveLinearLinkedWorkItem = isLinearLinkedWorkItem(linkedWorkItem)
+      // Why: a stored linked-identifier reference is workspace-scoped source
+      // context (inert plumbing), unlike repo-scoped GitHub/GitLab/branch
+      // sources, so it must survive choosing the implementation project.
+      const preserveLinkedIdentifierItem = Boolean(linkedWorkItem?.linearIdentifier)
       setRepoId(value)
       if (!options.preserveStartFrom) {
         setLinkedIssue('')
         setLinkedPR(null)
         setLinkedGitLabIssue(null)
         setLinkedGitLabMR(null)
-        // Why: repo changes invalidate repo-scoped sources (GitHub/GitLab/branch),
-        // but a selected Linear issue is workspace-scoped source context and
-        // must survive choosing the implementation project.
-        if (!preserveLinearLinkedWorkItem) {
+        if (!preserveLinkedIdentifierItem) {
           setLinkedWorkItem(null)
         }
       }
@@ -2255,8 +2248,9 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
         setLinkedPR(null)
         setLinkedGitLabIssue(null)
         setLinkedGitLabMR(null)
-        const linkedProvider = linkedWorkItem ? getLinkedWorkItemProvider(linkedWorkItem) : null
-        if (linkedWorkItem && linkedProvider !== 'linear') {
+        // Why: preserve only the inert workspace-scoped linked-identifier
+        // reference; repo-scoped linked items are meaningless after a switch.
+        if (linkedWorkItem && !linkedWorkItem.linearIdentifier) {
           setLinkedWorkItem(null)
         }
         setSparseEnabled(false)
@@ -2658,55 +2652,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     [reuseEligibleBranch]
   )
 
-  const handleSmartLinearIssueSelect = useCallback(
-    (issue: LinearIssue): void => {
-      if (isProjectGroupTarget) {
-        const linkedItem = toLinearLinkedWorkItem(issue)
-        setLinkedIssue('')
-        setLinkedPR(null)
-        setLinkedGitLabIssue(null)
-        setLinkedGitLabMR(null)
-        setLinkedWorkItem(linkedItem)
-        const suggestedName =
-          getLinkedItemDisplayName(linkedItem) ?? getLinearIssueWorkspaceName(issue)
-        if (
-          !name.trim() ||
-          name === lastAutoNameRef.current ||
-          isWorkItemLookupText(name) ||
-          name.trim().toLowerCase() === issue.identifier.toLowerCase()
-        ) {
-          setName(suggestedName)
-          lastAutoNameRef.current = suggestedName
-        }
-        return
-      }
-      setLinkedIssue('')
-      setLinkedPR(null)
-      setLinkedGitLabIssue(null)
-      setLinkedGitLabMR(null)
-      setLinkedWorkItem(buildLinearIssueLinkedWorkItem(issue))
-      const suggestedName = getLinearIssueWorkspaceName(issue)
-      // Why: same lookup-text rule as applyLinkedWorkItem, plus the typed
-      // Linear identifier ("STA-123") that matched this issue.
-      if (
-        !name.trim() ||
-        name === lastAutoNameRef.current ||
-        isWorkItemLookupText(name) ||
-        name.trim().toLowerCase() === issue.identifier.toLowerCase()
-      ) {
-        setName(suggestedName)
-        lastAutoNameRef.current = suggestedName
-      }
-      setBranchNameOverride(undefined)
-      setForkPushWarning(null)
-      branchAutoNameRef.current = ''
-      // Why: match the GitHub issue/PR flow by drafting linked context for
-      // review instead of auto-submitting. Auto-filling the note here would
-      // turn a source selection into user-authored instructions.
-    },
-    [isProjectGroupTarget, name]
-  )
-
   const handleClearSmartNameSelection = useCallback((): void => {
     setLinkedIssue('')
     setLinkedPR(null)
@@ -2739,10 +2684,8 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     }
     if (linkedWorkItem) {
       const provider = getLinkedWorkItemProvider(linkedWorkItem)
-      const isLinear = provider === 'linear'
-      const kind: SmartWorkspaceNameSelection['kind'] = isLinear
-        ? 'linear'
-        : provider === 'gitlab'
+      const kind: SmartWorkspaceNameSelection['kind'] =
+        provider === 'gitlab'
           ? linkedWorkItem.type === 'mr'
             ? 'gitlab-mr'
             : 'gitlab-issue'
@@ -2752,7 +2695,7 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
       return {
         kind,
         label:
-          isLinear || linkedWorkItem.number === 0
+          linkedWorkItem.number === 0
             ? linkedWorkItem.title
             : `#${linkedWorkItem.number} ${linkedWorkItem.title}`,
         url: linkedWorkItem.url
@@ -2965,15 +2908,12 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
           : smartGitHubResolution.kind === 'none'
             ? branchNameOverride
             : undefined
-      const submitLinkedWorkItemProvider = submitLinkedWorkItem
-        ? getLinkedWorkItemProvider(submitLinkedWorkItem)
-        : null
       const submitShouldApplyLinkedOnlyTemplate =
         enableIssueAutomation &&
         !agentPrompt.trim() &&
         Boolean(submitLinkedWorkItem) &&
         hasLoadedIssueCommand &&
-        submitLinkedWorkItemProvider !== 'linear'
+        !submitLinkedWorkItem?.linearIdentifier
       const submitLinkedOnlyTemplatePrompt =
         submitShouldApplyLinkedOnlyTemplate && submitLinkedWorkItem
           ? renderIssueCommandTemplate(
@@ -2985,7 +2925,9 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
               }
             )
           : ''
-      const linkedPromptContext = getLinkedWorkItemPromptContext(submitLinkedWorkItem)
+      const linkedPromptContext = getLinkedWorkItemPromptContext(
+        toLinkedWorkItemPromptInput(submitLinkedWorkItem)
+      )
       const submitStartupPrompt = submitShouldApplyLinkedOnlyTemplate
         ? buildAgentPromptWithContext(
             submitLinkedOnlyTemplatePrompt,
@@ -3001,7 +2943,7 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
           )
       const submitShouldRunIssueAutomation =
         enableIssueAutomation &&
-        submitLinkedWorkItemProvider !== 'linear' &&
+        !submitLinkedWorkItem?.linearIdentifier &&
         submitLinkedIssueNumber !== null &&
         issueCommandTemplate.length > 0 &&
         !submitShouldApplyLinkedOnlyTemplate
@@ -3022,18 +2964,15 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
             : await ensureHooksConfirmed(useAppStore.getState(), repoId, 'issueCommand')
       }
 
-      const linkedLinearIssue =
-        submitLinkedWorkItem && submitLinkedWorkItemProvider === 'linear'
-          ? submitLinkedWorkItem.linearIdentifier
-          : undefined
-      const linkedLinearIssueWorkspaceId =
-        submitLinkedWorkItem && submitLinkedWorkItemProvider === 'linear'
-          ? submitLinkedWorkItem.linearWorkspaceId
-          : undefined
-      const linkedLinearIssueOrganizationUrlKey =
-        submitLinkedWorkItem && submitLinkedWorkItemProvider === 'linear'
-          ? submitLinkedWorkItem.linearOrganizationUrlKey
-          : undefined
+      // Why: inert worktree-metadata plumbing keyed off the stored
+      // linearIdentifier (not a provider), preserved for downstream consumers.
+      const linkedLinearIssue = submitLinkedWorkItem?.linearIdentifier
+      const linkedLinearIssueWorkspaceId = submitLinkedWorkItem?.linearIdentifier
+        ? submitLinkedWorkItem.linearWorkspaceId
+        : undefined
+      const linkedLinearIssueOrganizationUrlKey = submitLinkedWorkItem?.linearIdentifier
+        ? submitLinkedWorkItem.linearOrganizationUrlKey
+        : undefined
       const effectiveBranchNameOverride = resolveComposerBranchNameOverrideForCreate({
         branchNameOverride: submitBranchNameOverride,
         branchAutoName: branchAutoNameRef.current,
@@ -3394,21 +3333,15 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
             ? 'skip'
             : ((submitResolvedSetupDecision ?? 'inherit') as SetupDecision)
 
-        const submitLinkedWorkItemProvider = submitLinkedWorkItem
-          ? getLinkedWorkItemProvider(submitLinkedWorkItem)
-          : null
-        const linkedLinearIssue =
-          submitLinkedWorkItem && submitLinkedWorkItemProvider === 'linear'
-            ? submitLinkedWorkItem.linearIdentifier
-            : undefined
-        const linkedLinearIssueWorkspaceId =
-          submitLinkedWorkItem && submitLinkedWorkItemProvider === 'linear'
-            ? submitLinkedWorkItem.linearWorkspaceId
-            : undefined
-        const linkedLinearIssueOrganizationUrlKey =
-          submitLinkedWorkItem && submitLinkedWorkItemProvider === 'linear'
-            ? submitLinkedWorkItem.linearOrganizationUrlKey
-            : undefined
+        // Why: inert worktree-metadata plumbing keyed off the stored
+        // linearIdentifier (not a provider), preserved for downstream consumers.
+        const linkedLinearIssue = submitLinkedWorkItem?.linearIdentifier
+        const linkedLinearIssueWorkspaceId = submitLinkedWorkItem?.linearIdentifier
+          ? submitLinkedWorkItem.linearWorkspaceId
+          : undefined
+        const linkedLinearIssueOrganizationUrlKey = submitLinkedWorkItem?.linearIdentifier
+          ? submitLinkedWorkItem.linearOrganizationUrlKey
+          : undefined
         const effectiveBranchNameOverride = resolveComposerBranchNameOverrideForCreate({
           branchNameOverride: submitBranchNameOverride,
           branchAutoName: branchAutoNameRef.current,
@@ -3446,7 +3379,10 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
         // the renderer path so prompt delivery is not skipped.
         const promptLinkedWorkItem = agent === null ? null : submitLinkedWorkItem
         const { prompt: quickPrompt, draftPrompt: quickDraftPrompt } =
-          resolveQuickCreateLinkedWorkItemPrompt(promptLinkedWorkItem, trimmedNote)
+          resolveQuickCreateLinkedWorkItemPrompt(
+            toLinkedWorkItemPromptInput(promptLinkedWorkItem),
+            trimmedNote
+          )
         const draftLaunchPlan =
           agent === null || !quickDraftPrompt
             ? null
@@ -3686,7 +3622,6 @@ export function useComposerState(options: UseComposerStateOptions): UseComposerS
     onSmartGitHubItemSelect: handleSmartGitHubItemSelect,
     onSmartGitLabItemSelect: handleSmartGitLabItemSelect,
     onSmartBranchSelect: isProjectGroupTarget ? () => {} : handleSmartBranchSelect,
-    onSmartLinearIssueSelect: handleSmartLinearIssueSelect,
     smartNameGitHubSourceContext: selectedRepoGitHubSourceContext,
     smartNameSelection,
     onClearSmartNameSelection: handleClearSmartNameSelection,

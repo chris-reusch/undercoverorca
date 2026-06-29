@@ -10,7 +10,6 @@ import { ENVIRONMENT_COMMAND_SPECS } from './environment'
 import { AGENT_HOOK_COMMAND_SPECS } from './agent-hooks'
 import { DIAGNOSTICS_COMMAND_SPECS } from './diagnostics'
 import { EMULATOR_COMMAND_SPECS } from './emulator'
-import { LINEAR_COMMAND_SPECS } from './linear'
 
 export const COMMAND_SPECS: CommandSpec[] = [
   ...CORE_COMMAND_SPECS,
@@ -23,6 +22,5 @@ export const COMMAND_SPECS: CommandSpec[] = [
   ...AGENT_HOOK_COMMAND_SPECS,
   ...DIAGNOSTICS_COMMAND_SPECS,
   ...ENVIRONMENT_COMMAND_SPECS,
-  ...LINEAR_COMMAND_SPECS,
   ...EMULATOR_COMMAND_SPECS
 ]

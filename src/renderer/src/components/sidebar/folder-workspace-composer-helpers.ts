@@ -1,4 +1,3 @@
-import { buildLinearIssueLinkedWorkItem } from '@/lib/linear-linked-work-item'
 import {
   getLinkedWorkItemProvider,
   getLinkedWorkItemWorkspaceName,
@@ -18,7 +17,6 @@ import type {
   FolderWorkspace,
   GitHubWorkItem,
   GitLabWorkItem,
-  LinearIssue,
   ProjectGroup,
   Repo
 } from '../../../../shared/types'
@@ -83,23 +81,36 @@ export function getSmartNameSelection(
   }
   const provider = getLinkedWorkItemProvider(linkedWorkItem)
   const kind: SmartWorkspaceNameSelection['kind'] =
-    provider === 'linear'
-      ? 'linear'
-      : provider === 'gitlab'
-        ? linkedWorkItem.type === 'mr'
-          ? 'gitlab-mr'
-          : 'gitlab-issue'
-        : linkedWorkItem.type === 'pr'
-          ? 'github-pr'
-          : 'github-issue'
+    provider === 'gitlab'
+      ? linkedWorkItem.type === 'mr'
+        ? 'gitlab-mr'
+        : 'gitlab-issue'
+      : linkedWorkItem.type === 'pr'
+        ? 'github-pr'
+        : 'github-issue'
   return {
     kind,
     label:
-      provider === 'linear' || linkedWorkItem.number === 0
+      linkedWorkItem.number === 0
         ? linkedWorkItem.title
         : `#${linkedWorkItem.number} ${linkedWorkItem.title}`,
     url: linkedWorkItem.url
   }
+}
+
+// Why: the linked-work-item prompt helpers accept only TaskProvider
+// ('github' | 'gitlab'); coerce the inert legacy 'linear' provider to
+// undefined so the linearIdentifier pass-through (not the provider) drives
+// linked context.
+export function toLinkedWorkItemPromptInput(
+  item: LinkedWorkItemSummary | null
+): (Omit<LinkedWorkItemSummary, 'provider'> & { provider?: 'github' | 'gitlab' }) | null {
+  if (!item) {
+    return null
+  }
+  const provider =
+    item.provider === 'github' || item.provider === 'gitlab' ? item.provider : undefined
+  return { ...item, provider }
 }
 
 export function getLinkedItemDisplayName(item: LinkedWorkItemSummary): string | null {
@@ -126,10 +137,6 @@ export function toGitLabLinkedWorkItem(item: GitLabWorkItem): LinkedWorkItemSumm
     url: item.url,
     repoId: item.repoId
   }
-}
-
-export function toLinearLinkedWorkItem(issue: LinearIssue): LinkedWorkItemSummary {
-  return buildLinearIssueLinkedWorkItem(issue)
 }
 
 export function getFolderWorkspacePrimaryActionLabel(): string {

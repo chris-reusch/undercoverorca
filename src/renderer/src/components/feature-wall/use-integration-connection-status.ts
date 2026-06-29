@@ -1,6 +1,5 @@
 import { useAppStore } from '@/store'
 import { getLocalPreflightContext, localPreflightContextKey } from '@/lib/local-preflight-context'
-import { getProviderRuntimeContextKey } from '@/lib/provider-runtime-context'
 
 export type IntegrationStepState = 'active' | 'done' | 'upcoming'
 
@@ -28,7 +27,7 @@ export function deriveIntegrationStepStates(input: {
 
 export function deriveIntegrationFlowState(input: {
   reviewConnected: boolean
-  trackerProviderName: 'Linear' | null
+  trackerProviderName: null
   codeHostTaskProviderName: 'GitHub' | 'GitLab' | null
   trackerChecking: boolean
 }): {
@@ -83,10 +82,6 @@ type ProviderStatusFacts = {
   preflightStatusError: string | null
   preflightStatusLoading: boolean
   expectedPreflightContextKey: string
-  linearStatus: { connected?: boolean }
-  linearStatusChecked: boolean
-  linearStatusContextKey: string | null
-  providerRuntimeContextKey: string
 }
 
 export type IntegrationConnectionStatus = {
@@ -96,18 +91,18 @@ export type IntegrationConnectionStatus = {
   reviewProviderName: 'GitHub' | 'GitLab' | 'Bitbucket' | 'Azure DevOps' | 'Gitea' | null
   // GitHub/GitLab issues can double as tasks; token/env review providers do not.
   codeHostTaskProviderName: 'GitHub' | 'GitLab' | null
-  // True once any task source is usable: a code host (its issues double as a
-  // task source) or a dedicated tracker (Linear).
+  // True once any task source is usable. Only code hosts (their issues double
+  // as a task source) remain after dedicated trackers were removed.
   trackerConnected: boolean
-  // Display name of the connected tracker, or null. Code hosts are surfaced
-  // via reviewProviderName, so this only names Linear.
-  trackerProviderName: 'Linear' | null
-  // Every connected task source, trackers first, for "Linear and GitHub
-  // connected for tasks" summaries that don't under-report what's usable.
-  taskSourceNames: ('Linear' | 'GitHub' | 'GitLab')[]
+  // No dedicated trackers remain; always null. Code hosts are surfaced via
+  // reviewProviderName.
+  trackerProviderName: null
+  // Every connected task source, for "GitHub and GitLab connected for tasks"
+  // summaries that don't under-report what's usable.
+  taskSourceNames: ('GitHub' | 'GitLab')[]
   // True while the code-host check is unresolved, stale, loading, or errored.
   reviewChecking: boolean
-  // True while either dedicated tracker check is unresolved or stale.
+  // No dedicated trackers remain, so this is always false.
   trackerChecking: boolean
   // True until the underlying provider checks have resolved for this surface.
   // Callers should treat unknown state as "not connected yet" rather than
@@ -161,11 +156,6 @@ export function deriveIntegrationConnectionStatus(
   const giteaConnected =
     reviewReadyForConnection && isGiteaReviewConfigured(facts.preflightStatus?.gitea)
 
-  const linearStatusCurrent = facts.linearStatusContextKey === facts.providerRuntimeContextKey
-  const linearChecking = !linearStatusCurrent || !facts.linearStatusChecked
-  const linearConnected =
-    !linearChecking && linearStatusCurrent && facts.linearStatus.connected === true
-
   const reviewProviderName = githubConnected
     ? 'GitHub'
     : gitlabConnected
@@ -178,17 +168,14 @@ export function deriveIntegrationConnectionStatus(
             ? 'Gitea'
             : null
   const codeHostTaskProviderName = githubConnected ? 'GitHub' : gitlabConnected ? 'GitLab' : null
-  const trackerProviderName = linearConnected ? 'Linear' : null
+  const trackerProviderName = null
   const taskSourceNames: IntegrationConnectionStatus['taskSourceNames'] = [
-    ...(linearConnected ? (['Linear'] as const) : []),
     ...(githubConnected ? (['GitHub'] as const) : []),
     ...(gitlabConnected ? (['GitLab'] as const) : [])
   ]
   const hasUsableTaskSource = taskSourceNames.length > 0
-  // Why: one resolved task source is enough for parent setup readiness, but the
-  // local "use code host issues" acknowledgement waits until tracker checks
-  // settle so the banner uses the right completion reason.
-  const trackerChecking = trackerProviderName === null && linearChecking
+  // No dedicated trackers remain, so the task step depends solely on code hosts.
+  const trackerChecking = false
 
   return {
     reviewConnected:
@@ -217,15 +204,9 @@ export function useIntegrationConnectionStatus(): IntegrationConnectionStatus {
   const preflightStatusContextKey = useAppStore((s) => s.preflightStatusContextKey)
   const preflightStatusError = useAppStore((s) => s.preflightStatusError)
   const preflightStatusLoading = useAppStore((s) => s.preflightStatusLoading)
-  const linearStatus = useAppStore((s) => s.linearStatus)
-  const linearStatusChecked = useAppStore((s) => s.linearStatusChecked)
-  const linearStatusContextKey = useAppStore((s) => s.linearStatusContextKey)
-  const settings = useAppStore((s) => s.settings)
   const expectedPreflightContextKey = useAppStore((s) =>
     localPreflightContextKey(getLocalPreflightContext(s))
   )
-
-  const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
 
   return deriveIntegrationConnectionStatus({
     preflightStatus,
@@ -233,10 +214,6 @@ export function useIntegrationConnectionStatus(): IntegrationConnectionStatus {
     preflightStatusContextKey,
     preflightStatusError,
     preflightStatusLoading,
-    expectedPreflightContextKey,
-    linearStatus,
-    linearStatusChecked,
-    linearStatusContextKey,
-    providerRuntimeContextKey
+    expectedPreflightContextKey
   })
 }

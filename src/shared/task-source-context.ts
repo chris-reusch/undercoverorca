@@ -8,7 +8,7 @@ import {
 } from './execution-host'
 import type { GlobalSettings, ProjectProviderIdentity, Repo } from './types'
 
-export type TaskProvider = 'github' | 'gitlab' | 'linear'
+export type TaskProvider = 'github' | 'gitlab'
 
 export type GitHubTaskProviderIdentity = ProjectProviderIdentity & {
   provider: 'github'
@@ -22,18 +22,7 @@ export type GitLabTaskProviderIdentity = {
   webUrl?: string | null
 }
 
-export type LinearTaskProviderIdentity = {
-  provider: 'linear'
-  workspaceId?: string | null
-  workspaceName?: string | null
-  teamId?: string | null
-  teamKey?: string | null
-}
-
-export type TaskProviderIdentity =
-  | GitHubTaskProviderIdentity
-  | GitLabTaskProviderIdentity
-  | LinearTaskProviderIdentity
+export type TaskProviderIdentity = GitHubTaskProviderIdentity | GitLabTaskProviderIdentity
 
 export type TaskSourceContext = {
   kind: 'task-source'
@@ -172,7 +161,6 @@ function normalizeTaskProvider(value: string): TaskProvider | null {
   switch (value) {
     case 'github':
     case 'gitlab':
-    case 'linear':
       return value
     default:
       return null
@@ -203,8 +191,6 @@ function providerIdentityCachePart(identity: TaskProviderIdentity | null | undef
       return [identity.owner, identity.repo].join('/')
     case 'gitlab':
       return identity.projectId ?? [identity.namespace, identity.project].filter(Boolean).join('/')
-    case 'linear':
-      return [identity.workspaceId, identity.teamId ?? identity.teamKey].filter(Boolean).join('/')
   }
 }
 

@@ -142,23 +142,23 @@ beforeEach(() => {
 describe('createSettingsSlice runtime switching', () => {
   it('repairs drifted task provider settings before sending updates', async () => {
     settingsSet.mockResolvedValueOnce({
-      visibleTaskProviders: ['github', 'linear'],
+      visibleTaskProviders: ['github', 'gitlab'],
       defaultTaskSource: 'github'
     })
     const store = createTestStore()
     store.setState({
       settings: {
-        visibleTaskProviders: ['linear'],
+        visibleTaskProviders: ['gitlab'],
         defaultTaskSource: 'github'
       } as AppState['settings']
     })
 
     await store.getState().updateSettings({
-      visibleTaskProviders: ['linear']
+      visibleTaskProviders: ['gitlab']
     })
 
     expect(settingsSet).toHaveBeenCalledWith({
-      visibleTaskProviders: ['github', 'linear'],
+      visibleTaskProviders: ['github', 'gitlab'],
       defaultTaskSource: 'github'
     })
   })
@@ -246,8 +246,7 @@ describe('createSettingsSlice runtime switching', () => {
       editorCursorLine: { '/env-1/repo/stale.md': 4 },
       showDotfilesByWorktree: { 'repo-env-1::/env-1/repo': false },
       gitIgnoredPathsByWorktree: { 'repo-env-1::/env-1/repo': ['dist/'] },
-      prCache: { '/env-1/repo::main': { data: null, fetchedAt: Date.now() } },
-      linearIssueCache: { 'LIN-1': { data: { id: 'LIN-1' } as never, fetchedAt: Date.now() } }
+      prCache: { '/env-1/repo::main': { data: null, fetchedAt: Date.now() } }
     })
 
     await expect(store.getState().switchRuntimeEnvironment('env-2')).resolves.toBe(true)
@@ -312,9 +311,6 @@ describe('createSettingsSlice runtime switching', () => {
     })
     expect(store.getState().prCache).toEqual({
       '/env-1/repo::main': expect.objectContaining({ data: null })
-    })
-    expect(store.getState().linearIssueCache).toEqual({
-      'LIN-1': expect.objectContaining({ data: { id: 'LIN-1' } })
     })
   })
 

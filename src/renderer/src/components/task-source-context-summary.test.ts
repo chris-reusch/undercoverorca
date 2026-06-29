@@ -272,32 +272,6 @@ describe('task source context summary', () => {
     })
   })
 
-  it('shows account-backed Linear sources', () => {
-    expect(
-      getTaskSourceContextSummary({
-        provider: 'linear',
-        providerLabel: 'Linear',
-        accountHostId: 'local',
-        linearWorkspaceName: 'Stably'
-      }).label
-    ).toBe(`Linear · ${LOCAL_HOST_LABEL} · Stably`)
-  })
-
-  it('shows account-backed source host availability', () => {
-    const summary = getTaskSourceContextSummary({
-      provider: 'linear',
-      providerLabel: 'Linear',
-      accountHostId: 'runtime:old-server',
-      linearWorkspaceName: 'Stably',
-      hostAvailability: [{ hostId: 'runtime:old-server', health: 'blocked' }]
-    })
-
-    expect(summary.label).toBe('Linear · old-server · server update needed · Stably')
-    expect(summary.title).toBe(
-      'Linear source · Host: old-server · Availability: old-server server update needed · Account: Stably'
-    )
-  })
-
   it('builds a visible unavailable-source notice from host availability', () => {
     expect(
       getTaskSourceAvailabilityNotice({

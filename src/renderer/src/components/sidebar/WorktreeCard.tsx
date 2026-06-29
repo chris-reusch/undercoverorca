@@ -31,7 +31,7 @@ import { activateWorktreeFromSidebar } from '@/lib/sidebar-worktree-activation'
 import { isFolderRepo } from '../../../../shared/repo-kind'
 import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 import { hostedReviewInfoFromGitHubPRInfo } from '../../../../shared/hosted-review-github'
-import type { Worktree, Repo, IssueInfo, LinearIssue, PRInfo } from '../../../../shared/types'
+import type { Worktree, Repo, IssueInfo, PRInfo } from '../../../../shared/types'
 import { CONFLICT_OPERATION_LABELS } from './WorktreeCardHelpers'
 import {
   WorktreeCardDetailsHover,
@@ -53,7 +53,7 @@ import { getWorkspacePortsByWorktreeId } from '@/lib/workspace-port-groups'
 import { RepoBadgeMark } from '@/components/repo/RepoBadgeLabel'
 import { RepoIconGlyph } from '@/components/repo/repo-icon'
 import { resolveRepoHeaderColor } from './project-header-color'
-import { installWindowVisibilityInterval, isWindowVisible } from '@/lib/window-visibility-interval'
+import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
 import { isMacAppDataPath } from '@/lib/passive-macos-app-data-access'
 import { runWorktreeDelete } from './delete-worktree-flow'
 import { WorktreeTitleInlineRename } from './WorktreeTitleInlineRename'
@@ -238,7 +238,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const fetchHostedReviewForBranch = useAppStore((s) => s.fetchHostedReviewForBranch)
   const settings = useAppStore((s) => s.settings)
   const fetchIssue = useAppStore((s) => s.fetchIssue)
-  const fetchLinearIssue = useAppStore((s) => s.fetchLinearIssue)
   const cardProps = useAppStore((s) => s.worktreeCardProperties)
   const agentActivityDisplayMode =
     useAppStore((s) => s.agentActivityDisplayMode) ?? DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE
@@ -383,9 +382,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
           true
         )
       : ''
-  // Why: use 'all' to fetch from all Linear workspaces. The issue might belong
-  // to a different workspace than the currently selected one.
-  const linearIssueCacheKey = worktree.linkedLinearIssue ? `all::${worktree.linkedLinearIssue}` : ''
 
   // Subscribe to ONLY the specific cache entry, not entire review/issue caches.
   const hostedReviewEntry = useAppStore((s) =>
@@ -393,12 +389,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   )
   const prCacheEntry = useAppStore((s) => (prCacheKey ? s.prCache?.[prCacheKey] : undefined))
   const issueEntry = useAppStore((s) => (issueCacheKey ? s.issueCache[issueCacheKey] : undefined))
-  const linearIssueEntry = useAppStore((s) =>
-    linearIssueCacheKey ? s.linearIssueCache[linearIssueCacheKey] : undefined
-  )
-  const linearIssueFallbackEntry = useAppStore((s) =>
-    worktree.linkedLinearIssue ? s.linearIssueCache[worktree.linkedLinearIssue] : undefined
-  )
 
   const hostedReview: HostedReviewInfo | null | undefined =
     hostedReviewEntry !== undefined ? hostedReviewEntry.data : undefined
@@ -468,73 +458,9 @@ const WorktreeCard = React.memo(function WorktreeCard({
           title: issue === null ? 'Issue details unavailable' : 'Loading issue...'
         }
       : null)
-  const linearStatus = useAppStore((s) => s.linearStatus)
-  const linearIssue: LinearIssue | null | undefined = worktree.linkedLinearIssue
-    ? (linearIssueEntry?.data ?? linearIssueFallbackEntry?.data)
-    : null
-
-  // Why: construct a Linear URL from the organizationUrlKey and identifier
-  // when the API hasn't returned the full issue data yet, so the user can
-  // still navigate to the issue even while it's loading.
-  // Use the issue's workspaceId if available to get the correct organizationUrlKey,
-  // otherwise fall back to the currently selected workspace.
-  const linearOrgUrlKey = linearStatus?.viewer?.organizationUrlKey
-  const linearWorkspaceUrlKeys = linearStatus?.workspaces?.map((ws) => ({
-    id: ws.id,
-    organizationUrlKey: ws.organizationUrlKey
-  }))
-  const linearIssueUrlFallback = React.useMemo(() => {
-    if (!worktree.linkedLinearIssue || linearIssue?.url) {
-      return undefined
-    }
-
-    // Try to get the orgUrlKey from the issue's workspace if we have workspaceId
-    let orgUrlKey: string | undefined
-    if (linearIssue?.workspaceId && linearWorkspaceUrlKeys) {
-      const issueWorkspace = linearWorkspaceUrlKeys.find((ws) => ws.id === linearIssue.workspaceId)
-      orgUrlKey = issueWorkspace?.organizationUrlKey
-    }
-
-    // Fall back to current viewer's org if no workspace match
-    if (!orgUrlKey) {
-      orgUrlKey = linearOrgUrlKey
-    }
-
-    if (!orgUrlKey) {
-      return undefined
-    }
-
-    return `https://linear.app/${encodeURIComponent(orgUrlKey)}/issue/${encodeURIComponent(worktree.linkedLinearIssue)}`
-  }, [
-    worktree.linkedLinearIssue,
-    linearIssue?.url,
-    linearIssue?.workspaceId,
-    linearOrgUrlKey,
-    linearWorkspaceUrlKeys
-  ])
-
-  const linearIssueDisplay = worktree.linkedLinearIssue
-    ? linearIssue
-      ? {
-          identifier: linearIssue.identifier,
-          title: linearIssue.title,
-          url: linearIssue.url,
-          stateName: linearIssue.state?.name,
-          labels: linearIssue.labels
-        }
-      : {
-          identifier: worktree.linkedLinearIssue,
-          title:
-            linearIssueEntry || linearIssueFallbackEntry
-              ? 'Linear issue details unavailable'
-              : 'Loading Linear issue...',
-          url: linearIssueUrlFallback
-        }
-    : null
   const cardTitleDisplay = getWorktreeCardTitleDisplay({
     storedDisplayName: worktree.displayName,
     branchName: branch,
-    linearIssueTitle: linearIssueDisplay?.title,
     issueTitle: issueDisplay?.title,
     reviewTitle: prDisplay?.title
   })
@@ -545,7 +471,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
 
   const showStatus = cardProps.includes('status')
   const showIssue = cardProps.includes('issue')
-  const showLinearIssue = cardProps.includes('linear-issue')
   const showPR = cardProps.includes('pr')
   const showComment = cardProps.includes('comment')
   const showPorts = cardProps.includes('ports')
@@ -699,39 +624,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
     worktree.linkedIssue,
     fetchIssue,
     issueCacheKey
-  ])
-
-  useEffect(() => {
-    if (!worktree.linkedLinearIssue || !showLinearIssue) {
-      return
-    }
-    const linearIssueId = worktree.linkedLinearIssue
-    const refreshLinearIssueIfVisible = (): void => {
-      if (!isWindowVisible()) {
-        return
-      }
-      void fetchLinearIssue(linearIssueId, 'all')
-    }
-    refreshLinearIssueIfVisible()
-    window.addEventListener('focus', refreshLinearIssueIfVisible)
-    document.addEventListener('visibilitychange', refreshLinearIssueIfVisible)
-    return () => {
-      window.removeEventListener('focus', refreshLinearIssueIfVisible)
-      document.removeEventListener('visibilitychange', refreshLinearIssueIfVisible)
-    }
-  }, [worktree.linkedLinearIssue, fetchLinearIssue, showLinearIssue])
-
-  useEffect(() => {
-    if (!newCardStyle || !hoverDetailsOpen || showLinearIssue || !worktree.linkedLinearIssue) {
-      return
-    }
-    void fetchLinearIssue(worktree.linkedLinearIssue, 'all')
-  }, [
-    newCardStyle,
-    hoverDetailsOpen,
-    showLinearIssue,
-    worktree.linkedLinearIssue,
-    fetchLinearIssue
   ])
 
   // Stable click handler – ignore clicks that are really text selections.
@@ -963,12 +855,10 @@ const WorktreeCard = React.memo(function WorktreeCard({
   // `worktree.isUnread` flag is unchanged; only the rendering changes.
   const showUnreadEmphasis = showStatus && worktree.isUnread
   const hoverIssue = issueDisplay
-  const hoverLinearIssue = linearIssueDisplay
   const hoverReview = prDisplay
   const statusLaneReview = statusPrDisplay ?? hoverReview
   const hoverComment = worktree.comment
   const metaIssue = showIssue ? hoverIssue : null
-  const metaLinearIssue = showLinearIssue ? hoverLinearIssue : null
   const metaReview = showPR ? hoverReview : null
   const metaComment = showComment ? hoverComment : null
   const showInlineAgentList = cardProps.includes('inline-agents') && (newCardStyle || !compactCards)
@@ -1011,7 +901,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   }, [hoverReview?.provider, updateWorktreeMeta, worktree.id])
   const hasDetails = hasWorktreeCardDetails({
     issue: metaIssue,
-    linearIssue: metaLinearIssue,
     review: newCardStyle ? null : metaReview,
     comment: metaComment
   })
@@ -1089,7 +978,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
     newCardStyle &&
     (hasWorktreeCardDetails({
       issue: hoverIssue,
-      linearIssue: hoverLinearIssue,
       review: hoverReview,
       comment: hoverComment
     }) ||
@@ -1105,7 +993,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
       ? (title: React.ReactElement): React.ReactElement => (
           <WorktreeCardDetailsHover
             issue={metaIssue}
-            linearIssue={metaLinearIssue}
             review={metaReview}
             comment={metaComment}
             branchName={showBranchIdentityHover ? branch : undefined}
@@ -1146,7 +1033,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
         {hasDetails && (
           <WorktreeCardMetaBadges
             issue={metaIssue}
-            linearIssue={metaLinearIssue}
             review={newCardStyle ? null : metaReview}
             comment={metaComment}
             className="ml-0 pr-0"
@@ -1158,7 +1044,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
     detailsAndPortsContent && !newCardStyle ? (
       <WorktreeCardDetailsHover
         issue={metaIssue}
-        linearIssue={metaLinearIssue}
         review={metaReview}
         comment={metaComment}
         detailsAfter={hasPorts ? <WorktreeCardPortsDetails ports={workspacePorts} /> : null}
@@ -1631,7 +1516,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
     hasHoverDetails && !titleRenaming ? (
       <WorktreeCardDetailsHover
         issue={hoverIssue}
-        linearIssue={hoverLinearIssue}
         review={hoverReview}
         comment={hoverComment}
         branchName={hoverBranchName}

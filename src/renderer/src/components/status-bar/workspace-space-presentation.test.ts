@@ -59,7 +59,6 @@ function ready(
     browserTabCount: 0,
     reviewLabel: null,
     issueLabel: null,
-    linearIssueLabel: null,
     ...overrides
   }
 }
@@ -131,7 +130,6 @@ function decisionInputs(
     remoteStatusesByWorktree: {},
     hostedReviewCache: {},
     issueCache: {},
-    linearIssueCache: {},
     settings: null,
     activeWorktreeId: null,
     now: 1_000,

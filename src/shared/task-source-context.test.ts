@@ -100,7 +100,7 @@ describe('task source context', () => {
     expect(local).not.toBe(differentRepo)
   })
 
-  it('serializes provider identities for GitLab and Linear cache scopes', () => {
+  it('serializes provider identities for GitLab cache scopes', () => {
     const base = {
       projectId: 'project-1',
       hostId: LOCAL_EXECUTION_HOST_ID,
@@ -114,13 +114,6 @@ describe('task source context', () => {
         providerIdentity: { provider: 'gitlab', namespace: 'stably', project: 'orca' }
       })
     ).toContain(encodeURIComponent('stably/orca'))
-    expect(
-      getTaskSourceCacheScope({
-        ...base,
-        provider: 'linear',
-        providerIdentity: { provider: 'linear', workspaceId: 'workspace-1', teamKey: 'ENG' }
-      })
-    ).toContain(encodeURIComponent('workspace-1/ENG'))
   })
 
   it('drops provider identities that do not match the source provider', () => {

@@ -332,7 +332,7 @@ describe('launchWorkItemDirect', () => {
           url: 'https://linear.app/acme/issue/ENG-42/ship-linear-parity',
           linearIdentifier: 'ENG-42',
           linkedContext: {
-            provider: 'linear',
+            provider: 'github',
             version: 1,
             renderedText: [
               'Linear issue context snapshot',
@@ -399,7 +399,7 @@ describe('launchWorkItemDirect', () => {
           linearIdentifier: 'ENG-42',
           pasteContent: 'Use this explicit user prompt.',
           linkedContext: {
-            provider: 'linear',
+            provider: 'github',
             version: 1,
             renderedText: 'This generated Linear source should not replace explicit paste content.'
           }

@@ -71,15 +71,6 @@ describe('resolveSmartWorkspaceCommandValue', () => {
         sourceIntent: 'gitlab'
       })
     ).toBe('gitlab-123')
-
-    expect(
-      resolveSmartWorkspaceCommandValue({
-        currentValue: 'use-name-eng-123',
-        rows: [row('use-name', 'use-name-eng-123'), row('linear', 'linear-ENG-123')],
-        isQueryStale: false,
-        sourceIntent: 'linear'
-      })
-    ).toBe('linear-ENG-123')
   })
 
   it('leaves the current value alone when no rows are rendered', () => {

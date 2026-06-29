@@ -12,7 +12,6 @@ export type SetupGuideProgressReadinessInput = {
   refreshEnabled: boolean
   settingsLoaded: boolean
   preflightStatusChecked: boolean
-  linearStatusChecked: boolean
   browserUseSkillDiscoveryLoading: boolean
   computerUseSkillDiscoveryLoading: boolean
   orchestrationSkillDiscoveryLoading: boolean
@@ -81,7 +80,6 @@ export function getSetupGuideProgressReady(input: SetupGuideProgressReadinessInp
     input.refreshEnabled &&
     input.settingsLoaded &&
     input.preflightStatusChecked &&
-    input.linearStatusChecked &&
     !input.browserUseSkillDiscoveryLoading &&
     !input.computerUseSkillDiscoveryLoading &&
     !input.orchestrationSkillDiscoveryLoading &&

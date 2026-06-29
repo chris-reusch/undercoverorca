@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import {
   AzureDevOpsIntegrationCard,
   BitbucketIntegrationCard,
@@ -6,7 +6,6 @@ import {
   GitHubIntegrationCard,
   GitLabIntegrationCard
 } from '@/components/settings/source-control-integration-cards'
-import { LinearIntegrationCard } from '@/components/settings/task-tracker-integration-cards'
 import {
   IntegrationCardGroup,
   IntegrationCardPresentationProvider
@@ -19,38 +18,10 @@ import {
 } from './use-integration-connection-status'
 import { translate } from '@/i18n/i18n'
 
-// Bold provider names joined into a natural-language list ("Linear and
-// GitHub", "Linear and GitHub") for the task-step summary.
-function TaskSourceNameList(props: { names: readonly string[] }): React.JSX.Element {
-  return (
-    <>
-      {props.names.map((name, index) => (
-        <Fragment key={name}>
-          {index > 0
-            ? index === props.names.length - 1
-              ? props.names.length > 2
-                ? translate(
-                    'auto.components.feature.wall.ConnectIntegrationsList.list_end',
-                    ', and '
-                  )
-                : translate(
-                    'auto.components.feature.wall.ConnectIntegrationsList.list_pair',
-                    ' and '
-                  )
-              : translate('auto.components.feature.wall.ConnectIntegrationsList.list_mid', ', ')
-            : null}
-          <span className="font-semibold text-foreground">{name}</span>
-        </Fragment>
-      ))}
-    </>
-  )
-}
-
 // Progressive two-step integration setup: first connect a code host for review
 // status, then a task source. The order is a recommendation, not a gate — step
-// 2 starts collapsed but opens on click so tracker-first users aren't blocked.
-// Connecting step 1 collapses it to a summary and expands step 2, which stays
-// open until a dedicated tracker connects so Linear remains discoverable.
+// 2 starts collapsed but opens on click. A connected code host (GitHub/GitLab)
+// resolves step 2 on its own since its issues double as a task source.
 // Done-state is driven by real provider connection status, never an
 // optimistic click.
 export function ConnectIntegrationsList(): React.JSX.Element {
@@ -61,8 +32,7 @@ export function ConnectIntegrationsList(): React.JSX.Element {
   const [reviewReopened, setReviewReopened] = useState(false)
 
   // A code host doubles as a task source, so a connected GitHub/GitLab
-  // resolves step 2 on its own. The collapsed summary still invites a
-  // dedicated tracker, and "Change" reopens the step to connect one.
+  // resolves step 2 on its own.
   const flow = deriveIntegrationFlowState({
     reviewConnected: status.reviewConnected,
     trackerProviderName: status.trackerProviderName,
@@ -86,9 +56,8 @@ export function ConnectIntegrationsList(): React.JSX.Element {
     taskToggle.whenTrackerDone === trackerDone &&
     taskToggle.whenReviewDone === reviewDone
   // Step 2 defaults collapsed while step 1 is still active (but opens on
-  // click — review is not a prerequisite for connecting a tracker), stays open
-  // even when the code host already resolved it so Linear remains
-  // discoverable, and collapses only once a dedicated tracker connects.
+  // click — review is not a prerequisite), and expands once review is done so
+  // the code-host task sources are visible.
   const taskExpanded = taskToggleCurrent ? taskToggle.expanded : reviewDone && !trackerDone
 
   return (
@@ -140,25 +109,15 @@ export function ConnectIntegrationsList(): React.JSX.Element {
             'Connect where your team tracks work. Orca starts workspaces with the issue title, link, and context already attached.'
           )}
           summary={
-            status.trackerProviderName ? (
-              <>
-                <TaskSourceNameList names={status.taskSourceNames} />{' '}
-                {translate(
-                  'auto.components.feature.wall.ConnectIntegrationsList.3dddb2d565',
-                  'connected for tasks'
-                )}
-              </>
-            ) : (
-              <>
-                <span className="font-semibold text-foreground">
-                  {status.codeHostTaskProviderName}
-                </span>{' '}
-                {translate(
-                  'auto.components.feature.wall.ConnectIntegrationsList.code_host_tasks_summary',
-                  'issues available as tasks · add Linear if your team plans work there'
-                )}
-              </>
-            )
+            <>
+              <span className="font-semibold text-foreground">
+                {status.codeHostTaskProviderName}
+              </span>{' '}
+              {translate(
+                'auto.components.feature.wall.ConnectIntegrationsList.code_host_tasks_summary',
+                'issues available as tasks'
+              )}
+            </>
           }
           onToggle={() =>
             setTaskToggle({
@@ -168,13 +127,10 @@ export function ConnectIntegrationsList(): React.JSX.Element {
             })
           }
         >
-          <IntegrationCardGroup>
-            <LinearIntegrationCard />
-          </IntegrationCardGroup>
           <p className="px-1 pt-0.5 text-[12px] leading-snug text-muted-foreground">
             {translate(
               'auto.components.feature.wall.ConnectIntegrationsList.code_host_tasks_caption',
-              "Your code host's issues also work as tasks."
+              "Your code host's issues work as tasks."
             )}
           </p>
           <IntegrationCardGroup>

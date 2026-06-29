@@ -93,9 +93,7 @@ describe('Branch source results', () => {
       branches: [{ refName: 'origin/old-result', localBranchName: 'old-result' }],
       githubItems: [],
       gitlabItems: [],
-      linearIssues: [],
       gitlabAvailable: false,
-      linearAvailable: false,
       resultLimit: 12
     })
 
@@ -151,9 +149,7 @@ describe('Branch source results', () => {
       ],
       githubItems: [],
       gitlabItems: [],
-      linearIssues: [],
       gitlabAvailable: false,
-      linearAvailable: false,
       resultLimit: 12
     })
 
@@ -168,31 +164,6 @@ describe('Branch source results', () => {
     ])
   })
 
-  it('uses Linear rows from a paginated collection shape', () => {
-    const rows = buildSmartWorkspaceSourceRows({
-      mode: 'smart',
-      value: '',
-      branches: [],
-      githubItems: [],
-      gitlabItems: [],
-      linearIssues: {
-        items: [{ id: 'linear-1', identifier: 'ENG-1', title: 'Fix composer crash' } as never],
-        hasMore: true
-      },
-      gitlabAvailable: false,
-      linearAvailable: true,
-      resultLimit: 12
-    })
-
-    expect(rows).toEqual([
-      {
-        kind: 'linear',
-        value: 'linear-linear-1',
-        issue: { id: 'linear-1', identifier: 'ENG-1', title: 'Fix composer crash' }
-      }
-    ])
-  })
-
   it('keeps GitHub row values unique for the same item number across repos', () => {
     const rows = buildSmartWorkspaceSourceRows({
       mode: 'github',
@@ -203,9 +174,7 @@ describe('Branch source results', () => {
         { repoId: 'repo-b', type: 'issue', number: 123, title: 'Repo B issue' } as never
       ],
       gitlabItems: [],
-      linearIssues: [],
       gitlabAvailable: false,
-      linearAvailable: false,
       resultLimit: 12
     })
 
@@ -225,9 +194,7 @@ describe('Branch source results', () => {
         { repoId: 'repo-a', type: 'issue', number: 123, title: 'Repo A issue' } as never,
         { repoId: 'repo-b', type: 'issue', number: 123, title: 'Repo B issue' } as never
       ],
-      linearIssues: [],
       gitlabAvailable: true,
-      linearAvailable: false,
       resultLimit: 12
     })
 
@@ -235,22 +202,6 @@ describe('Branch source results', () => {
       'gitlab-repo-a-issue-123',
       'gitlab-repo-b-issue-123'
     ])
-  })
-
-  it('ignores malformed Linear collection rows instead of throwing during render', () => {
-    expect(() =>
-      buildSmartWorkspaceSourceRows({
-        mode: 'smart',
-        value: '',
-        branches: [],
-        githubItems: [],
-        gitlabItems: [],
-        linearIssues: { items: { id: 'not-an-array' } } as never,
-        gitlabAvailable: false,
-        linearAvailable: true,
-        resultLimit: 12
-      })
-    ).not.toThrow()
   })
 
   it('returns no rows for oversized pasted values before echoing or scanning results', () => {
@@ -267,9 +218,7 @@ describe('Branch source results', () => {
           } as never
         ],
         gitlabItems: [],
-        linearIssues: [],
         gitlabAvailable: false,
-        linearAvailable: false,
         resultLimit: 12
       })
     ).toEqual([])

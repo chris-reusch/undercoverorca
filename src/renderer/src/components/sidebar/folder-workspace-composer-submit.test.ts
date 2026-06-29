@@ -389,14 +389,13 @@ describe('submitFolderWorkspaceCreate', () => {
   it('uses native prefill for link-only Linear folder workspace drafts', async () => {
     const createFolderWorkspace = vi.fn(async () => makeFolderWorkspace())
     const linkedWorkItem = {
-      provider: 'linear' as const,
       type: 'issue' as const,
       number: 0,
       title: 'Ship Linear source drafts',
       url: 'https://linear.app/acme/issue/ENG-77/ship-linear-source-drafts',
       linearIdentifier: 'ENG-77',
       linkedContext: {
-        provider: 'linear' as const,
+        provider: 'github' as const,
         version: 1 as const,
         renderedText: [
           'Linear issue context snapshot',
