@@ -83,7 +83,6 @@ import type {
   StatsSummary,
   MemorySnapshot,
   TuiAgent,
-  UpdateStatus,
   Worktree,
   WorktreeBaseStatusEvent,
   WorktreeLineage,
@@ -159,8 +158,6 @@ import type { SkillDiscoveryResult, SkillDiscoveryTarget } from '../shared/skill
 import type {
   CrashReportBreadcrumbData,
   CrashReportRecord,
-  CrashReportSubmitArgs,
-  CrashReportSubmitResult,
   ReactErrorBoundaryReportArgs,
   ReactErrorBoundaryReportResult
 } from '../shared/crash-reporting'
@@ -212,7 +209,6 @@ import type {
   EnrichedDetectedPort
 } from '../shared/ssh-types'
 import type { AiVaultListArgs, AiVaultListResult } from '../shared/ai-vault-types'
-import type { AppStarSource } from '../shared/gh-star-source'
 import type {
   RemoteWorkspaceChangedEvent,
   RemoteWorkspaceConnectedClient,
@@ -442,13 +438,6 @@ export type DiagnosticsBundlePayload = {
   readonly bytes: number
   readonly spanCount: number
 }
-export type DiagnosticsUploadPayload =
-  | {
-      readonly ticketId: string
-    }
-  | {
-      readonly canceled: true
-    }
 
 export type MemoryApi = {
   getSnapshot: () => Promise<MemorySnapshot>
@@ -853,14 +842,6 @@ export type PreloadApi = {
     clearPendingPaneSerializer: (paneKey: string, gen: number) => Promise<void>
     management: PtyManagementApi
   }
-  feedback: {
-    submit: (args: {
-      feedback: string
-      submitAnonymously?: boolean
-      githubLogin: string | null
-      githubEmail: string | null
-    }) => Promise<{ ok: true } | { ok: false; status: number | null; error: string }>
-  }
   crashReports: {
     getLatestPending: () => Promise<CrashReportRecord | null>
     getLatestReport: () => Promise<CrashReportRecord | null>
@@ -869,7 +850,6 @@ export type PreloadApi = {
       args: ReactErrorBoundaryReportArgs
     ) => Promise<ReactErrorBoundaryReportResult>
     recordBreadcrumb: (args: { name: string; data?: CrashReportBreadcrumbData }) => void
-    submit: (args: CrashReportSubmitArgs) => Promise<CrashReportSubmitResult>
     copyLatestDiagnostics: (args?: {
       reportId?: string
       notes?: string
@@ -885,8 +865,6 @@ export type PreloadApi = {
       repoPath: string
       repoId?: string
     }) => Promise<{ owner: string; repo: string } | null>
-    checkOrcaStarred: () => Promise<boolean | null>
-    starOrca: (source: AppStarSource) => Promise<boolean>
     /**
      * Probe `gh auth status` and the Electron process env to explain auth
      * failures. Surfaces the common gotcha where `GITHUB_TOKEN` is exported in
@@ -900,22 +878,6 @@ export type PreloadApi = {
     ) => Promise<HostedReviewCreationEligibility>
     create: (args: CreateHostedReviewArgs) => Promise<CreateHostedReviewResult>
   }
-  starNag: {
-    onShow: (
-      callback: (payload?: { mode?: 'gh' | 'web'; surface?: 'card' | 'toast' }) => void
-    ) => () => void
-    onHide: (callback: () => void) => () => void
-    dismiss: () => Promise<void>
-    later: () => Promise<void>
-    complete: () => Promise<void>
-    disable: () => Promise<void>
-    openWeb: () => Promise<void>
-    starOrca: () => Promise<boolean>
-    forceShow: () => Promise<void>
-    agentValueMoment: () => Promise<{ status: 'ready'; mode: 'gh' | 'web' } | { status: 'skipped' }>
-    showAgentValueMoment: () => Promise<void>
-    onboardingCompleted: () => Promise<void>
-  }
   /** Diagnostic file controls. Surface for telemetry-error-tracking.md
    *  §User controls. The renderer triggers flows; main does the filesystem /
    *  network work and returns serializable metadata. Main retains collected
@@ -926,8 +888,6 @@ export type PreloadApi = {
     collectBundle: (lookbackMinutes?: number) => Promise<DiagnosticsBundlePayload>
     openBundlePreview: (bundleSubmissionId: string) => Promise<void>
     discardBundlePreview: (bundleSubmissionId: string) => Promise<void>
-    uploadBundle: (bundleSubmissionId: string) => Promise<DiagnosticsUploadPayload>
-    deleteBundle: (ticketId: string) => Promise<void>
   }
   settings: {
     get: () => Promise<GlobalSettings>
@@ -1123,16 +1083,6 @@ export type PreloadApi = {
     }) => Promise<{ targetId: string; clients: RemoteWorkspaceConnectedClient[] }[]>
     clientId: () => Promise<string>
     onChanged: (callback: (event: RemoteWorkspaceChangedEvent) => void) => () => void
-  }
-  updater: {
-    getVersion: () => Promise<string>
-    getStatus: () => Promise<UpdateStatus>
-    check: (options?: { includePrerelease?: boolean }) => Promise<void>
-    download: () => Promise<void>
-    quitAndInstall: () => Promise<void>
-    dismissNudge: () => Promise<void>
-    onStatus: (callback: (status: UpdateStatus) => void) => () => void
-    onClearDismissal: (callback: () => void) => () => void
   }
   notebook: {
     runPythonCell: (args: {

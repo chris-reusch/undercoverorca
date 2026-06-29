@@ -12,11 +12,6 @@ const ORCA_BUILD_IDENTITY_LITERAL =
   orcaBuildIdentity === 'stable' || orcaBuildIdentity === 'rc'
     ? JSON.stringify(orcaBuildIdentity)
     : 'null'
-const orcaDiagnosticsTokenUrl = process.env.ORCA_DIAGNOSTICS_TOKEN_URL
-const ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL =
-  typeof orcaDiagnosticsTokenUrl === 'string' && orcaDiagnosticsTokenUrl.length > 0
-    ? JSON.stringify(orcaDiagnosticsTokenUrl)
-    : 'null'
 
 function createStartupDiagnosticsBanner(chunkName: string): string {
   return `
@@ -176,10 +171,9 @@ export default defineConfig({
         plugins: [createStartupDiagnosticsBootstrapPlugin()]
       }
     },
-    // Why: compile-time substitution for the diagnostics lane constants.
+    // Why: compile-time substitution for the diagnostics build-identity constant.
     define: {
-      ORCA_BUILD_IDENTITY: ORCA_BUILD_IDENTITY_LITERAL,
-      ORCA_DIAGNOSTICS_TOKEN_URL: ORCA_DIAGNOSTICS_TOKEN_URL_LITERAL
+      ORCA_BUILD_IDENTITY: ORCA_BUILD_IDENTITY_LITERAL
     },
     // Why: @xterm/headless declares "exports": null in package.json, which
     // prevents Vite's default resolver from finding the CJS entry. Point

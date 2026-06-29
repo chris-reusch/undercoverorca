@@ -37,19 +37,16 @@ describe('detectRepoIcon', () => {
     })
   })
 
-  it('uses a package homepage favicon when no local icon file exists', async () => {
+  it('does not fetch a remote homepage favicon (privacy fork)', async () => {
     const repoPath = await makeTempRepoDir()
     await writeFile(
       join(repoPath, 'package.json'),
       JSON.stringify({ homepage: 'https://app.example.com/docs' })
     )
 
-    await expect(detectRepoIcon({ repoPath, kind: 'folder' })).resolves.toEqual({
-      type: 'image',
-      src: 'https://www.google.com/s2/favicons?domain=app.example.com&sz=64',
-      source: 'favicon',
-      label: 'Website favicon'
-    })
+    // Privacy: this fork never emits remote favicon URLs, so there is no icon
+    // to auto-detect and the renderer falls back to its local default.
+    await expect(detectRepoIcon({ repoPath, kind: 'folder' })).resolves.toBeUndefined()
   })
 
   it('resolves declared icon hrefs from project source files', async () => {
@@ -114,22 +111,18 @@ describe('detectRepoIcon', () => {
     await expect(detectRepoIcon({ repoPath, kind: 'folder' })).resolves.toBeUndefined()
   })
 
-  it('falls back to the GitHub owner avatar for GitHub repos', async () => {
+  it('does not load a remote GitHub owner avatar (privacy fork)', async () => {
     const repoPath = await makeTempRepoDir()
     await gitExecFileAsync(['init'], { cwd: repoPath })
     await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:stablyai/orca.git'], {
       cwd: repoPath
     })
 
-    await expect(detectRepoIcon({ repoPath, kind: 'git' })).resolves.toEqual({
-      type: 'image',
-      src: 'https://github.com/stablyai.png?size=64',
-      source: 'github',
-      label: 'stablyai/orca'
-    })
+    // Privacy: no remote avatar fetch; renderer falls back to the local default.
+    await expect(detectRepoIcon({ repoPath, kind: 'git' })).resolves.toBeUndefined()
   })
 
-  it('skips code-host package homepages so GitHub remotes stay repo-specific', async () => {
+  it('skips code-host package homepages and emits no remote avatar (privacy fork)', async () => {
     const repoPath = await makeTempRepoDir()
     await writeFile(
       join(repoPath, 'package.json'),
@@ -140,12 +133,7 @@ describe('detectRepoIcon', () => {
       cwd: repoPath
     })
 
-    await expect(detectRepoIcon({ repoPath, kind: 'git' })).resolves.toEqual({
-      type: 'image',
-      src: 'https://github.com/stablyai.png?size=64',
-      source: 'github',
-      label: 'stablyai/orca'
-    })
+    await expect(detectRepoIcon({ repoPath, kind: 'git' })).resolves.toBeUndefined()
   })
 
   it('stores a null upstream marker for git repos without a resolved fork parent', async () => {
@@ -157,7 +145,7 @@ describe('detectRepoIcon', () => {
     })
   })
 
-  it('uses the resolved fork upstream for both metadata and the GitHub avatar', async () => {
+  it('uses the resolved fork upstream for metadata without a remote avatar (privacy fork)', async () => {
     const repoPath = await makeTempRepoDir()
     await gitExecFileAsync(['init'], { cwd: repoPath })
     await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/orca.git'], {
@@ -167,17 +155,13 @@ describe('detectRepoIcon', () => {
       cwd: repoPath
     })
 
+    // Privacy: upstream identity is still resolved for metadata, but no remote
+    // avatar icon is produced.
     await expect(detectRepoIconAndUpstream({ repoPath, kind: 'git' })).resolves.toEqual({
       gitRemoteIdentity: {
         canonicalKey: 'github.com/stablyai/orca',
         remoteName: 'upstream',
         remoteUrl: 'git@github.com:stablyai/orca.git'
-      },
-      repoIcon: {
-        type: 'image',
-        src: 'https://github.com/stablyai.png?size=64',
-        source: 'github',
-        label: 'stablyai/orca'
       },
       upstream: { owner: 'stablyai', repo: 'orca' }
     })

@@ -1,6 +1,5 @@
-import React, { useRef, useState } from 'react'
+import React from 'react'
 import { ExternalLink, Github } from 'lucide-react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
 
 const GITHUB_ISSUES_URL = 'https://github.com/stablyai/orca/issues/'
@@ -30,85 +28,17 @@ export function SidebarFeedbackDialog({
   open,
   onOpenChange
 }: SidebarFeedbackDialogProps): React.JSX.Element {
-  const [feedback, setFeedback] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const mountedRef = useMountedRef()
-  const feedbackTextareaRef = useRef<HTMLTextAreaElement>(null)
-
-  const handleSubmit = async (): Promise<void> => {
-    const trimmed = feedback.trim()
-    if (!trimmed) {
-      toast.warning(
-        translate(
-          'auto.components.sidebar.SidebarFeedbackDialog.a2fd890d9e',
-          'Please enter feedback before submitting.'
-        )
-      )
-      return
-    }
-
-    setIsSubmitting(true)
-    try {
-      // Why: submission is proxied through the main process via IPC because
-      // the packaged Mac build loads the renderer from file://, which makes
-      // cross-origin fetch() fail CORS preflight. Electron's net module in
-      // the main process has no CORS restrictions and works uniformly in dev
-      // and prod.
-      const result = await window.api.feedback.submit({
-        feedback: trimmed,
-        submitAnonymously: true,
-        githubLogin: null,
-        githubEmail: null
-      })
-
-      if (!result.ok) {
-        throw new Error(`Feedback request failed: ${result.error}`)
-      }
-
-      if (mountedRef.current) {
-        toast.success(
-          translate(
-            'auto.components.sidebar.SidebarFeedbackDialog.7a46c228b8',
-            'Thanks for the feedback.'
-          )
-        )
-        setFeedback('')
-        onOpenChange(false)
-      }
-    } catch (err) {
-      if (mountedRef.current) {
-        toast.error(
-          translate(
-            'auto.components.sidebar.SidebarFeedbackDialog.60b721e857',
-            'Failed to submit feedback. Please try again.'
-          )
-        )
-      }
-      console.error('Failed to submit feedback:', err)
-    } finally {
-      if (mountedRef.current) {
-        setIsSubmitting(false)
-      }
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-lg"
-        onOpenAutoFocus={(event) => {
-          event.preventDefault()
-          feedbackTextareaRef.current?.focus()
-        }}
-      >
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-sm">
-            {translate('auto.components.sidebar.SidebarFeedbackDialog.0eb643f07f', 'Send Feedback')}
+            {translate('auto.components.sidebar.SidebarFeedbackDialog.0eb643f07f', 'Get in touch')}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {translate(
               'auto.components.sidebar.SidebarFeedbackDialog.a828fa4aee',
-              "Share what's working, what's broken, or what Orca should do next."
+              'Reach the Orca team through any of these channels.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -117,7 +47,7 @@ export function SidebarFeedbackDialog({
           <div className="text-xs font-medium text-foreground">
             {translate(
               'auto.components.sidebar.SidebarFeedbackDialog.9b33530b3d',
-              'Other ways to reach us'
+              'Ways to reach us'
             )}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -167,34 +97,9 @@ export function SidebarFeedbackDialog({
           </div>
         </div>
 
-        <textarea
-          ref={feedbackTextareaRef}
-          value={feedback}
-          onChange={(event) => setFeedback(event.target.value)}
-          placeholder={translate(
-            'auto.components.sidebar.SidebarFeedbackDialog.d46ddd66fc',
-            'What could we improve?'
-          )}
-          rows={7}
-          className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        />
-
-        <div className="min-h-9 rounded-md border border-border/70 bg-muted/30 px-3 py-2">
-          <div className="text-xs text-muted-foreground">
-            {translate(
-              'auto.components.sidebar.SidebarFeedbackDialog.feedbackOnly',
-              'Your feedback is submitted without any GitHub identity.'
-            )}
-          </div>
-        </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            {translate('auto.components.sidebar.SidebarFeedbackDialog.8bf619e4cf', 'Cancel')}
-          </Button>
-          <Button onClick={() => void handleSubmit()} disabled={isSubmitting || !feedback.trim()}>
-            {isSubmitting
-              ? translate('auto.components.sidebar.SidebarFeedbackDialog.69969ba364', 'Sending…')
-              : translate('auto.components.sidebar.SidebarFeedbackDialog.f2e42e1307', 'Send')}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {translate('auto.components.sidebar.SidebarFeedbackDialog.8bf619e4cf', 'Close')}
           </Button>
         </DialogFooter>
       </DialogContent>

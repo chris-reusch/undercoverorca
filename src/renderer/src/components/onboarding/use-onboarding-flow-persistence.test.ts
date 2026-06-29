@@ -26,10 +26,7 @@ function makeOnboardingState(): OnboardingState {
   }
 }
 
-function setApi(api: {
-  onboarding: { update: ReturnType<typeof vi.fn> }
-  starNag: { onboardingCompleted: ReturnType<typeof vi.fn> }
-}): void {
+function setApi(api: { onboarding: { update: ReturnType<typeof vi.fn> } }): void {
   ;(window as unknown as { api: typeof api }).api = api
 }
 
@@ -60,8 +57,7 @@ describe('onboarding flow persistence', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     setApi({
-      onboarding: { update: vi.fn().mockResolvedValue(makeOnboardingState()) },
-      starNag: { onboardingCompleted: vi.fn().mockResolvedValue(undefined) }
+      onboarding: { update: vi.fn().mockResolvedValue(makeOnboardingState()) }
     })
   })
 
@@ -97,29 +93,20 @@ describe('onboarding flow persistence', () => {
     })
   })
 
-  it('schedules the star toast after every completed close path', async () => {
+  it('persists onboarding state on a completed close path', async () => {
     let closeWith: CloseWithCallback | null = null
     ;({ root, container } = renderCloseWithProbe((callback) => {
       closeWith = callback
     }))
 
+    let result: boolean | undefined
     await act(async () => {
-      await closeWith?.('completed', {})
+      result = await closeWith?.('completed', {})
     })
 
-    const api = (
-      window as unknown as {
-        api: {
-          starNag: { onboardingCompleted: ReturnType<typeof vi.fn> }
-        }
-      }
-    ).api
-    expect(api.starNag.onboardingCompleted).not.toHaveBeenCalled()
-
-    act(() => {
-      vi.advanceTimersByTime(0)
-    })
-
-    expect(api.starNag.onboardingCompleted).toHaveBeenCalledTimes(1)
+    expect(result).toBe(true)
+    const api = (window as unknown as { api: { onboarding: { update: ReturnType<typeof vi.fn> } } })
+      .api
+    expect(api.onboarding.update).toHaveBeenCalledTimes(1)
   })
 })

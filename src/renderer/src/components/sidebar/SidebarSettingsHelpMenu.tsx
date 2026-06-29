@@ -5,9 +5,7 @@ import {
   ExternalLink,
   Github,
   Keyboard,
-  Loader2,
   MessageSquareText,
-  RefreshCw,
   RotateCw,
   School,
   ScrollText,
@@ -82,7 +80,6 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
   const openModal = useAppStore((s) => s.openModal)
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
-  const updateStatus = useAppStore((s) => s.updateStatus)
   const setupProgress = useSetupGuideProgress(true, false, false)
 
   const settingsShortcut = useShortcutKeyDetails('app.settings')
@@ -145,11 +142,6 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
   const openShortcutsSettings = (): void => {
     openSettingsTarget({ pane: 'shortcuts', repoId: null })
     openSettingsPage()
-  }
-
-  const handleCheckForUpdates = (event: Event): void => {
-    const shiftKey = (event as PointerEvent).shiftKey
-    void window.api.updater.check({ includePrerelease: shiftKey })
   }
 
   const openMilestones = (): void => {
@@ -295,21 +287,6 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
               <XIcon />
               {translate('auto.components.sidebar.SidebarSettingsHelpMenu.c4f8e1b72a', 'X')}
               <ExternalLink className="ml-auto size-3 text-muted-foreground" />
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={updateStatus.state === 'checking' || updateStatus.state === 'downloading'}
-              onSelect={handleCheckForUpdates}
-            >
-              {updateStatus.state === 'checking' ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3.5" />
-              )}
-              {translate(
-                'auto.components.sidebar.SidebarSettingsHelpMenu.29c56f30ee',
-                'Check for Updates'
-              )}
             </DropdownMenuItem>
             {showAdminOptions ? (
               <>

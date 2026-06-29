@@ -73,24 +73,6 @@ describe('landing preflight issues', () => {
     ).toBe(false)
   })
 
-  it('detects GitHub-backed projects from generated avatar metadata', () => {
-    expect(
-      hasGitHubBackedProject([
-        repo({
-          id: 'github-repo',
-          path: '/Users/alice/orca',
-          displayName: 'orca',
-          repoIcon: {
-            type: 'image',
-            src: 'https://github.com/stablyai.png?size=64',
-            source: 'github',
-            label: 'stablyai/orca'
-          }
-        })
-      ])
-    ).toBe(true)
-  })
-
   it('detects GitHub-backed projects from existing provider metadata', () => {
     expect(
       hasGitHubBackedProject([

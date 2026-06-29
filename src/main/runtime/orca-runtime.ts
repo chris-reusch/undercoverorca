@@ -396,7 +396,6 @@ import {
 import { getSshGitProvider, requireSshGitProvider } from '../providers/ssh-git-dispatch'
 import { detectRepoIconAndUpstream } from '../repo-icon-autodetect'
 import { enrichMissingRepoGitRemoteIdentities } from '../repo-git-remote-identity-enrichment'
-import { githubAvatarIcon } from '../../shared/repo-icon'
 import type { ClaudeAccountService } from '../claude-accounts/service'
 import type { CodexAccountService } from '../codex-accounts/service'
 import type { ClaudeRateLimitAccountsState, CodexRateLimitAccountsState } from '../../shared/types'
@@ -9487,12 +9486,7 @@ export class OrcaRuntimeService {
         } catch {
           continue
         }
-        const updates: Partial<Repo> = { upstream: upstream ?? null }
-        // Only migrate the auto-detected origin avatar; never touch a chosen icon.
-        if (upstream && repo.repoIcon?.type === 'image' && repo.repoIcon.source === 'github') {
-          updates.repoIcon = githubAvatarIcon(upstream)
-        }
-        store.updateRepo(repo.id, updates)
+        store.updateRepo(repo.id, { upstream: upstream ?? null })
         changed = true
       }
       if (changed) {

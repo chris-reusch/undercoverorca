@@ -1,8 +1,7 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Clipboard, Send } from 'lucide-react'
+import { useDeferredValue, useMemo, useState } from 'react'
+import { AlertTriangle, Clipboard } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import {
   formatCrashReportText,
@@ -41,11 +39,11 @@ function getDialogTitle(report: CrashReportRecord | null): string {
 
 function getDialogDescription(report: CrashReportRecord | null): string {
   if (!report) {
-    return 'Send a privacy-safe crash report. Recent redacted diagnostic logs are included when available.'
+    return 'Copy a privacy-safe crash report locally. Recent redacted diagnostic logs are included when available.'
   }
   return report && isReactErrorBoundaryReport(report)
-    ? 'Send a privacy-safe diagnostic report to help us understand the failed UI surface.'
-    : 'Send a privacy-safe diagnostic report to help us understand what happened.'
+    ? 'Copy a privacy-safe diagnostic report locally to review the failed UI surface.'
+    : 'Copy a privacy-safe diagnostic report locally to review what happened.'
 }
 
 function getNotesPlaceholder(report: CrashReportRecord | null): string {
@@ -74,8 +72,6 @@ export function CrashReportDialogSurface({
 }: CrashReportDialogSurfaceProps): React.JSX.Element {
   const mountedRef = useMountedRef()
   const [notes, setNotes] = useState('')
-  const [includeDiagnosticLogs, setIncludeDiagnosticLogs] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const deferredNotes = useDeferredValue(notes)
   const diagnosticText = useMemo(
     // Why: formatting applies redaction and truncation over the full crash
@@ -83,13 +79,6 @@ export function CrashReportDialogSurface({
     () => (report ? formatCrashReportText(report, deferredNotes) : ''),
     [deferredNotes, report]
   )
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-    setIncludeDiagnosticLogs(true)
-  }, [open])
 
   const handleCopy = async (): Promise<void> => {
     const result = await window.api.crashReports.copyLatestDiagnostics(
@@ -113,67 +102,10 @@ export function CrashReportDialogSurface({
     }
   }
 
-  const handleDismiss = async (): Promise<void> => {
+  const handleClose = async (): Promise<void> => {
     await dismissReportIfNeeded()
     if (mountedRef.current) {
       onOpenChange(false)
-    }
-  }
-
-  const handleSubmit = async (): Promise<void> => {
-    setSubmitting(true)
-    try {
-      const result = await window.api.crashReports.submit({
-        ...(report ? { reportId: report.id } : {}),
-        notes,
-        includeDiagnosticLogs,
-        // Why: renderer no longer resolves a GitHub identity, so crash reports
-        // are always submitted anonymously.
-        submitAnonymously: true,
-        githubLogin: null,
-        githubEmail: null
-      })
-      if (!result.ok) {
-        if (result.diagnosticBundle?.status === 'uploaded') {
-          toast.error(
-            translate(
-              'auto.components.crash.report.CrashReportDialog.b2e36f53a1',
-              'Failed to send crash report. Diagnostic ticket {{value0}} was uploaded but not linked.',
-              { value0: result.diagnosticBundle.ticketId }
-            )
-          )
-        } else {
-          toast.error(
-            translate(
-              'auto.components.crash.report.CrashReportDialog.56a3dfa283',
-              'Failed to send crash report.'
-            )
-          )
-        }
-        console.error('Failed to submit crash report:', result.error)
-        return
-      }
-      if (!mountedRef.current) {
-        return
-      }
-      onReportChange(result.report)
-      setNotes('')
-      toast.success(
-        translate('auto.components.crash.report.CrashReportDialog.8e24fe4f75', 'Crash report sent.')
-      )
-      onOpenChange(false)
-    } catch (error) {
-      toast.error(
-        translate(
-          'auto.components.crash.report.CrashReportDialog.56a3dfa283',
-          'Failed to send crash report.'
-        )
-      )
-      console.error('Failed to submit crash report:', error)
-    } finally {
-      if (mountedRef.current) {
-        setSubmitting(false)
-      }
     }
   }
 
@@ -181,9 +113,6 @@ export function CrashReportDialogSurface({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (submitting && !nextOpen) {
-          return
-        }
         if (!nextOpen) {
           void dismissReportIfNeeded().finally(() => {
             if (mountedRef.current) {
@@ -236,7 +165,7 @@ export function CrashReportDialogSurface({
                   )
                 : translate(
                     'auto.components.crash.report.CrashReportDialog.ead6fc0510',
-                    'No automatic crash report was captured. You can still send details and include recent diagnostic logs when available.'
+                    'No automatic crash report was captured. You can still copy details and include recent diagnostic logs when available.'
                   )}
             </div>
           )}
@@ -247,29 +176,6 @@ export function CrashReportDialogSurface({
             placeholder={getNotesPlaceholder(report)}
             className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
-          <div className="flex items-start gap-2 rounded-md border border-border/70 bg-muted/20 p-3">
-            <Checkbox
-              id="crash-report-attach-diagnostics"
-              checked={includeDiagnosticLogs}
-              onCheckedChange={(checked) => setIncludeDiagnosticLogs(checked === true)}
-              disabled={submitting}
-              className="mt-0.5"
-            />
-            <div className="space-y-1">
-              <Label htmlFor="crash-report-attach-diagnostics" className="text-xs">
-                {translate(
-                  'auto.components.crash.report.CrashReportDialog.b082f27490',
-                  'Attach recent diagnostic logs'
-                )}
-              </Label>
-              <div className="text-xs leading-5 text-muted-foreground">
-                {translate(
-                  'auto.components.crash.report.CrashReportDialog.e59f0b9427',
-                  'Sends a capped redacted log bundle with the report.'
-                )}
-              </div>
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="gap-2">
@@ -277,18 +183,8 @@ export function CrashReportDialogSurface({
             <Clipboard className="size-3.5" />
             {translate('auto.components.crash.report.CrashReportDialog.50b00dc327', 'Copy Details')}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleDismiss}
-            disabled={submitting}
-          >
-            {translate('auto.components.crash.report.CrashReportDialog.88fea8e84e', "Don't Send")}
-          </Button>
-          <Button type="button" size="sm" onClick={handleSubmit} disabled={loading || submitting}>
-            <Send className="size-3.5" />
-            {translate('auto.components.crash.report.CrashReportDialog.b4951cd27c', 'Send Report')}
+          <Button type="button" variant="ghost" size="sm" onClick={handleClose}>
+            {translate('auto.components.crash.report.CrashReportDialog.88fea8e84e', 'Close')}
           </Button>
         </DialogFooter>
       </DialogContent>

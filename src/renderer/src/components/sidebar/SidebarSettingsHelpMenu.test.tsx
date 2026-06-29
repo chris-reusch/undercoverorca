@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
   openSettingsPage: vi.fn(),
   openSettingsTarget: vi.fn(),
   appRestart: vi.fn(),
-  updaterCheck: vi.fn(),
   shellOpenUrl: vi.fn(),
   useShortcutKeyDetails: vi.fn(),
   setupProgress: {
@@ -19,15 +18,12 @@ const mocks = vi.hoisted(() => ({
   }
 }))
 
-let updateStatus = { state: 'idle' } as const
-
 vi.mock('@/store', () => ({
   useAppStore: (selector: (state: unknown) => unknown) =>
     selector({
       openModal: mocks.openModal,
       openSettingsPage: mocks.openSettingsPage,
-      openSettingsTarget: mocks.openSettingsTarget,
-      updateStatus
+      openSettingsTarget: mocks.openSettingsTarget
     })
 }))
 
@@ -100,7 +96,6 @@ describe('SidebarSettingsHelpMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.useShortcutKeyDetails.mockReturnValue({ keys: ['⌘', ','], doubleTap: false })
-    updateStatus = { state: 'idle' }
     mocks.setupProgress = {
       ready: true,
       coreDoneCount: 2,
@@ -182,11 +177,6 @@ describe('SidebarSettingsHelpMenu', () => {
   it('renders X link', () => {
     const html = renderToStaticMarkup(<SidebarSettingsHelpMenu />)
     expect(html).toContain('>X<')
-  })
-
-  it('renders Check for Updates menu item', () => {
-    const html = renderToStaticMarkup(<SidebarSettingsHelpMenu />)
-    expect(html).toContain('Check for Updates')
   })
 
   it('renders shortcut keys in the settings tooltip', () => {

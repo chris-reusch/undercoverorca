@@ -31,7 +31,6 @@ const {
   registerClaudeAccountHandlersMock,
   registerClipboardHandlersMock,
   setTrustedClipboardRendererWebContentsIdMock,
-  registerUpdaterHandlersMock,
   registerBrowserHandlersMock,
   setAgentBrowserBridgeRefMock,
   setTrustedBrowserRendererWebContentsIdMock,
@@ -76,7 +75,6 @@ const {
   registerClaudeAccountHandlersMock: vi.fn(),
   registerClipboardHandlersMock: vi.fn(),
   setTrustedClipboardRendererWebContentsIdMock: vi.fn(),
-  registerUpdaterHandlersMock: vi.fn(),
   registerBrowserHandlersMock: vi.fn(),
   setAgentBrowserBridgeRefMock: vi.fn(),
   setTrustedBrowserRendererWebContentsIdMock: vi.fn(),
@@ -227,10 +225,6 @@ vi.mock('./claude-accounts', () => ({
   registerClaudeAccountHandlers: registerClaudeAccountHandlersMock
 }))
 
-vi.mock('../window/attach-main-window-services', () => ({
-  registerUpdaterHandlers: registerUpdaterHandlersMock
-}))
-
 vi.mock('../window/clipboard-ipc-handlers', () => ({
   registerClipboardHandlers: registerClipboardHandlersMock,
   setTrustedClipboardRendererWebContentsId: setTrustedClipboardRendererWebContentsIdMock
@@ -290,7 +284,6 @@ describe('registerCoreHandlers', () => {
     registerClaudeAccountHandlersMock.mockReset()
     registerClipboardHandlersMock.mockReset()
     setTrustedClipboardRendererWebContentsIdMock.mockReset()
-    registerUpdaterHandlersMock.mockReset()
     registerBrowserHandlersMock.mockReset()
     setAgentBrowserBridgeRefMock.mockReset()
     setTrustedBrowserRendererWebContentsIdMock.mockReset()
@@ -364,7 +357,6 @@ describe('registerCoreHandlers', () => {
     expect(registerPreflightHandlersMock).toHaveBeenCalled()
     expect(registerShellHandlersMock).toHaveBeenCalled()
     expect(registerClipboardHandlersMock).toHaveBeenCalledWith(store)
-    expect(registerUpdaterHandlersMock).toHaveBeenCalled()
     expect(setTrustedBrowserRendererWebContentsIdMock).toHaveBeenCalledWith(null)
     expect(setTrustedClipboardRendererWebContentsIdMock).toHaveBeenCalledWith(null)
     expect(setTrustedUIRendererWebContentsIdMock).toHaveBeenCalledWith(null)

@@ -5,7 +5,7 @@ import { getRepoExecutionHostId } from '../../shared/execution-host'
 import type { TaskSourceContext } from '../../shared/task-source-context'
 import type { Store } from '../persistence'
 import type { StatsCollector } from '../stats/collector'
-import { checkOrcaStarred, getRepoSlug, getRepoUpstream, starOrca } from '../github/client'
+import { getRepoSlug, getRepoUpstream } from '../github/client'
 import { diagnoseGhAuth } from '../github/auth-diagnose'
 import { getLocalProjectWorktreeGitOptions } from '../project-runtime-git-options'
 
@@ -61,11 +61,6 @@ export function registerGitHubHandlers(store: Store, _stats: StatsCollector): vo
     return localGitOptions
       ? getRepoUpstream(repo.path, repoConnectionId(repo), { localGitExecOptions: localGitOptions })
       : getRepoUpstream(repo.path, repoConnectionId(repo))
-  })
-
-  ipcMain.handle('gh:checkOrcaStarred', () => checkOrcaStarred())
-  ipcMain.handle('gh:starOrca', async () => {
-    return starOrca()
   })
 
   ipcMain.handle('gh:diagnoseAuth', () => diagnoseGhAuth())

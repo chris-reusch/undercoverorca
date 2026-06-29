@@ -35,7 +35,6 @@ import type {
   MarkdownDocument,
   SearchResult,
   TuiAgent,
-  UpdateStatus,
   WorktreeBaseStatusEvent,
   WorktreeDefaultTabsLaunch,
   WorktreeRemoteBranchConflictEvent
@@ -88,7 +87,6 @@ import type {
   SpeechTranscriptEvent
 } from '../shared/speech-types'
 import type { PreflightRuntimeContext, RefreshAgentsResult } from './api-types'
-import type { AppStarSource } from '../shared/gh-star-source'
 import type { KeybindingActionId, KeybindingFileSnapshot } from '../shared/keybindings'
 import type { AiVaultListArgs } from '../shared/ai-vault-types'
 import {
@@ -97,9 +95,7 @@ import {
 } from '../shared/editor-save-events'
 import {
   ORCA_APP_RESTART_ABORTED_EVENT,
-  ORCA_APP_RESTART_STARTED_EVENT,
-  ORCA_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
-  ORCA_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
+  ORCA_APP_RESTART_STARTED_EVENT
 } from '../shared/updater-renderer-events'
 import {
   ORCA_INTERNAL_FILE_DRAG_TYPE,
@@ -117,8 +113,6 @@ import type { RuntimeEnvironmentSubscriptionHandle } from './runtime-environment
 import type { ReadClipboardTextOptions } from '../shared/clipboard-text'
 import type {
   CrashReportBreadcrumbData,
-  CrashReportSubmitArgs,
-  CrashReportSubmitResult,
   ReactErrorBoundaryReportArgs,
   ReactErrorBoundaryReportResult
 } from '../shared/crash-reporting'
@@ -832,16 +826,6 @@ const api = {
     }
   },
 
-  feedback: {
-    submit: (args: {
-      feedback: string
-      submitAnonymously?: boolean
-      githubLogin: string | null
-      githubEmail: string | null
-    }): Promise<{ ok: true } | { ok: false; status: number | null; error: string }> =>
-      ipcRenderer.invoke('feedback:submit', args)
-  },
-
   crashReports: {
     getLatestPending: () => ipcRenderer.invoke('crashReports:getLatestPending'),
     getLatestReport: () => ipcRenderer.invoke('crashReports:getLatestReport'),
@@ -852,8 +836,6 @@ const api = {
       ipcRenderer.invoke('crashReports:recordRendererError', args),
     recordBreadcrumb: (args: { name: string; data?: CrashReportBreadcrumbData }): void =>
       ipcRenderer.send('crashReports:recordBreadcrumb', args),
-    submit: (args: CrashReportSubmitArgs): Promise<CrashReportSubmitResult> =>
-      ipcRenderer.invoke('crashReports:submit', args),
     copyLatestDiagnostics: (args?: { reportId?: string; notes?: string }) =>
       ipcRenderer.invoke('crashReports:copyLatestDiagnostics', args)
   },
@@ -874,10 +856,6 @@ const api = {
     repoUpstream: (args: { repoPath: string; repoId?: string }): Promise<unknown> =>
       ipcRenderer.invoke('gh:repoUpstream', args),
 
-    checkOrcaStarred: (): Promise<boolean | null> => ipcRenderer.invoke('gh:checkOrcaStarred'),
-    starOrca: (source: AppStarSource): Promise<boolean> =>
-      ipcRenderer.invoke('gh:starOrca', source),
-
     diagnoseAuth: (): Promise<GhAuthDiagnostic> => ipcRenderer.invoke('gh:diagnoseAuth')
   },
 
@@ -885,36 +863,6 @@ const api = {
     getCreationEligibility: (args: unknown): Promise<unknown> =>
       ipcRenderer.invoke('hostedReview:getCreationEligibility', args),
     create: (args: unknown): Promise<unknown> => ipcRenderer.invoke('hostedReview:create', args)
-  },
-
-  starNag: {
-    onShow: (
-      callback: (payload?: { mode?: 'gh' | 'web'; surface?: 'card' | 'toast' }) => void
-    ): (() => void) => {
-      const listener = (
-        _event: Electron.IpcRendererEvent,
-        payload?: { mode?: 'gh' | 'web'; surface?: 'card' | 'toast' }
-      ): void => callback(payload)
-      ipcRenderer.on('star-nag:show', listener)
-      return () => ipcRenderer.removeListener('star-nag:show', listener)
-    },
-    onHide: (callback: () => void): (() => void) => {
-      const listener = (): void => callback()
-      ipcRenderer.on('star-nag:hide', listener)
-      return () => ipcRenderer.removeListener('star-nag:hide', listener)
-    },
-    dismiss: (): Promise<void> => ipcRenderer.invoke('star-nag:dismiss'),
-    later: (): Promise<void> => ipcRenderer.invoke('star-nag:later'),
-    complete: (): Promise<void> => ipcRenderer.invoke('star-nag:complete'),
-    disable: (): Promise<void> => ipcRenderer.invoke('star-nag:disable'),
-    openWeb: (): Promise<void> => ipcRenderer.invoke('star-nag:openWeb'),
-    starOrca: (): Promise<boolean> => ipcRenderer.invoke('star-nag:starOrca'),
-    forceShow: (): Promise<void> => ipcRenderer.invoke('star-nag:forceShow'),
-    agentValueMoment: (): Promise<
-      { status: 'ready'; mode: 'gh' | 'web' } | { status: 'skipped' }
-    > => ipcRenderer.invoke('star-nag:agentValueMoment'),
-    showAgentValueMoment: (): Promise<void> => ipcRenderer.invoke('star-nag:showAgentValueMoment'),
-    onboardingCompleted: (): Promise<void> => ipcRenderer.invoke('star-nag:onboardingCompleted')
   },
 
   // Why: diagnostics is the renderer-facing surface for the error-tracking
@@ -929,11 +877,7 @@ const api = {
     openBundlePreview: (bundleSubmissionId: string): Promise<void> =>
       ipcRenderer.invoke('diagnostics:openBundlePreview', bundleSubmissionId),
     discardBundlePreview: (bundleSubmissionId: string): Promise<void> =>
-      ipcRenderer.invoke('diagnostics:discardBundlePreview', bundleSubmissionId),
-    uploadBundle: (bundleSubmissionId: string): Promise<unknown> =>
-      ipcRenderer.invoke('diagnostics:uploadBundle', bundleSubmissionId),
-    deleteBundle: (ticketId: string): Promise<void> =>
-      ipcRenderer.invoke('diagnostics:deleteBundle', ticketId)
+      ipcRenderer.invoke('diagnostics:discardBundlePreview', bundleSubmissionId)
   },
 
   settings: {
@@ -1680,36 +1624,6 @@ const api = {
       return () => ipcRenderer.removeListener('remoteWorkspace:changed', listener)
     }
   } satisfies PreloadApi['remoteWorkspace'],
-
-  updater: {
-    getStatus: () => ipcRenderer.invoke('updater:getStatus'),
-    getVersion: () => ipcRenderer.invoke('updater:getVersion'),
-    check: (options) => ipcRenderer.invoke('updater:check', options),
-    download: () => ipcRenderer.invoke('updater:download'),
-    dismissNudge: () => ipcRenderer.invoke('updater:dismissNudge'),
-    quitAndInstall: async (): Promise<void> => {
-      await prepareRendererForAppRestart({
-        startedEventName: ORCA_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
-        abortedEventName: ORCA_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT
-      })
-      try {
-        return await ipcRenderer.invoke('updater:quitAndInstall')
-      } catch (error) {
-        window.dispatchEvent(new Event(ORCA_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT))
-        throw error
-      }
-    },
-    onStatus: (callback) => {
-      const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status)
-      ipcRenderer.on('updater:status', listener)
-      return () => ipcRenderer.removeListener('updater:status', listener)
-    },
-    onClearDismissal: (callback) => {
-      const listener = (_event: Electron.IpcRendererEvent) => callback()
-      ipcRenderer.on('updater:clearDismissal', listener)
-      return () => ipcRenderer.removeListener('updater:clearDismissal', listener)
-    }
-  } satisfies PreloadApi['updater'],
 
   notebook: {
     runPythonCell: (args: {

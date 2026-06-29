@@ -40,9 +40,7 @@ describe('renderer startup runtime routing', () => {
   it('does not eagerly import idle optional overlay surfaces on startup', () => {
     const source = readFileSync(join(process.cwd(), 'src/renderer/src/App.tsx'), 'utf8')
 
-    expect(source).toContain("import('./components/UpdateCard').then")
     expect(source).toContain("import('./components/contextual-tours/ContextualTourOverlay').then")
-    expect(source).not.toContain("from './components/UpdateCard'")
     expect(source).not.toContain("from './components/contextual-tours/ContextualTourOverlay'")
   })
 

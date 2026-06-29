@@ -16,7 +16,6 @@ const {
   registerWorktreeHandlersMock,
   registerPtyHandlersMock,
   hydrateLocalPtyRegistryAtBootMock,
-  setupAutoUpdaterMock,
   browserManagerUnregisterAllMock,
   runWorktreeChangeInvalidatorsMock
 } = vi.hoisted(() => ({
@@ -33,7 +32,6 @@ const {
   registerWorktreeHandlersMock: vi.fn(),
   registerPtyHandlersMock: vi.fn(),
   hydrateLocalPtyRegistryAtBootMock: vi.fn(),
-  setupAutoUpdaterMock: vi.fn(),
   browserManagerUnregisterAllMock: vi.fn(),
   runWorktreeChangeInvalidatorsMock: vi.fn()
 }))
@@ -83,14 +81,6 @@ vi.mock('../browser/browser-manager', () => ({
   browserManager: {
     unregisterAll: browserManagerUnregisterAllMock
   }
-}))
-
-vi.mock('../updater', () => ({
-  checkForUpdates: vi.fn(),
-  getUpdateStatus: vi.fn(),
-  quitAndInstall: vi.fn(),
-  dismissNudge: vi.fn(),
-  setupAutoUpdater: setupAutoUpdaterMock
 }))
 
 import { attachMainWindowServices } from './attach-main-window-services'
@@ -182,7 +172,6 @@ describe('attachMainWindowServices', () => {
     registerWorktreeHandlersMock.mockReset()
     registerPtyHandlersMock.mockReset()
     hydrateLocalPtyRegistryAtBootMock.mockReset()
-    setupAutoUpdaterMock.mockReset()
     browserManagerUnregisterAllMock.mockReset()
     systemPreferencesAskForMediaAccessMock.mockResolvedValue(true)
     systemPreferencesGetMediaAccessStatusMock.mockReturnValue('granted')
@@ -236,36 +225,6 @@ describe('attachMainWindowServices', () => {
 
     expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenCalledTimes(2)
     expect(hydrateLocalPtyRegistryAtBootMock).toHaveBeenLastCalledWith(store)
-  })
-
-  it('passes injected update quit cleanup to the auto-updater', async () => {
-    const onBeforeUpdateQuit = vi.fn()
-    const store = createStore()
-
-    attachMainWindowServices(
-      createMainWindow() as never,
-      store,
-      createRuntime() as never,
-      undefined,
-      undefined,
-      { onBeforeUpdateQuit }
-    )
-
-    expect(setupAutoUpdaterMock).toHaveBeenCalledTimes(1)
-    await setupAutoUpdaterMock.mock.calls[0][1].onBeforeQuit()
-
-    expect(onBeforeUpdateQuit).toHaveBeenCalledTimes(1)
-    expect(store.flush).toHaveBeenCalledTimes(1)
-  })
-
-  it('flushes the store before update quit when no cleanup is injected', async () => {
-    const store = createStore()
-
-    attachMainWindowServices(createMainWindow() as never, store, createRuntime() as never)
-
-    await setupAutoUpdaterMock.mock.calls[0][1].onBeforeQuit()
-
-    expect(store.flush).toHaveBeenCalledTimes(1)
   })
 
   it('ignores app reload requests from non-main webContents', async () => {

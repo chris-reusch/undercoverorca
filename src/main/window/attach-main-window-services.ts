@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- Why: this file is the central main-window IPC wiring point; splitting it during the mobile release compatibility rebase would increase release risk. */
 import { randomUUID } from 'node:crypto'
 
-import { app, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import type { BrowserWindow } from 'electron'
 import type { Store } from '../persistence'
 import type { CreateWorktreeResult, WorktreeStartupLaunch } from '../../shared/types'
@@ -15,14 +15,6 @@ import { registerRemoteWorkspaceHandlers } from '../ipc/remote-workspace'
 import { browserManager } from '../browser/browser-manager'
 import { hasSystemMediaAccess, requestSystemMediaAccess } from '../browser/browser-media-access'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
-import {
-  checkForUpdatesFromMenu,
-  downloadUpdate,
-  getUpdateStatus,
-  quitAndInstall,
-  setupAutoUpdater,
-  dismissNudge
-} from '../updater'
 import { scheduleHistoryGc } from '../terminal-history'
 import { hydrateLocalPtyRegistryAtBoot } from '../memory/hydrate-local-pty-registry'
 import type { ClaudeRuntimeAuthPreparation } from '../claude-accounts/runtime-auth-service'
@@ -54,7 +46,6 @@ export function attachMainWindowServices(
   options?: {
     awaitLocalPtyStartup?: () => Promise<void>
     onBeforeRendererReload?: (args: { webContentsId: number; ignoreCache: boolean }) => void
-    onBeforeUpdateQuit?: () => void | Promise<void>
   }
 ): void {
   registerAppReloadHandler(mainWindow, options?.onBeforeRendererReload)
@@ -109,37 +100,6 @@ export function attachMainWindowServices(
   registerSshHandlers(store, () => mainWindow, runtime)
   registerRemoteWorkspaceHandlers(store, () => mainWindow)
   registerFileDropRelay(mainWindow)
-  setupAutoUpdater(mainWindow, {
-    getLastUpdateCheckAt: () => store.getUI().lastUpdateCheckAt,
-    onBeforeQuit: async () => {
-      try {
-        await options?.onBeforeUpdateQuit?.()
-      } finally {
-        store.flush()
-      }
-    },
-    setLastUpdateCheckAt: (timestamp) => {
-      store.updateUI({ lastUpdateCheckAt: timestamp })
-    },
-    getPendingUpdateNudgeId: () => store.getUI().pendingUpdateNudgeId ?? null,
-    getDismissedUpdateNudgeId: () => store.getUI().dismissedUpdateNudgeId ?? null,
-    setPendingUpdateNudgeId: (id) => {
-      // Why: the nudge lifecycle is owned by the main process. When applying a
-      // new campaign, persist the pending id AND clear the version dismissal
-      // together so relaunches cannot resurrect the old hidden-card state
-      // between nudge apply and renderer sync. When clearing (id is null),
-      // only touch pendingUpdateNudgeId — clearing dismissedUpdateVersion here
-      // would silently un-dismiss an update if the flow ever changes.
-      if (id) {
-        store.updateUI({ pendingUpdateNudgeId: id, dismissedUpdateVersion: null })
-      } else {
-        store.updateUI({ pendingUpdateNudgeId: null })
-      }
-    },
-    setDismissedUpdateNudgeId: (id) => {
-      store.updateUI({ dismissedUpdateNudgeId: id })
-    }
-  })
   registerRuntimeWindowLifecycle(mainWindow, runtime)
 
   const allowedPermissions = new Set(['media', 'fullscreen', 'pointerLock'])
@@ -390,22 +350,4 @@ function registerFileDropRelay(mainWindow: BrowserWindow): void {
     // the relay closure so a destroyed BrowserWindow is not retained.
     ipcMain.removeListener(channel, relayFileDrop)
   })
-}
-
-export function registerUpdaterHandlers(_store: Store): void {
-  ipcMain.removeHandler('updater:getStatus')
-  ipcMain.removeHandler('updater:getVersion')
-  ipcMain.removeHandler('updater:check')
-  ipcMain.removeHandler('updater:download')
-  ipcMain.removeHandler('updater:quitAndInstall')
-  ipcMain.removeHandler('updater:dismissNudge')
-
-  ipcMain.handle('updater:getStatus', () => getUpdateStatus())
-  ipcMain.handle('updater:getVersion', () => app.getVersion())
-  ipcMain.handle('updater:check', (_event, options?: { includePrerelease?: boolean }) =>
-    checkForUpdatesFromMenu(options)
-  )
-  ipcMain.handle('updater:download', () => downloadUpdate())
-  ipcMain.handle('updater:quitAndInstall', () => quitAndInstall())
-  ipcMain.handle('updater:dismissNudge', () => dismissNudge())
 }

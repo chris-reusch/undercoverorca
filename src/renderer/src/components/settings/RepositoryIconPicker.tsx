@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { Repo } from '../../../../shared/types'
-import { githubAvatarIcon, type RepoIcon } from '../../../../shared/repo-icon'
+import type { RepoIcon } from '../../../../shared/repo-icon'
 import { DEFAULT_REPO_BADGE_COLOR } from '../../../../shared/constants'
 import { normalizeRepoBadgeColor } from '../../../../shared/repo-badge-color'
 import { Button } from '../ui/button'
@@ -14,10 +13,7 @@ import { getRuntimeEnvironmentIdForRepo } from '@/lib/repo-runtime-owner'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { RepositoryIconColorSection } from './RepositoryIconColorSection'
 import { RepositoryIconTabs } from './RepositoryIconTabs'
-import {
-  resolveRepositoryGitHubAvatarIcon,
-  resolveRepositoryUpstreamLive
-} from './repository-icon-github'
+import { resolveRepositoryUpstreamLive } from './repository-icon-github'
 import { translate } from '@/i18n/i18n'
 
 export function RepositoryIconPicker({
@@ -27,10 +23,8 @@ export function RepositoryIconPicker({
   repo: Repo
   updateRepo: (repoId: string, updates: Partial<Repo>) => void
 }): React.JSX.Element {
-  const [loadingGitHub, setLoadingGitHub] = useState(false)
-  const [resetting, setResetting] = useState(false)
   const mountedRef = useMountedRef()
-  // Why: resolve this repo's upstream/avatar on the host that owns it, not the
+  // Why: resolve this repo's upstream on the host that owns it, not the
   // focused runtime.
   const activeRuntimeEnvironmentId = useAppStore((state) =>
     getRuntimeEnvironmentIdForRepo(state, repo.id)
@@ -39,7 +33,7 @@ export function RepositoryIconPicker({
   const selectedEmoji = repo.repoIcon?.type === 'emoji' ? repo.repoIcon.emoji : ''
   const selectedBadgeColor = normalizeRepoBadgeColor(repo.badgeColor) ?? DEFAULT_REPO_BADGE_COLOR
   const initialTab =
-    repo.repoIcon?.type === 'emoji' ? 'emoji' : repo.repoIcon?.type === 'lucide' ? 'icon' : 'avatar'
+    repo.repoIcon?.type === 'emoji' ? 'emoji' : repo.repoIcon?.type === 'lucide' ? 'icon' : 'upload'
   const runtimeTarget = useMemo(
     () => getActiveRuntimeTarget({ activeRuntimeEnvironmentId }),
     [activeRuntimeEnvironmentId]
@@ -47,9 +41,6 @@ export function RepositoryIconPicker({
 
   const currentIconLabel = useMemo(() => {
     if (repo.repoIcon?.type === 'image') {
-      if (repo.repoIcon.source === 'github') {
-        return 'GitHub avatar'
-      }
       return repo.repoIcon.label ?? 'Custom image'
     }
     if (repo.repoIcon?.type === 'emoji') {
@@ -72,59 +63,9 @@ export function RepositoryIconPicker({
     [runtimeTarget, repo]
   )
 
-  const resolveGitHubAvatarIcon = useCallback(
-    () => resolveRepositoryGitHubAvatarIcon(runtimeTarget, repo),
-    [runtimeTarget, repo]
-  )
-
-  const handleUseGitHubAvatar = async () => {
-    setLoadingGitHub(true)
-    try {
-      const icon = await resolveGitHubAvatarIcon()
-      if (!mountedRef.current) {
-        return
-      }
-      if (!icon) {
-        toast.error(
-          translate(
-            'auto.components.settings.RepositoryIconPicker.f79972271a',
-            'No GitHub remote found for this repo.'
-          )
-        )
-        return
-      }
-      setIcon(icon)
-    } catch {
-      if (mountedRef.current) {
-        toast.error(
-          translate(
-            'auto.components.settings.RepositoryIconPicker.d71df44587',
-            'Failed to resolve the GitHub repo.'
-          )
-        )
-      }
-    } finally {
-      if (mountedRef.current) {
-        setLoadingGitHub(false)
-      }
-    }
-  }
-
-  const handleResetToDefault = async () => {
-    setResetting(true)
-    try {
-      const icon = await resolveGitHubAvatarIcon().catch(() => null)
-      if (!mountedRef.current) {
-        return
-      }
-      setIcon(icon)
-    } finally {
-      if (mountedRef.current) {
-        setResetting(false)
-      }
-    }
-  }
-
+  // Why: backfill the fork upstream (used by the fork indicator and fork-sync)
+  // for repos added before upstream detection existed; the icon is never
+  // derived from a remote avatar in this fork.
   const upstreamBackfilledRef = useRef<string | null>(null)
   useEffect(() => {
     if (repo.upstream !== undefined || upstreamBackfilledRef.current === repo.id) {
@@ -142,16 +83,12 @@ export function RepositoryIconPicker({
       if (cancelled || !mountedRef.current) {
         return
       }
-      const updates: Partial<Repo> = { upstream: upstream ?? null }
-      if (upstream && repo.repoIcon?.type === 'image' && repo.repoIcon.source === 'github') {
-        updates.repoIcon = githubAvatarIcon(upstream)
-      }
-      updateRepo(repo.id, updates)
+      updateRepo(repo.id, { upstream: upstream ?? null })
     })()
     return () => {
       cancelled = true
     }
-  }, [repo.id, repo.upstream, repo.repoIcon, resolveUpstreamLive, updateRepo, mountedRef])
+  }, [repo.id, repo.upstream, resolveUpstreamLive, updateRepo, mountedRef])
 
   return (
     <div className="space-y-3">
@@ -173,8 +110,7 @@ export function RepositoryIconPicker({
           variant="outline"
           size="sm"
           className="gap-2"
-          disabled={resetting}
-          onClick={() => void handleResetToDefault()}
+          onClick={() => setIcon(null)}
         >
           <RotateCcw className="size-3.5" />
           {translate('auto.components.settings.RepositoryIconPicker.549d126081', 'Reset')}
@@ -187,9 +123,7 @@ export function RepositoryIconPicker({
         initialTab={initialTab}
         selectedLucideName={selectedLucideName}
         selectedEmoji={selectedEmoji}
-        loadingGitHub={loadingGitHub}
         onSetIcon={setIcon}
-        onUseGitHubAvatar={() => void handleUseGitHubAvatar()}
       />
     </div>
   )

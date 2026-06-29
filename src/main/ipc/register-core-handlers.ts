@@ -9,7 +9,6 @@ import type { CommitMessageAgentEnvironmentResolvers } from '../text-generation/
 import { registerFilesystemWatcherHandlers } from './filesystem-watcher'
 import { registerGitHubHandlers } from './github'
 import { registerHostedReviewHandlers } from './hosted-review'
-import { registerFeedbackHandlers } from './feedback'
 import { registerCrashReportingHandlers } from './crash-reporting'
 import { registerExportHandlers } from './export'
 import { registerStatsHandlers } from './stats'
@@ -40,7 +39,6 @@ import { registerCodexAccountHandlers } from './codex-accounts'
 import { registerAgentHookHandlers } from './agent-hooks'
 import { registerAgentTrustHandlers } from './agent-trust'
 import { registerClaudeAccountHandlers } from './claude-accounts'
-import { registerUpdaterHandlers } from '../window/attach-main-window-services'
 import {
   registerClipboardHandlers,
   setTrustedClipboardRendererWebContentsId
@@ -93,7 +91,6 @@ export function registerCoreHandlers(
   registerClaudeAccountHandlers(claudeAccounts)
   registerGitHubHandlers(store, stats)
   registerHostedReviewHandlers(store, stats)
-  registerFeedbackHandlers()
   if (crashReports) {
     registerCrashReportingHandlers(crashReports)
   }
@@ -133,6 +130,5 @@ export function registerCoreHandlers(
     getAdditionalCodexHomePaths: lifecycleOptions.getAdditionalAiVaultCodexHomePaths
   })
   registerClipboardHandlers(store)
-  registerUpdaterHandlers(store)
   registerSpeechHandlers(store)
 }

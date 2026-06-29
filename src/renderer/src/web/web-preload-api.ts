@@ -251,20 +251,6 @@ function createWebPreloadApi(): Partial<PreloadApi> {
       pickFloatingMarkdownDocument: () => Promise.resolve(null),
       pickFloatingWorkspaceDirectory: () => Promise.resolve(null)
     },
-    starNag: {
-      onShow: () => noopUnsubscribe,
-      onHide: () => noopUnsubscribe,
-      dismiss: () => Promise.resolve(),
-      later: () => Promise.resolve(),
-      complete: () => Promise.resolve(),
-      disable: () => Promise.resolve(),
-      openWeb: () => Promise.resolve(),
-      starOrca: () => Promise.resolve(false),
-      forceShow: () => Promise.resolve(),
-      agentValueMoment: () => Promise.resolve({ status: 'skipped' }),
-      showAgentValueMoment: () => Promise.resolve(),
-      onboardingCompleted: () => Promise.resolve()
-    },
     platform: {
       get: () => ({
         platform: getBrowserPlatform(),
@@ -301,12 +287,6 @@ function createWebPreloadApi(): Partial<PreloadApi> {
       dismiss: () => Promise.resolve(null),
       recordRendererError: () => Promise.resolve({ ok: true, report: null, deduped: true }),
       recordBreadcrumb: () => {},
-      submit: () =>
-        Promise.resolve({
-          ok: false,
-          status: null,
-          error: translate('auto.web.web.preload.api.fb290366b2', 'Unavailable on web.')
-        }),
       copyLatestDiagnostics: () =>
         Promise.resolve({
           ok: false,
@@ -323,9 +303,7 @@ function createWebPreloadApi(): Partial<PreloadApi> {
         }),
       collectBundle: () => Promise.reject(new Error('Review files are unavailable on web.')),
       openBundlePreview: () => Promise.reject(new Error('Review files are unavailable on web.')),
-      discardBundlePreview: () => Promise.resolve(),
-      uploadBundle: () => Promise.reject(new Error('Sending diagnostics is unavailable on web.')),
-      deleteBundle: () => Promise.reject(new Error('Sent diagnostics are unavailable on web.'))
+      discardBundlePreview: () => Promise.resolve()
     },
     session: {
       // hostId mirrors the desktop bridge: omitted/'local' targets the existing
@@ -417,7 +395,6 @@ function createWebPreloadApi(): Partial<PreloadApi> {
     agentHooks: createAgentHooksApi(),
     developerPermissions: createDeveloperPermissionsApi(),
     computerUsePermissions: createComputerUsePermissionsApi(),
-    updater: createUpdaterApi(),
     shell: createShellApi(),
     skills: createSkillsApi(),
     pty: createPtyApi(),
@@ -1483,8 +1460,6 @@ function createGitHubApi(): WebGitHubApi {
     repoSlug: (args) => route<WebGitHubResult<'repoSlug'>>(GITHUB_WEB_RPC_METHODS.repoSlug, args),
     repoUpstream: (args) =>
       route<WebGitHubResult<'repoUpstream'>>(GITHUB_WEB_RPC_METHODS.repoUpstream, args),
-    checkOrcaStarred: () => Promise.resolve(null),
-    starOrca: () => Promise.resolve(false),
     diagnoseAuth: () =>
       Promise.resolve({
         ok: false,
@@ -1909,19 +1884,6 @@ function createAccountsApi(): never {
     remove: () => Promise.resolve(empty),
     select: () => Promise.resolve(empty)
   } as never
-}
-
-function createUpdaterApi(): NonNullable<Partial<PreloadApi>['updater']> {
-  return {
-    getVersion: () => Promise.resolve('web'),
-    getStatus: () => Promise.resolve({ state: 'idle' } as never),
-    check: () => Promise.resolve(),
-    download: () => Promise.resolve(),
-    quitAndInstall: () => Promise.resolve(),
-    dismissNudge: () => Promise.resolve(),
-    onStatus: () => noopUnsubscribe,
-    onClearDismissal: () => noopUnsubscribe
-  }
 }
 
 function createShellApi(): NonNullable<Partial<PreloadApi>['shell']> {

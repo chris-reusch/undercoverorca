@@ -62,13 +62,6 @@ export function useCloseWith({ onOnboardingChange, setError }: CloseWithDeps) {
         return false
       }
       onOnboardingChange(nextState)
-      if (outcome === 'completed') {
-        // Why: closeWith updates parent state synchronously from this hook's
-        // perspective, but the modal unmounts on the next React commit.
-        window.setTimeout(() => {
-          void window.api.starNag.onboardingCompleted()
-        }, 0)
-      }
       return true
     },
     [onOnboardingChange, setError]

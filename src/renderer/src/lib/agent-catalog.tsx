@@ -341,20 +341,8 @@ export function AgentIcon({
       />
     )
   }
-  if (catalogEntry?.faviconDomain) {
-    // Why: agents without a published SVG icon use their site favicon via
-    // Google's favicon service — same source the README uses for the agent badge list.
-    return (
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${catalogEntry.faviconDomain}&sz=64`}
-        width={size}
-        height={size}
-        alt=""
-        aria-hidden
-        style={{ borderRadius: 2 }}
-      />
-    )
-  }
+  // Privacy: no remote favicon fetch; agents without a bundled icon fall back
+  // to the local letter glyph.
   const label = catalogEntry?.label ?? agent
   return <AgentLetterIcon letter={label.charAt(0).toUpperCase()} size={size} />
 }

@@ -51,9 +51,6 @@ import { shutdownBufferCaptures } from './components/terminal-pane/shutdown-buff
 import { dispatchWindowCloseRequest } from './components/window-close-request-coordinator'
 import { useSystemPrefersDark } from './components/terminal-pane/use-system-prefers-dark'
 import RightSidebar from './components/right-sidebar'
-import { StarNagCard } from './components/StarNagCard'
-import { StarNagAgentValueMomentObserver } from './components/star-nag/StarNagAgentValueMomentObserver'
-import { StarNagToastHost } from './components/star-nag/StarNagToastHost'
 import { ZoomOverlay } from './components/ZoomOverlay'
 import { onOnboardingReopened } from './components/onboarding/show-onboarding-event'
 import { shouldShowOnboarding } from './components/onboarding/should-show-onboarding'
@@ -134,7 +131,7 @@ import { selectFloatingVisibleTabCount } from './store/selectors'
 import { selectActiveTerminalChromeState } from './store/active-terminal-chrome-selector'
 import type { VirtualizedScrollAnchor } from './hooks/useVirtualizedScrollAnchor'
 import type { RemoteWorkspacePatchResult } from '../../shared/remote-workspace-types'
-import type { OnboardingState, UpdateStatus } from '../../shared/types'
+import type { OnboardingState } from '../../shared/types'
 import {
   getFeatureTipsAppOpenDecision,
   isCliFeatureTipCompleted
@@ -297,9 +294,6 @@ const SshPassphraseDialog = lazy(() =>
     default: module.SshPassphraseDialog
   }))
 )
-const UpdateCard = lazy(() =>
-  import('./components/UpdateCard').then((module) => ({ default: module.UpdateCard }))
-)
 const ContextualTourOverlay = lazy(() =>
   import('./components/contextual-tours/ContextualTourOverlay').then((module) => ({
     default: module.ContextualTourOverlay
@@ -346,16 +340,6 @@ function applyRemoteWorkspacePatchStatus(
         ? 'Workspace changed on another device'
         : 'Remote workspace sync unavailable')
   })
-}
-
-function shouldMountUpdateCardForStatus(status: UpdateStatus): boolean {
-  if (status.state === 'idle') {
-    return false
-  }
-  if (status.state === 'checking' || status.state === 'not-available') {
-    return status.userInitiated === true
-  }
-  return true
 }
 
 function App(): React.JSX.Element {
@@ -442,7 +426,6 @@ function App(): React.JSX.Element {
   const floatingVisibleTabCount = useAppStore(selectFloatingVisibleTabCount)
   const workspaceSessionReady = useAppStore((s) => s.workspaceSessionReady)
   const keybindings = useAppStore((s) => s.keybindings)
-  const updateStatus = useAppStore((s) => s.updateStatus)
   const activeContextualTourId = useAppStore((s) => s.activeContextualTourId)
   const leftSidebarShortcutLabel = useShortcutLabel('sidebar.left.toggle')
   const rightSidebarShortcutLabel = useShortcutLabel('sidebar.right.toggle')
@@ -584,7 +567,6 @@ function App(): React.JSX.Element {
   const acknowledgedAgentsByPaneKey = useAppStore((s) => s.acknowledgedAgentsByPaneKey)
   const persistedUIReady = useAppStore((s) => s.persistedUIReady)
   const shouldMountContextualTourOverlay = activeContextualTourId !== null
-  const shouldMountUpdateCard = shouldMountUpdateCardForStatus(updateStatus)
   const rightSidebarWidth = useAppStore((s) => s.rightSidebarWidth)
   const markdownTocPanelWidth = useAppStore((s) => s.markdownTocPanelWidth)
   const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen)
@@ -2436,35 +2418,6 @@ function App(): React.JSX.Element {
                 </RecoverableRenderErrorBoundary>
               </Suspense>
             ) : null}
-            {shouldMountUpdateCard ? (
-              <Suspense fallback={null}>
-                <RecoverableRenderErrorBoundary
-                  boundaryId="overlay.update-card"
-                  surface="overlay"
-                  resetKey={activeView}
-                  compact
-                >
-                  <UpdateCard />
-                </RecoverableRenderErrorBoundary>
-              </Suspense>
-            ) : null}
-            <RecoverableRenderErrorBoundary
-              boundaryId="overlay.star-nag"
-              surface="overlay"
-              resetKey={activeView}
-              compact
-            >
-              <StarNagCard />
-            </RecoverableRenderErrorBoundary>
-            <RecoverableRenderErrorBoundary
-              boundaryId="overlay.star-nag-toast"
-              surface="overlay"
-              resetKey={activeView}
-              compact
-            >
-              <StarNagToastHost />
-            </RecoverableRenderErrorBoundary>
-            <StarNagAgentValueMomentObserver />
             <RecoverableRenderErrorBoundary
               boundaryId="overlay.zoom"
               surface="overlay"

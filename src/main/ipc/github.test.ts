@@ -4,16 +4,12 @@ const {
   handleMock,
   getRepoSlugMock,
   getRepoUpstreamMock,
-  checkOrcaStarredMock,
-  starOrcaMock,
   diagnoseGhAuthMock,
   getLocalProjectWorktreeGitOptionsMock
 } = vi.hoisted(() => ({
   handleMock: vi.fn(),
   getRepoSlugMock: vi.fn(),
   getRepoUpstreamMock: vi.fn(),
-  checkOrcaStarredMock: vi.fn(),
-  starOrcaMock: vi.fn(),
   diagnoseGhAuthMock: vi.fn(),
   getLocalProjectWorktreeGitOptionsMock: vi.fn(() => ({}))
 }))
@@ -26,9 +22,7 @@ vi.mock('electron', () => ({
 
 vi.mock('../github/client', () => ({
   getRepoSlug: getRepoSlugMock,
-  getRepoUpstream: getRepoUpstreamMock,
-  checkOrcaStarred: checkOrcaStarredMock,
-  starOrca: starOrcaMock
+  getRepoUpstream: getRepoUpstreamMock
 }))
 
 vi.mock('../github/auth-diagnose', () => ({
@@ -55,8 +49,6 @@ describe('registerGitHubHandlers', () => {
     handleMock.mockReset()
     getRepoSlugMock.mockReset()
     getRepoUpstreamMock.mockReset()
-    checkOrcaStarredMock.mockReset()
-    starOrcaMock.mockReset()
     diagnoseGhAuthMock.mockReset()
     getLocalProjectWorktreeGitOptionsMock.mockReset()
     getLocalProjectWorktreeGitOptionsMock.mockReturnValue({})
@@ -72,13 +64,7 @@ describe('registerGitHubHandlers', () => {
 
   it('registers only the gh-CLI-backed handlers', () => {
     expect(Object.keys(handlers).sort()).toEqual(
-      [
-        'gh:checkOrcaStarred',
-        'gh:diagnoseAuth',
-        'gh:repoSlug',
-        'gh:repoUpstream',
-        'gh:starOrca'
-      ].sort()
+      ['gh:diagnoseAuth', 'gh:repoSlug', 'gh:repoUpstream'].sort()
     )
   })
 
@@ -107,13 +93,9 @@ describe('registerGitHubHandlers', () => {
     )
   })
 
-  it('forwards star + diagnose calls to the client', async () => {
-    checkOrcaStarredMock.mockResolvedValue(true)
-    starOrcaMock.mockResolvedValue(true)
+  it('forwards diagnose calls to the client', async () => {
     diagnoseGhAuthMock.mockResolvedValue({ ok: true })
 
-    await expect(handlers['gh:checkOrcaStarred'](null, undefined)).resolves.toBe(true)
-    await expect(handlers['gh:starOrca'](null, undefined)).resolves.toBe(true)
     await expect(handlers['gh:diagnoseAuth'](null, undefined)).resolves.toEqual({ ok: true })
   })
 })

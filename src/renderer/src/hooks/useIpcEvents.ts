@@ -20,7 +20,6 @@ import { nextEditorFontZoomLevel, computeEditorFontSize } from '@/lib/editor-fon
 import type {
   TerminalLayoutSnapshot,
   TerminalPaneLayoutNode,
-  UpdateStatus,
   WorkspaceSessionState
 } from '../../../shared/types'
 import type {
@@ -1760,24 +1759,6 @@ export function useIpcEvents(): void {
     unsubs.push(
       window.api.ui.onSleepWorktree(({ worktreeId }) => {
         void runSleepWorktree(worktreeId)
-      })
-    )
-
-    // Hydrate initial update status then subscribe to changes
-    window.api.updater.getStatus().then((status) => {
-      useAppStore.getState().setUpdateStatus(status as UpdateStatus)
-    })
-
-    unsubs.push(
-      window.api.updater.onStatus((raw) => {
-        const status = raw as UpdateStatus
-        useAppStore.getState().setUpdateStatus(status)
-      })
-    )
-
-    unsubs.push(
-      window.api.updater.onClearDismissal(() => {
-        useAppStore.getState().clearDismissedUpdateVersion()
       })
     )
 

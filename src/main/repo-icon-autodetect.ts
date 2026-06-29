@@ -1,12 +1,7 @@
 import { readFile, stat } from 'fs/promises'
-import type { GitHubRepositoryIdentity, RepoKind } from '../shared/types'
-import {
-  faviconUrlFromWebsite,
-  githubAvatarIcon,
-  MAX_REPO_ICON_UPLOAD_BYTES,
-  type RepoIcon
-} from '../shared/repo-icon'
-import { getRepoSlug, getRepoUpstream } from './github/client'
+import type { RepoKind } from '../shared/types'
+import { MAX_REPO_ICON_UPLOAD_BYTES, type RepoIcon } from '../shared/repo-icon'
+import { getRepoUpstream } from './github/client'
 import { getSshFilesystemProvider } from './providers/ssh-filesystem-dispatch'
 import type { IFilesystemProvider } from './providers/types'
 import { detectGitRemoteIdentity } from './repo-git-remote-identity'
@@ -46,15 +41,6 @@ const LINK_ICON_HTML_RE =
 const LINK_ICON_OBJECT_RE =
   /(?=[^}]*\brel\s*:\s*["'](?:icon|shortcut icon)["'])(?=[^}]*\bhref\s*:\s*["']([^"'?]+))[^}]*/i
 
-const WEBSITE_HOSTS_TO_SKIP = new Set([
-  'github.com',
-  'www.github.com',
-  'gitlab.com',
-  'www.gitlab.com',
-  'bitbucket.org',
-  'www.bitbucket.org'
-])
-
 function isPngBuffer(buffer: Buffer): boolean {
   return (
     buffer.length >= 8 &&
@@ -67,15 +53,6 @@ function isPngBuffer(buffer: Buffer): boolean {
     buffer[6] === 0x1a &&
     buffer[7] === 0x0a
   )
-}
-
-function shouldUseWebsiteFavicon(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl.includes('://') ? rawUrl : `https://${rawUrl}`)
-    return !WEBSITE_HOSTS_TO_SKIP.has(url.hostname.toLowerCase())
-  } catch {
-    return false
-  }
 }
 
 function extractIconHref(source: string): string | null {
@@ -212,75 +189,17 @@ async function detectRemotePngIcon(
   return null
 }
 
-function packageHomepageIcon(packageJson: unknown): RepoIcon | null {
-  if (!packageJson || typeof packageJson !== 'object') {
-    return null
-  }
-  const homepage = (packageJson as { homepage?: unknown }).homepage
-  if (typeof homepage !== 'string' || !shouldUseWebsiteFavicon(homepage)) {
-    return null
-  }
-  const src = faviconUrlFromWebsite(homepage)
-  return src ? { type: 'image', src, source: 'favicon', label: 'Website favicon' } : null
-}
-
-async function detectLocalPackageHomepageIcon(repoPath: string): Promise<RepoIcon | null> {
-  try {
-    const packageJsonPath = joinWorktreeRelativePath(repoPath, 'package.json')
-    const info = await stat(packageJsonPath)
-    if (!info.isFile() || info.size > 128 * 1024) {
-      return null
-    }
-    return packageHomepageIcon(JSON.parse(await readFile(packageJsonPath, 'utf8')))
-  } catch {
-    return null
-  }
-}
-
-async function detectRemotePackageHomepageIcon(
-  repoPath: string,
-  fsProvider: IFilesystemProvider
-): Promise<RepoIcon | null> {
-  try {
-    const packageJsonPath = joinWorktreeRelativePath(repoPath, 'package.json')
-    const info = await fsProvider.stat(packageJsonPath)
-    if (info.type !== 'file' || info.size > 128 * 1024) {
-      return null
-    }
-    const result = await fsProvider.readFile(packageJsonPath)
-    if (result.isBinary) {
-      return null
-    }
-    return packageHomepageIcon(JSON.parse(result.content))
-  } catch {
-    return null
-  }
-}
-
-async function detectGitHubAvatarIcon(
-  repoPath: string,
-  connectionId?: string | null,
-  upstream?: GitHubRepositoryIdentity | null
-): Promise<RepoIcon | null> {
-  try {
-    // Why: a fork's origin is the personal copy, so prefer the upstream owner.
-    const slug = upstream ?? (await getRepoSlug(repoPath, connectionId))
-    return slug ? githubAvatarIcon(slug) : null
-  } catch {
-    return null
-  }
-}
-
+// Why: only local/SSH PNG files from the repo working tree are used as icons;
+// this fork never fetches remote favicons or GitHub avatars. `kind` is accepted
+// so callers can pass repo metadata uniformly even though icon probing is the
+// same for every kind.
 export async function detectRepoIcon({
   repoPath,
-  kind,
-  connectionId,
-  upstream
+  connectionId
 }: {
   repoPath: string
   kind: RepoKind
   connectionId?: string | null
-  upstream?: GitHubRepositoryIdentity | null
 }): Promise<RepoIcon | undefined> {
   try {
     const fsProvider = connectionId ? getSshFilesystemProvider(connectionId) : undefined
@@ -289,17 +208,6 @@ export async function detectRepoIcon({
       : await detectLocalPngIcon(repoPath)
     if (fileIcon) {
       return fileIcon
-    }
-
-    const homepageIcon = fsProvider
-      ? await detectRemotePackageHomepageIcon(repoPath, fsProvider)
-      : await detectLocalPackageHomepageIcon(repoPath)
-    if (homepageIcon) {
-      return homepageIcon
-    }
-
-    if (kind === 'git') {
-      return (await detectGitHubAvatarIcon(repoPath, connectionId, upstream)) ?? undefined
     }
   } catch {
     // Repo creation must not fail because a best-effort icon probe failed.
@@ -321,7 +229,7 @@ export async function detectRepoIconAndUpstream({
   const upstream = kind === 'git' ? await getRepoUpstream(repoPath, connectionId) : null
   const gitRemoteIdentity =
     kind === 'git' ? await detectGitRemoteIdentity(repoPath, connectionId) : null
-  const repoIcon = await detectRepoIcon({ repoPath, kind, connectionId, upstream })
+  const repoIcon = await detectRepoIcon({ repoPath, kind, connectionId })
   return {
     ...(repoIcon ? { repoIcon } : {}),
     ...(gitRemoteIdentity ? { gitRemoteIdentity } : {}),

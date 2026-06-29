@@ -34,7 +34,6 @@ import {
   registerAppMenu,
   rebuildAppMenu
 } from './menu/register-app-menu'
-import { checkForUpdatesFromMenu, isQuittingForUpdate } from './updater'
 import {
   configureElectronNetworkCompatibility,
   configureDevUserDataPath,
@@ -77,7 +76,6 @@ import { type CodexAccountSelectionTarget } from './codex-accounts/runtime-selec
 import { codexHookService } from './codex/hook-service'
 import { ClaudeAccountService } from './claude-accounts/service'
 import { ClaudeRuntimeAuthService } from './claude-accounts/runtime-auth-service'
-import { StarNagService } from './star-nag/service'
 import { agentHookServer } from './agent-hooks/server'
 import { maybeAutoRenameBranchOnFirstWork } from './agent-hooks/first-work-branch-rename'
 import { renameWorktreeFolderOnFirstWork } from './agent-hooks/first-work-folder-rename'
@@ -149,7 +147,6 @@ let runtimeRpc: OrcaRuntimeRpcServer | null = null
 // offscreen browser backend (and thus advertises browser pane support).
 let headlessBrowserDisplayAvailable = false
 
-let starNag: StarNagService | null = null
 let agentAwakeService: AgentAwakeService | null = null
 let crashReports: CrashReportStore | null = null
 let unsubscribeAgentAwakeStatusChanges: (() => void) | null = null
@@ -385,7 +382,7 @@ function clearExpectedRendererReload(webContentsId?: number): void {
 }
 
 function getExpectedTeardownScope(webContentsId?: number): ExpectedTeardownScope {
-  if (isQuitting || isQuittingForUpdate()) {
+  if (isQuitting) {
     return 'app-shutdown'
   }
   if (!expectedRendererReload) {
@@ -563,9 +560,7 @@ function showMainWindowFromTray(): void {
     mainWindow.focus()
     return
   }
-  if (!isQuittingForUpdate()) {
-    openMainWindow()
-  }
+  openMainWindow()
 }
 
 function openMainWindow(): BrowserWindow {
@@ -708,9 +703,7 @@ function openMainWindow(): BrowserWindow {
           markExpectedRendererReload(webContentsId)
         }
         recordCrashBreadcrumb('renderer_reload_requested', { ignoreCache })
-      },
-      onBeforeUpdateQuit: () =>
-        preserveAgentAuthBeforeRestart({ codexRuntimeHome, claudeRuntimeAuth, store })
+      }
     }
   )
   window.on('closed', () => {
@@ -1280,9 +1273,6 @@ app.whenReady().then(async () => {
     prepareForCodexLaunch: prepareCodexRuntimeHomeForLaunch,
     prepareForClaudeLaunch: (target) => claudeRuntimeAuth!.prepareForClaudeLaunch(target)
   })
-  starNag = new StarNagService(store, stats)
-  starNag.start()
-  starNag.registerIpcHandlers()
   runtimeService.setAgentBrowserBridge(
     new AgentBrowserBridge(browserManager, {
       onTabsChanged: (worktreeId) => runtimeService.notifyMobileSessionTabsChanged(worktreeId)
@@ -1325,7 +1315,6 @@ app.whenReady().then(async () => {
   logStartupMilestone('i18n-ready')
 
   registerAppMenu({
-    onCheckForUpdates: (options) => checkForUpdatesFromMenu(options),
     onBeforeReload: ({ ignoreCache, webContentsId }) => {
       if (mainWindow?.webContents.id === webContentsId) {
         markExpectedRendererReload(webContentsId)
@@ -1495,7 +1484,7 @@ app.whenReady().then(async () => {
     // Don't re-open a window while Squirrel's ShipIt is replacing the .app
     // bundle.  Without this guard the old version gets resurrected and the
     // update never applies.
-    if (BrowserWindow.getAllWindows().length === 0 && !isQuittingForUpdate()) {
+    if (BrowserWindow.getAllWindows().length === 0) {
       openMainWindow()
     }
   })
@@ -1528,7 +1517,6 @@ app.on('will-quit', (e) => {
   // are still running. killAllPty() does not call runtime.onPtyExit(),
   // so without this ordering, running agents would produce orphaned
   // agent_start events with no matching stops.
-  starNag?.stop()
   setUnreadDockBadgeCount(0)
   agentHookServer.stop()
   stats?.flush()

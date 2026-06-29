@@ -60,18 +60,13 @@ export function OpenInApplicationIcon({
   size?: number
 }): React.JSX.Element {
   const preset = getOpenInAppPreset(application)
-  if (preset) {
-    return (
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${preset.faviconDomain}&sz=64`}
-        width={size}
-        height={size}
-        alt=""
-        aria-hidden
-        className={cn('shrink-0', preset.iconClassName)}
-        style={{ borderRadius: 2 }}
-      />
-    )
-  }
-  return <AppWindow width={size} height={size} />
+  // Privacy: no remote favicon fetch; use the local window glyph, keeping any
+  // preset-specific styling so the icon still reads as that app.
+  return (
+    <AppWindow
+      width={size}
+      height={size}
+      className={preset ? cn('shrink-0', preset.iconClassName) : undefined}
+    />
+  )
 }

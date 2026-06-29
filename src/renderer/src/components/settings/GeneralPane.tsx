@@ -4,16 +4,12 @@ import { useAppStore } from '../../store'
 import { Separator } from '../ui/separator'
 import { CliSection } from './CliSection'
 import { GeneralEditorSettingsSection } from './GeneralEditorSettingsSection'
-import { GeneralSupportSection } from './GeneralSupportSection'
-import { GeneralUpdateSettingsSection } from './GeneralUpdateSettingsSection'
 import { GeneralWorkspaceSettingsSection } from './GeneralWorkspaceSettingsSection'
 import {
   getGeneralCliSearchEntries,
   getGeneralEditorSearchEntries,
   getGeneralNavigationSearchEntries,
   getGeneralPaneSearchEntries,
-  getGeneralSupportSearchEntries,
-  getGeneralUpdateSearchEntries,
   getGeneralWorkspaceSearchEntries
 } from './general-search'
 import { getGeneralProjectRuntimeSearchEntries } from './general-project-runtime-search'
@@ -188,14 +184,7 @@ export function GeneralPane({
         wslAvailable={wslAvailable}
         wslCapabilitiesLoading={wslCapabilitiesLoading}
       />
-    ) : null,
-    matchesSettingsSearch(searchQuery, getGeneralUpdateSearchEntries()) ? (
-      <GeneralUpdateSettingsSection key="updates" />
     ) : null
-    // Note: the Support section is rendered outside this array so it can own
-    // its own loading placeholder and its own collapsing Separator. Without
-    // that separation, a dangling divider would remain above the collapsed
-    // section.
   ].filter(Boolean)
 
   return (
@@ -206,9 +195,6 @@ export function GeneralPane({
           {section}
         </div>
       ))}
-      {matchesSettingsSearch(searchQuery, getGeneralSupportSearchEntries()) ? (
-        <GeneralSupportSection hasPrecedingSections={visibleSections.length > 0} />
-      ) : null}
     </div>
   )
 }

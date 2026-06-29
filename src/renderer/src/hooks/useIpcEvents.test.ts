@@ -824,12 +824,8 @@ describe('useIpcEvents updater integration', () => {
     vi.unstubAllGlobals()
   })
 
-  it('routes updater status events into store state', async () => {
-    const setUpdateStatus = vi.fn()
+  it('routes SSH credential-resolved events into store state', async () => {
     const removeSshCredentialRequest = vi.fn()
-    const updaterStatusListenerRef: { current: ((status: unknown) => void) | null } = {
-      current: null
-    }
     const credentialResolvedListenerRef: {
       current: ((data: { requestId: string }) => void) | null
     } = {
@@ -850,7 +846,6 @@ describe('useIpcEvents updater integration', () => {
       useAppStore: {
         subscribe: vi.fn(() => () => {}),
         getState: () => ({
-          setUpdateStatus,
           fetchRepos: vi.fn(),
           fetchWorktrees: vi.fn(),
           setActiveView: vi.fn(),
@@ -962,14 +957,6 @@ describe('useIpcEvents updater integration', () => {
         settings: {
           onChanged: () => () => {}
         },
-        updater: {
-          getStatus: () => Promise.resolve({ state: 'idle' }),
-          onStatus: (listener: (status: unknown) => void) => {
-            updaterStatusListenerRef.current = listener
-            return () => {}
-          },
-          onClearDismissal: () => () => {}
-        },
         browser: {
           onGuestLoadFailed: () => () => {},
           onOpenLinkInOrcaTab: () => () => {},
@@ -1011,16 +998,6 @@ describe('useIpcEvents updater integration', () => {
 
     useIpcEvents()
     await Promise.resolve()
-
-    expect(setUpdateStatus).toHaveBeenCalledWith({ state: 'idle' })
-
-    const availableStatus = { state: 'available', version: '1.2.3' }
-    if (typeof updaterStatusListenerRef.current !== 'function') {
-      throw new Error('Expected updater status listener to be registered')
-    }
-    updaterStatusListenerRef.current(availableStatus)
-
-    expect(setUpdateStatus).toHaveBeenCalledWith(availableStatus)
 
     if (typeof credentialResolvedListenerRef.current !== 'function') {
       throw new Error('Expected credential resolved listener to be registered')
