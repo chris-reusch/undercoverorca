@@ -58,33 +58,37 @@ stale tsgo cache`.
   into `src/main/github/create-pr.ts`, decoupled from the GitHub GraphQL fetchers — so the
   fetch code can be deleted without breaking create-PR.
 
+## ✅ DONE since this handoff
+
+### 1. Provider-API removal (was the main remaining task) — COMPLETE
+Removed in-app provider DATA FETCHING + UI across all providers, one vertical slice
+per commit (each typecheck-green: node/cli/web = 0), keeping local git, branch push,
+and create-PR via `gh pr create`. ~130k lines removed across 4 commits:
+- `feat: remove the Jira integration` (Jira was deferred from the Tasks pass).
+- `feat: remove the Linear integration` (main client/ipc/rpc/ssh-cli + `orca linear`
+  CLI + the agent-skill setup + store/components/shared + skills).
+- `feat: remove GitLab + Azure DevOps/Gitea/Bitbucket providers` (collapsed
+  forge-provider + hosted-review-creation to GitHub-only; preflight is now git + gh).
+- `feat: prune GitHub to gh-CLI-only` (removed PR/issue/check/work-item/project
+  fetching, ChecksPanel, PullRequestPage, GitHubItemDialog; pruned SourceControl.tsx
+  to local-git + create-PR; kept getRepoSlug/getRepoUpstream/getPullRequestPushTarget/
+  checkOrcaStarred/starOrca/diagnoseAuth + the full create-PR path).
+
+`TaskProvider` is now `'github'` only. `getHostedReviewCreationEligibility` no longer
+pre-checks for an existing PR (gh pr create rejects duplicates).
+
+**Inert leftovers intentionally kept** (github-only, harmless, swept later if desired):
+the worktree `linkedLinearIssue`/`linkedGitLabMR`/etc. metadata fields (still woven
+through worktree schemas/persistence), and the github-only task-provider /
+integrations-settings / feature-wall scaffolding (still used by the kept
+setup-guide / onboarding / AgentSkill / orchestration surfaces).
+
+**Pre-existing test gaps (NOT from this work, confirmed failing on the base commit):**
+`persistence.test.ts` has 5 failures — feature-discovery, default-profiles, two
+compact-preset-migration cases (reference the already-removed Automations feature),
+and a ~6s "very large split layout" timeout.
+
 ## ⬜ What's left
-
-### 1. GitHub/Linear/Jira/etc. provider-API removal (BIG — the main remaining task)
-**Decided boundary:** remove in-app provider DATA FETCHING + UI (PR/issue/MR browsing,
-project boards, work-items, review/CheckRun panels, provider account auth, Linear/Jira
-pickers). **KEEP:** local git (commit/branch/diff/worktrees), branch push, and create-PR via
-`gh pr create`. Keystone (create-pr extraction) is DONE.
-
-**Biggest gotcha:** the work-item/Linear integration is woven ~**341×** through two huge
-composer files — `src/renderer/src/components/new-workspace/SmartWorkspaceNameField.tsx`
-(1835 lines) and `src/renderer/src/hooks/useComposerState.ts` (3790 lines). It is NOT a
-removable block; it threads through core workspace-creation/composer logic. Budget real
-effort here, and verify by running the app's create-workspace flow.
-
-**Also note:** the `gh` preload namespace contains KEEP utilities mixed with REMOVE fetchers —
-keep `gh.repoSlug`, `gh.starOrca`, `gh.checkOrcaStarred`; remove `gh.listAssignableUsersBySlug`,
-`gh.listLabelsBySlug`, PR/issue/check fetchers. `src/main/github/client.ts` and
-`source-control/forge-provider.ts` are MIXED — prune to GitHub-gh-CLI-only, don't bulk-delete.
-Jira integration (store slice, `src/main/jira/*`, connect dialog, integration card) was
-deferred from the Tasks pass and should go here.
-
-A full removal map was produced (renderer UI → store/lib → preload → main IPC/RPC → provider
-client dirs `gitlab/jira/linear/azure-devops/gitea/bitbucket` → prune github/forge → shared
-types + cross-cutting). A first bulk attempt deleted 276 files but hit a session limit
-mid-way and was reverted to keep the repo green. Recommend: do it as renderer-half then
-main-half with agents, committing only when all 3 typechecks are green (after clearing
-tsbuildinfo).
 
 ### 2. iCloud permission prompts
 macOS TCC fires when Orca reads Documents/Downloads/iCloud. Causes: the Info.plist declares
