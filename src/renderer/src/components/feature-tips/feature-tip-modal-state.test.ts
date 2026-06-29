@@ -1,28 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { getDefaultVoiceSettings } from '../../../../shared/constants'
-import type { GlobalSettings } from '../../../../shared/types'
 import { getFeatureTipForModal } from './feature-tip-modal-state'
-
-function makeSettings(voiceEnabled = false): Pick<GlobalSettings, 'voice'> {
-  return {
-    voice: {
-      ...getDefaultVoiceSettings(),
-      enabled: voiceEnabled
-    }
-  }
-}
 
 describe('feature tip modal state', () => {
   it('keeps rendering the opened tip after app open has marked it seen', () => {
     const tip = getFeatureTipForModal({
       cliInstalled: false,
-      modalData: { tipId: 'voice-dictation' },
-      seenTipIds: ['voice-dictation'],
-      featureInteractions: {},
-      settings: makeSettings()
+      modalData: { tipId: 'cmd-j-palette' },
+      seenTipIds: ['cmd-j-palette'],
+      featureInteractions: {}
     })
 
-    expect(tip?.id).toBe('voice-dictation')
+    expect(tip?.id).toBe('cmd-j-palette')
   })
 
   it('falls back to the CLI tip first when no modal tip id is pinned', () => {
@@ -30,20 +18,18 @@ describe('feature tip modal state', () => {
       cliInstalled: false,
       modalData: {},
       seenTipIds: [],
-      featureInteractions: {},
-      settings: makeSettings()
+      featureInteractions: {}
     })
 
     expect(tip?.id).toBe('orca-cli')
   })
 
-  it('falls back to the CLI tip when voice was already seen and the CLI is not installed', () => {
+  it('falls back to the CLI tip when the palette tip was already seen and the CLI is not installed', () => {
     const tip = getFeatureTipForModal({
       cliInstalled: false,
       modalData: {},
-      seenTipIds: ['voice-dictation'],
-      featureInteractions: {},
-      settings: makeSettings()
+      seenTipIds: ['cmd-j-palette'],
+      featureInteractions: {}
     })
 
     expect(tip?.id).toBe('orca-cli')
@@ -54,8 +40,7 @@ describe('feature tip modal state', () => {
       cliInstalled: true,
       modalData: {},
       seenTipIds: ['orca-cli'],
-      featureInteractions: {},
-      settings: makeSettings()
+      featureInteractions: {}
     })
 
     expect(tip?.id).toBe('cmd-j-palette')
@@ -65,9 +50,8 @@ describe('feature tip modal state', () => {
     const tip = getFeatureTipForModal({
       cliInstalled: false,
       modalData: {},
-      seenTipIds: ['voice-dictation', 'orca-cli', 'cmd-j-palette'],
-      featureInteractions: {},
-      settings: makeSettings()
+      seenTipIds: ['orca-cli', 'cmd-j-palette'],
+      featureInteractions: {}
     })
 
     expect(tip).toBeNull()
@@ -77,23 +61,21 @@ describe('feature tip modal state', () => {
     const tip = getFeatureTipForModal({
       cliInstalled: true,
       modalData: {},
-      seenTipIds: ['voice-dictation', 'cmd-j-palette'],
-      featureInteractions: {},
-      settings: makeSettings()
+      seenTipIds: ['cmd-j-palette'],
+      featureInteractions: {}
     })
 
     expect(tip).toBeNull()
   })
 
-  it('returns no unpinned tip after the user already interacted with the feature', () => {
+  it('returns no unpinned tip once the remaining tips are completed or seen', () => {
     const tip = getFeatureTipForModal({
       cliInstalled: true,
       modalData: {},
       seenTipIds: ['cmd-j-palette'],
       featureInteractions: {
-        'voice-dictation': { firstInteractedAt: 100, interactionCount: 1 }
-      },
-      settings: makeSettings()
+        tasks: { firstInteractedAt: 100, interactionCount: 1 }
+      }
     })
 
     expect(tip).toBeNull()

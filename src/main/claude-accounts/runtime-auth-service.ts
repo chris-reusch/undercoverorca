@@ -18,7 +18,6 @@ import { parseWslUncPath } from '../../shared/wsl-paths'
 import { getDefaultWslDistro, getWslHome, toWindowsWslPath } from '../wsl'
 import { buildEncodedWslBashCommand } from '../wsl-bash-command'
 import { hasLiveClaudePtys } from './live-pty-gate'
-import { isOauthTokenExpiring, refreshClaudeOauthCredentials } from './oauth-refresh'
 import { ClaudeRuntimePathResolver } from './runtime-paths'
 import {
   deleteActiveClaudeKeychainCredentialsStrict,
@@ -44,7 +43,6 @@ export type ClaudeRuntimeAuthPreparation = {
   wslLinuxConfigDir?: string | null
   envPatch: ClaudeEnvPatch
   stripAuthEnv: boolean
-  managedRefreshDeferredByLivePty?: boolean
   provenance: string
 }
 
@@ -102,7 +100,6 @@ export class ClaudeRuntimeAuthService {
   private hasLastWrittenOauthAccount = false
   private lastWrittenOauthAccount: unknown = null
   private skipNextReadBackForAccountId: string | null = null
-  private managedRefreshDeferredByLivePtyAccountId: string | null = null
 
   constructor(private readonly store: Store) {
     this.initializeLastSyncedState()
@@ -183,7 +180,6 @@ export class ClaudeRuntimeAuthService {
       settings.claudeManagedAccounts,
       this.lastSyncedAccountId
     )
-    this.managedRefreshDeferredByLivePtyAccountId = null
     const previousManagedCredentialsJson = previousAccount
       ? await this.readManagedCredentials(previousAccount)
       : null
@@ -411,28 +407,11 @@ export class ClaudeRuntimeAuthService {
       this.skipNextReadBackForAccountId = null
     }
 
-    // Why: own the OAuth refresh whenever no live `claude` owns these
-    // credentials — both switching into an account and re-syncing the active
-    // account with an expired token. A single-use refresh token is rotated and
-    // persisted to managed storage atomically before we materialize it, so the
-    // runtime never gets a stale token that fails with invalid_grant. Skipped
-    // entirely while a Claude PTY is live: that process owns the credentials
-    // and refreshing here would race its own rotation (double-rotation
-    // invalidates one copy) — the read-back above preserves its refresh instead.
-    const liveClaudePtys = hasLiveClaudePtys()
-    if (liveClaudePtys && isOauthTokenExpiring(credentialsJson)) {
-      this.managedRefreshDeferredByLivePtyAccountId = activeAccount.id
-    }
-    if (!liveClaudePtys) {
-      const refreshed = await this.refreshManagedAccountTokenIfNeeded(
-        activeAccount,
-        credentialsJson
-      )
-      if (refreshed) {
-        credentialsJson = refreshed
-      }
-    }
-
+    // Why: Orca no longer performs its own OAuth token refresh (the
+    // platform.claude.com egress was removed from this fork). The live `claude`
+    // CLI owns token rotation and writes refreshed tokens back to its
+    // credentials file; the read-back above preserves those into managed
+    // storage. Expired tokens are refreshed by the CLI itself on next launch.
     const paths = this.pathResolver.getRuntimePaths()
     this.writeRuntimeCredentials(credentialsJson)
     if (process.platform === 'darwin') {
@@ -682,11 +661,6 @@ export class ClaudeRuntimeAuthService {
       wslLinuxConfigDir: null,
       envPatch: paths.envPatch,
       stripAuthEnv: Boolean(activeAccountId && activeAccount?.managedAuthRuntime !== 'wsl'),
-      managedRefreshDeferredByLivePty: Boolean(
-        activeAccountId &&
-        activeAccount?.managedAuthRuntime !== 'wsl' &&
-        this.managedRefreshDeferredByLivePtyAccountId === activeAccountId
-      ),
       provenance:
         activeAccountId && activeAccount?.managedAuthRuntime !== 'wsl'
           ? `managed:${activeAccountId}`
@@ -1056,37 +1030,6 @@ export class ClaudeRuntimeAuthService {
       return
     }
     writeClaudeManagedAuthFile(managedAuthPath, '.credentials.json', credentialsJson)
-  }
-
-  /**
-   * Proactively refresh an account's OAuth token and persist the rotation to
-   * managed storage. Returns the refreshed credentials JSON when a rotation was
-   * stored, or null when no refresh happened (token still valid, no refresh
-   * token, or the network call failed — in which case the caller keeps the
-   * existing credentials, never worse than before).
-   *
-   * Caller guarantees this account is not the live/active one and runs inside
-   * the serialized mutation queue, so a single-use refresh token can't be
-   * rotated concurrently.
-   */
-  private async refreshManagedAccountTokenIfNeeded(
-    account: ClaudeManagedAccount,
-    credentialsJson: string
-  ): Promise<string | null> {
-    if (!isOauthTokenExpiring(credentialsJson)) {
-      return null
-    }
-    const refreshed = await refreshClaudeOauthCredentials(credentialsJson)
-    if (!refreshed || !this.isValidCredentialsJsonObject(refreshed)) {
-      return null
-    }
-    try {
-      await this.writeManagedCredentials(account, refreshed)
-    } catch (error) {
-      console.warn('[claude-runtime-auth] Failed to persist refreshed Claude token:', error)
-      return null
-    }
-    return refreshed
   }
 
   private readManagedOauthAccount(account: ClaudeManagedAccount): unknown {

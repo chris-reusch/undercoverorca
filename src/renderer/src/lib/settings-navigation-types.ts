@@ -21,7 +21,6 @@ export type SettingsNavTarget =
   | 'developer-permissions'
   | 'privacy'
   | 'advanced'
-  | 'voice'
   | 'shortcuts'
   | 'stats'
   | 'ssh'

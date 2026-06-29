@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { getDefaultOnboardingState, getDefaultVoiceSettings } from '../../../../shared/constants'
+import { getDefaultOnboardingState, getDefaultSettings } from '../../../../shared/constants'
 import type { CliInstallStatus } from '../../../../shared/cli-install-types'
-import type { GlobalSettings, OnboardingState } from '../../../../shared/types'
+import type { OnboardingState } from '../../../../shared/types'
 import { getFeatureTipsAppOpenDecision, isCliFeatureTipCompleted } from './feature-tip-startup-gate'
 
 const existingUserOnboarding: OnboardingState = {
@@ -13,14 +13,7 @@ const existingUserOnboarding: OnboardingState = {
 
 const firstTimeOnboarding: OnboardingState = getDefaultOnboardingState()
 
-function makeSettings(voiceEnabled = false): Pick<GlobalSettings, 'voice'> {
-  return {
-    voice: {
-      ...getDefaultVoiceSettings(),
-      enabled: voiceEnabled
-    }
-  }
-}
+const settings = getDefaultSettings('~')
 
 function makeCliStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus {
   return {
@@ -51,7 +44,7 @@ describe('feature tip startup gate', () => {
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'open', tipId: 'orca-cli' })
@@ -67,7 +60,7 @@ describe('feature tip startup gate', () => {
         onboarding: firstTimeOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'suppress-for-onboarding' })
@@ -83,39 +76,23 @@ describe('feature tip startup gate', () => {
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: true
       })
     ).toEqual({ kind: 'skip' })
   })
 
-  it('opens the CLI tip after the voice tip was marked seen', () => {
+  it('opens the CLI tip after the palette tip was marked seen', () => {
     expect(
       getFeatureTipsAppOpenDecision({
         activeModal: 'none',
         cliInstalled: false,
-        featureTipsSeenIds: ['voice-dictation'],
+        featureTipsSeenIds: ['cmd-j-palette'],
         featureInteractions: {},
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
-        suppressedByOnboardingThisSession: false
-      })
-    ).toEqual({ kind: 'open', tipId: 'orca-cli' })
-  })
-
-  it('opens the CLI tip after voice dictation is already enabled', () => {
-    expect(
-      getFeatureTipsAppOpenDecision({
-        activeModal: 'none',
-        cliInstalled: false,
-        featureTipsSeenIds: [],
-        featureInteractions: {},
-        onboarding: existingUserOnboarding,
-        persistedUIReady: true,
-        promptedThisSession: false,
-        settings: makeSettings(true),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'open', tipId: 'orca-cli' })
@@ -131,7 +108,7 @@ describe('feature tip startup gate', () => {
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'open', tipId: 'cmd-j-palette' })
@@ -142,28 +119,12 @@ describe('feature tip startup gate', () => {
       getFeatureTipsAppOpenDecision({
         activeModal: 'none',
         cliInstalled: false,
-        featureTipsSeenIds: ['voice-dictation', 'orca-cli', 'cmd-j-palette'],
+        featureTipsSeenIds: ['orca-cli', 'cmd-j-palette'],
         featureInteractions: {},
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
-        suppressedByOnboardingThisSession: false
-      })
-    ).toEqual({ kind: 'skip' })
-  })
-
-  it('does not open the voice tip after Settings marked it seen and dictation is disabled', () => {
-    expect(
-      getFeatureTipsAppOpenDecision({
-        activeModal: 'none',
-        cliInstalled: true,
-        featureTipsSeenIds: ['voice-dictation', 'cmd-j-palette'],
-        featureInteractions: {},
-        onboarding: existingUserOnboarding,
-        persistedUIReady: true,
-        promptedThisSession: false,
-        settings: makeSettings(false),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'skip' })
@@ -174,12 +135,12 @@ describe('feature tip startup gate', () => {
       getFeatureTipsAppOpenDecision({
         activeModal: 'none',
         cliInstalled: true,
-        featureTipsSeenIds: ['voice-dictation', 'cmd-j-palette'],
+        featureTipsSeenIds: ['cmd-j-palette'],
         featureInteractions: {},
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'skip' })
@@ -190,12 +151,12 @@ describe('feature tip startup gate', () => {
       getFeatureTipsAppOpenDecision({
         activeModal: 'none',
         cliInstalled: null,
-        featureTipsSeenIds: ['voice-dictation'],
+        featureTipsSeenIds: [],
         featureInteractions: {},
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'skip' })
@@ -211,7 +172,7 @@ describe('feature tip startup gate', () => {
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'skip' })
@@ -224,12 +185,12 @@ describe('feature tip startup gate', () => {
         cliInstalled: true,
         featureTipsSeenIds: ['cmd-j-palette'],
         featureInteractions: {
-          'voice-dictation': { firstInteractedAt: 100, interactionCount: 1 }
+          tasks: { firstInteractedAt: 100, interactionCount: 1 }
         },
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
         promptedThisSession: false,
-        settings: makeSettings(),
+        settings,
         suppressedByOnboardingThisSession: false
       })
     ).toEqual({ kind: 'skip' })

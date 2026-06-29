@@ -23,7 +23,6 @@ import {
 } from '../../shared/modifier-double-tap-detector'
 
 type ResolveRenderer = (browserTabId: string) => Electron.WebContents | null
-type ShouldForwardDictationShortcut = () => boolean
 type IsMobileEmulatorEnabled = () => boolean
 
 const CONTROL_MODIFIERS = new Set(['control', 'ctrl'])
@@ -255,18 +254,10 @@ export function setupGuestShortcutForwarding(args: {
   browserTabId: string
   guest: Electron.WebContents
   resolveRenderer: ResolveRenderer
-  shouldForwardDictationShortcut?: ShouldForwardDictationShortcut
   isMobileEmulatorEnabled?: IsMobileEmulatorEnabled
   getKeybindings?: () => KeybindingOverrides | undefined
 }): () => void {
-  const {
-    browserTabId,
-    guest,
-    resolveRenderer,
-    shouldForwardDictationShortcut,
-    isMobileEmulatorEnabled,
-    getKeybindings
-  } = args
+  const { browserTabId, guest, resolveRenderer, isMobileEmulatorEnabled, getKeybindings } = args
   let ctrlTabSwitching = false
   const doubleTapDetector = new ModifierDoubleTapDetector()
   const resetDoubleTapDetector = (): void => doubleTapDetector.reset()
@@ -287,10 +278,6 @@ export function setupGuestShortcutForwarding(args: {
       return true
     }
     if (input.isAutoRepeat) {
-      if (action?.type === 'dictationKeyDown' && shouldForwardDictationShortcut?.()) {
-        event.preventDefault()
-        return true
-      }
       return false
     }
     if (action?.type === 'worktreeHistoryNavigate') {
@@ -438,11 +425,6 @@ export function setupGuestShortcutForwarding(args: {
       renderer.send('ui:jumpToWorktreeIndex', action.index)
     } else if (action?.type === 'jumpToTabIndex') {
       renderer.send('ui:jumpToTabIndex', action.index)
-    } else if (action?.type === 'dictationKeyDown') {
-      if (!shouldForwardDictationShortcut?.()) {
-        return false
-      }
-      renderer.send('ui:dictationKeyDown')
     } else {
       return false
     }

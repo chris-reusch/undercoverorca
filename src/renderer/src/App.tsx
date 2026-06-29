@@ -284,11 +284,6 @@ const AddProjectFromFolderDialog = lazy(
 )
 const ProjectAddedDialog = lazy(() => import('./components/sidebar/ProjectAddedDialog'))
 const DeleteWorktreeDialog = lazy(() => import('./components/sidebar/DeleteWorktreeDialog'))
-const DictationController = lazy(() =>
-  import('./components/dictation/DictationController').then((module) => ({
-    default: module.DictationController
-  }))
-)
 const SshPassphraseDialog = lazy(() =>
   import('./components/settings/SshPassphraseDialog').then((module) => ({
     default: module.SshPassphraseDialog
@@ -579,10 +574,7 @@ function App(): React.JSX.Element {
     () => resolveLeftSidebarStyleVariables(settings, systemPrefersDark),
     [settings, systemPrefersDark]
   ) as React.CSSProperties | undefined
-  const dictationState = useAppStore((s) => s.dictationState)
   const hasSshCredentialRequest = useAppStore((s) => s.sshCredentialQueue.length > 0)
-  const shouldMountDictationController =
-    settings?.voice?.enabled === true || dictationState !== 'idle'
   const primarySelectionMiddleClickPaste = resolvePrimarySelectionMiddleClickPaste(
     settings?.primarySelectionMiddleClickPaste
   )
@@ -2489,18 +2481,6 @@ function App(): React.JSX.Element {
                     onOnboardingChange={setOnboarding}
                     onSettingsDetourStart={beginOnboardingSettingsDetour}
                   />
-                </RecoverableRenderErrorBoundary>
-              </Suspense>
-            ) : null}
-            {shouldMountDictationController ? (
-              <Suspense fallback={null}>
-                <RecoverableRenderErrorBoundary
-                  boundaryId="overlay.dictation"
-                  surface="overlay"
-                  resetKey={activeView}
-                  compact
-                >
-                  <DictationController />
                 </RecoverableRenderErrorBoundary>
               </Suspense>
             ) : null}

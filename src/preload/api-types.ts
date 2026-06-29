@@ -177,13 +177,6 @@ import type {
   ComputerUsePermissionStatusResult
 } from '../shared/computer-use-permissions-types'
 import type {
-  SpeechErrorEvent,
-  SpeechLifecycleEvent,
-  SpeechModelManifest,
-  SpeechModelState,
-  SpeechTranscriptEvent
-} from '../shared/speech-types'
-import type {
   WorkspaceSpaceAnalyzeResult,
   WorkspaceSpaceScanProgress
 } from '../shared/workspace-space-types'
@@ -1437,7 +1430,6 @@ export type PreloadApi = {
     onCtrlTabKeyDown: (callback: (data: { shiftKey: boolean }) => void) => () => void
     onCtrlTabKeyUp: (callback: () => void) => () => void
     onToggleStatusBar: (callback: () => void) => () => void
-    onDictationKeyDown: (callback: () => void) => () => void
     onExportPdfRequested: (callback: () => void) => () => void
     onAppMenuPaste: (callback: () => void) => () => void
     onEditableContextPaste: (callback: (data: { plainTextOnly: boolean }) => void) => () => void
@@ -1778,31 +1770,6 @@ export type PreloadApi = {
     listRuntimeAccessGrants: () => Promise<{ grants: RuntimeAccessGrant[] }>
     revokeRuntimeAccess: (args: { deviceId: string }) => Promise<{ revoked: boolean }>
     isWebSocketReady: () => Promise<{ ready: boolean; endpoint: string | null }>
-  }
-  speech: {
-    getCatalog: () => Promise<SpeechModelManifest[]>
-    getModelStates: () => Promise<SpeechModelState[]>
-    getOpenAiApiKeyStatus: () => Promise<{ configured: boolean }>
-    saveOpenAiApiKey: (apiKey: string) => Promise<{ configured: boolean }>
-    clearOpenAiApiKey: () => Promise<{ configured: boolean }>
-    downloadModel: (modelId: string) => Promise<void>
-    cancelDownload: (modelId: string) => Promise<void>
-    deleteModel: (modelId: string) => Promise<void>
-    startDictation: (
-      modelId: string,
-      hotwords: string[] | undefined,
-      sessionId: string
-    ) => Promise<void>
-    feedAudio: (samples: Float32Array, sampleRate: number, sessionId?: string) => Promise<void>
-    stopDictation: (sessionId?: string) => Promise<void>
-    onPartialTranscript: (callback: (data: SpeechTranscriptEvent) => void) => () => void
-    onFinalTranscript: (callback: (data: SpeechTranscriptEvent) => void) => () => void
-    onDownloadProgress: (
-      callback: (data: { modelId: string; progress: number }) => void
-    ) => () => void
-    onReady: (callback: (data: SpeechLifecycleEvent) => void) => () => void
-    onStopped: (callback: (data: SpeechLifecycleEvent) => void) => () => void
-    onError: (callback: (data: SpeechErrorEvent) => void) => () => void
   }
 }
 

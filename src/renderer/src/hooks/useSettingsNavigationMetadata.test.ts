@@ -24,12 +24,11 @@ function ids(args: { isMac?: boolean; isWindows?: boolean; isWebClient?: boolean
 
 describe('settings navigation metadata', () => {
   it('puts AI capability panes at the top on desktop', () => {
-    expect(ids().slice(0, 9)).toEqual([
+    expect(ids().slice(0, 8)).toEqual([
       'agents',
       'accounts',
       'orchestration',
       'computer-use',
-      'voice',
       'setup-guide',
       'general',
       'integrations',
@@ -71,7 +70,6 @@ describe('settings navigation metadata', () => {
     })
 
     expect(sections.find((section) => section.id === 'computer-use')?.badge).toBeUndefined()
-    expect(sections.find((section) => section.id === 'voice')?.badge).toBeUndefined()
   })
 
   it('omits Windows project runtime search entries when the active host is unsupported', () => {

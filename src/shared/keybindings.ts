@@ -39,7 +39,6 @@ export type KeybindingActionId =
   | 'workspace.delete'
   | 'workspace.openBoard'
   | 'workspace.selectByIndex'
-  | 'voice.dictation'
   | 'sidebar.left.toggle'
   | 'sidebar.right.toggle'
   | 'sidebar.explorer.toggle'
@@ -316,14 +315,6 @@ export const KEYBINDING_DEFINITIONS: readonly KeybindingDefinition[] = [
     // representative — its digit normalizes to 1, but the modifier set is what
     // matters and any of 1-9 fires it. mac Cmd+1-9, Windows/Linux Ctrl+1-9 → Mod+1.
     defaultBindings: platformBindings(['Mod+1'])
-  },
-  {
-    id: 'voice.dictation',
-    title: 'Dictation',
-    group: 'Global',
-    scope: 'global',
-    searchKeywords: ['shortcut', 'dictation', 'voice', 'speech', 'microphone'],
-    defaultBindings: platformBindings(['Mod+E'])
   },
   {
     id: 'sidebar.left.toggle',

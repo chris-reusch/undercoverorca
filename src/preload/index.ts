@@ -79,13 +79,6 @@ import type {
   MigrationUnsupportedPtyEntry
 } from '../shared/agent-status-types'
 import type { AgentInterruptInferenceRequest } from '../shared/agent-interrupt-intent'
-import type {
-  SpeechErrorEvent,
-  SpeechLifecycleEvent,
-  SpeechModelManifest,
-  SpeechModelState,
-  SpeechTranscriptEvent
-} from '../shared/speech-types'
 import type { PreflightRuntimeContext, RefreshAgentsResult } from './api-types'
 import type { KeybindingActionId, KeybindingFileSnapshot } from '../shared/keybindings'
 import type { AiVaultListArgs } from '../shared/ai-vault-types'
@@ -2218,11 +2211,6 @@ const api = {
       ipcRenderer.on('ui:editableContextPaste', listener)
       return () => ipcRenderer.removeListener('ui:editableContextPaste', listener)
     },
-    onDictationKeyDown: (callback: () => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent) => callback()
-      ipcRenderer.on('ui:dictationKeyDown', listener)
-      return () => ipcRenderer.removeListener('ui:dictationKeyDown', listener)
-    },
     onActivateWorktree: (
       callback: (data: {
         repoId: string
@@ -2973,80 +2961,6 @@ const api = {
      *  explicit tab close even when the renderer has no matching local row. */
     dropByTabPrefix: (tabId: string): void => {
       ipcRenderer.send('agentStatus:dropByTabPrefix', tabId)
-    }
-  },
-
-  speech: {
-    getCatalog: (): Promise<SpeechModelManifest[]> => ipcRenderer.invoke('speech:getCatalog'),
-    getModelStates: (): Promise<SpeechModelState[]> => ipcRenderer.invoke('speech:getModelStates'),
-    getOpenAiApiKeyStatus: (): Promise<{ configured: boolean }> =>
-      ipcRenderer.invoke('speech:getOpenAiApiKeyStatus'),
-    saveOpenAiApiKey: (apiKey: string): Promise<{ configured: boolean }> =>
-      ipcRenderer.invoke('speech:saveOpenAiApiKey', apiKey),
-    clearOpenAiApiKey: (): Promise<{ configured: boolean }> =>
-      ipcRenderer.invoke('speech:clearOpenAiApiKey'),
-    downloadModel: (modelId: string): Promise<void> =>
-      ipcRenderer.invoke('speech:downloadModel', modelId),
-    cancelDownload: (modelId: string): Promise<void> =>
-      ipcRenderer.invoke('speech:cancelDownload', modelId),
-    deleteModel: (modelId: string): Promise<void> =>
-      ipcRenderer.invoke('speech:deleteModel', modelId),
-    startDictation: (
-      modelId: string,
-      hotwords: string[] | undefined,
-      sessionId: string
-    ): Promise<void> => ipcRenderer.invoke('speech:startDictation', modelId, hotwords, sessionId),
-    feedAudio: (samples: Float32Array, sampleRate: number, sessionId = 'desktop'): Promise<void> =>
-      // Why: Float32Array data gets zeroed out when crossing the contextBridge
-      // + IPC boundary. Wrapping in a Buffer preserves the raw bytes reliably.
-      ipcRenderer.invoke(
-        'speech:feedAudio',
-        Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength),
-        sampleRate,
-        sessionId
-      ),
-    stopDictation: (sessionId = 'desktop'): Promise<void> =>
-      ipcRenderer.invoke('speech:stopDictation', sessionId),
-
-    onPartialTranscript: (callback: (data: SpeechTranscriptEvent) => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, data: SpeechTranscriptEvent): void =>
-        callback(data)
-      ipcRenderer.on('speech:partial', listener)
-      return () => ipcRenderer.removeListener('speech:partial', listener)
-    },
-    onFinalTranscript: (callback: (data: SpeechTranscriptEvent) => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, data: SpeechTranscriptEvent): void =>
-        callback(data)
-      ipcRenderer.on('speech:final', listener)
-      return () => ipcRenderer.removeListener('speech:final', listener)
-    },
-    onDownloadProgress: (
-      callback: (data: { modelId: string; progress: number }) => void
-    ): (() => void) => {
-      const listener = (
-        _event: Electron.IpcRendererEvent,
-        data: { modelId: string; progress: number }
-      ): void => callback(data)
-      ipcRenderer.on('speech:downloadProgress', listener)
-      return () => ipcRenderer.removeListener('speech:downloadProgress', listener)
-    },
-    onReady: (callback: (data: SpeechLifecycleEvent) => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, data: SpeechLifecycleEvent): void =>
-        callback(data)
-      ipcRenderer.on('speech:ready', listener)
-      return () => ipcRenderer.removeListener('speech:ready', listener)
-    },
-    onStopped: (callback: (data: SpeechLifecycleEvent) => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, data: SpeechLifecycleEvent): void =>
-        callback(data)
-      ipcRenderer.on('speech:stopped', listener)
-      return () => ipcRenderer.removeListener('speech:stopped', listener)
-    },
-    onError: (callback: (data: SpeechErrorEvent) => void): (() => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, data: SpeechErrorEvent): void =>
-        callback(data)
-      ipcRenderer.on('speech:error', listener)
-      return () => ipcRenderer.removeListener('speech:error', listener)
     }
   }
 }

@@ -3773,7 +3773,7 @@ describe('Store', () => {
       store.updateUI({
         sidebarWidth: 400,
         showDotfilesByWorktree: { 'repo-1::/repo': false },
-        featureTipsSeenIds: ['voice-dictation'],
+        featureTipsSeenIds: ['orca-cli'],
         contextualToursSeenIds: ['tasks'],
         featureInteractions: {
           tasks: { firstInteractedAt: 100, interactionCount: 1 }
@@ -3787,7 +3787,7 @@ describe('Store', () => {
       store.updateUI({
         sidebarWidth: 400,
         showDotfilesByWorktree: { 'repo-1::/repo': false },
-        featureTipsSeenIds: ['voice-dictation'],
+        featureTipsSeenIds: ['orca-cli'],
         contextualToursSeenIds: ['tasks'],
         featureInteractions: {
           tasks: { firstInteractedAt: 100, interactionCount: 1 }
@@ -3950,7 +3950,7 @@ describe('Store', () => {
       worktreeMeta: {},
       settings: {},
       ui: {
-        featureTipsSeenIds: ['voice-dictation', 'unknown-tip', 'voice-dictation'],
+        featureTipsSeenIds: ['orca-cli', 'unknown-tip', 'orca-cli'],
         contextualToursSeenIds: ['tasks', 'unknown', 'tasks'] as never,
         featureInteractions: {
           tasks: { firstInteractedAt: 100 },
@@ -3965,7 +3965,7 @@ describe('Store', () => {
 
     const store = await createStore()
 
-    expect(store.getUI().featureTipsSeenIds).toEqual(['voice-dictation'])
+    expect(store.getUI().featureTipsSeenIds).toEqual(['orca-cli'])
     expect(store.getUI().contextualToursSeenIds).toEqual(['tasks'])
     expect(store.getUI().featureInteractions).toEqual({
       tasks: { firstInteractedAt: 100, interactionCount: 1 },
@@ -4032,10 +4032,10 @@ describe('Store', () => {
     const store = await createStore()
 
     store.updateUI({
-      featureTipsSeenIds: ['voice-dictation', 'unknown-tip', 'voice-dictation'] as never
+      featureTipsSeenIds: ['orca-cli', 'unknown-tip', 'orca-cli'] as never
     })
 
-    expect(store.getUI().featureTipsSeenIds).toEqual(['voice-dictation'])
+    expect(store.getUI().featureTipsSeenIds).toEqual(['orca-cli'])
   })
 
   it('recordFeatureInteraction increments from the current persisted UI state', async () => {

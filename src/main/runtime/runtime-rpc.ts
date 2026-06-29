@@ -297,14 +297,6 @@ const MOBILE_RPC_METHOD_ALLOWLIST = new Set([
   'settings.update',
   'ssh.connect',
   'ssh.getState',
-  'speech.dictation.cancel',
-  'speech.dictation.chunk',
-  'speech.dictation.finish',
-  'speech.dictation.setup',
-  'speech.dictation.start',
-  'speech.models.delete',
-  'speech.models.download',
-  'speech.models.list',
   'stats.summary',
   'status.get',
   'agentTeams.prepareLaunch',
@@ -739,7 +731,6 @@ export class OrcaRuntimeRpcServer {
           const connectionId = this.wsConnectionIds.get(ws)
           if (connectionId) {
             this.runtime.cleanupSubscriptionsForConnection(connectionId)
-            this.runtime.cancelMobileDictationForConnection(connectionId)
             this.binaryStreamHandlers.delete(connectionId)
             this.wsConnectionIds.delete(ws)
           }

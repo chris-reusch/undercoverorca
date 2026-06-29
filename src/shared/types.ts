@@ -7,7 +7,6 @@ import type {
   AgentType,
   MigrationUnsupportedPtyEntry
 } from './agent-status-types'
-import type { VoiceSettings } from './speech-types'
 import type { WorkspaceCleanupUIState } from './workspace-cleanup'
 import type { LargeDiffRenderLimit } from './large-diff-render-limit'
 import type { TaskProvider } from './task-providers'
@@ -2661,13 +2660,6 @@ export type GlobalSettings = {
   commitMessageAi?: CommitMessageAiSettings
   /** Source-control AI generation settings for commit messages and hosted-review drafts. */
   sourceControlAi?: SourceControlAiSettings
-  /** Local voice/dictation configuration (Phase 1 voice feature). Optional
-   *  because profiles created before voice landed won't have the key;
-   *  `getDefaultSettings()` hydrates `getDefaultVoiceSettings()` via the
-   *  `{ ...defaults, ...parsed }` merge in persistence.ts. Treat as
-   *  effectively present at runtime — the renderer should still fall back to
-   *  defaults when reading optional sub-fields. */
-  voice?: VoiceSettings
 }
 
 export type OrcaWorkspaceLayout = {

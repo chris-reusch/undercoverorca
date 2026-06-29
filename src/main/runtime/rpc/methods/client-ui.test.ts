@@ -162,7 +162,7 @@ describe('client UI RPC methods', () => {
           }
         }
       },
-      featureTipsSeenIds: ['voice-dictation'],
+      featureTipsSeenIds: ['orca-cli'],
       featureInteractions: {
         tasks: { firstInteractedAt: 100, interactionCount: 2 }
       },
@@ -198,7 +198,7 @@ describe('client UI RPC methods', () => {
           }
         }
       },
-      featureTipsSeenIds: ['voice-dictation'],
+      featureTipsSeenIds: ['orca-cli'],
       featureInteractions: {
         tasks: { firstInteractedAt: 100, interactionCount: 2 }
       },

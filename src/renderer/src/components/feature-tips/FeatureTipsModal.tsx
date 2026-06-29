@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { Mic } from 'lucide-react'
 import { toast } from 'sonner'
-import { getDefaultVoiceSettings } from '../../../../shared/constants'
 import type { FeatureTip } from '../../../../shared/feature-tips'
 import {
   ORCHESTRATION_ENABLED_STORAGE_KEY,
@@ -28,8 +26,6 @@ import { getFeatureTipForModal } from './feature-tip-modal-state'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
 
-const WAVEFORM_BAR_HEIGHTS = [30, 60, 90, 70, 100, 50, 80, 35, 65]
-
 function WorktreePromptTerm({ children }: { children: string }): JSX.Element {
   return (
     <span className="rounded-sm bg-foreground/10 px-1 py-0.5 font-medium text-foreground">
@@ -48,24 +44,6 @@ function FeatureTipVisual({ tip }: { tip: FeatureTip }): JSX.Element {
       // Kept for type exhaustiveness; the cmd-j tip is rendered via
       // CmdJPaletteTipDialog and never reaches this function at runtime.
       return <CmdJPaletteFeatureTipVisual />
-    case 'enable-voice':
-      return (
-        <div className="flex flex-col items-center gap-2.5">
-          <div className="flex size-14 items-center justify-center rounded-full bg-foreground text-background">
-            <Mic className="size-5" />
-          </div>
-          {/* Animated waveform — purely decorative, signals "voice" without copy */}
-          <div className="flex h-6 items-center justify-center gap-1" aria-hidden="true">
-            {WAVEFORM_BAR_HEIGHTS.map((height, i) => (
-              <span
-                key={i}
-                className="block w-[3px] rounded-[2px] bg-foreground/60 animate-waveform"
-                style={{ height: `${height}%`, animationDelay: `${i * 0.1}s` }}
-              />
-            ))}
-          </div>
-        </div>
-      )
   }
 }
 
@@ -74,8 +52,6 @@ export default function FeatureTipsModal(): JSX.Element | null {
   const closeModal = useAppStore((s) => s.closeModal)
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
-  const settings = useAppStore((s) => s.settings)
-  const updateSettings = useAppStore((s) => s.updateSettings)
   const seenTipIds = useAppStore((s) => s.featureTipsSeenIds)
   const featureInteractions = useAppStore((s) => s.featureInteractions)
   const markFeatureTipsSeen = useAppStore((s) => s.markFeatureTipsSeen)
@@ -90,8 +66,7 @@ export default function FeatureTipsModal(): JSX.Element | null {
     cliInstalled: true,
     modalData,
     seenTipIds,
-    featureInteractions,
-    settings
+    featureInteractions
   })
 
   useEffect(() => {
@@ -154,19 +129,6 @@ export default function FeatureTipsModal(): JSX.Element | null {
         // Why: passive education tip — acknowledging just dismisses; the rebind
         // path lives in Settings and is reachable from the palette itself.
         closeModal()
-        break
-      }
-      case 'enable-voice': {
-        const voice = settings?.voice ?? getDefaultVoiceSettings()
-        void updateSettings({
-          voice: {
-            ...voice,
-            enabled: true
-          }
-        })
-        closeModal()
-        openSettingsTarget({ pane: 'voice', repoId: null })
-        openSettingsPage()
         break
       }
       case 'setup-cli': {

@@ -13,7 +13,6 @@ import type {
 import { DEFAULT_STATUS_BAR_ITEMS } from './status-bar-defaults'
 import { DEFAULT_TERMINAL_FONT_WEIGHT } from './terminal-fonts'
 import { getDefaultTerminalQuickCommands } from './terminal-quick-commands'
-import type { VoiceSettings } from './speech-types'
 import { cloneDefaultWorkspaceStatuses } from './workspace-statuses'
 import { TASK_PROVIDERS } from './task-providers'
 import { DEFAULT_WORKTREE_CARD_PROPERTIES } from './worktree-card-properties'
@@ -362,21 +361,7 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
       customPrompt: '',
       customAgentCommand: ''
     },
-    sourceControlAi: getDefaultSourceControlAiSettings(),
-    voice: getDefaultVoiceSettings()
-  }
-}
-
-export function getDefaultVoiceSettings(): VoiceSettings {
-  return {
-    enabled: false,
-    sttModel: '',
-    modelsDir: '',
-    language: 'en',
-    dictationMode: 'toggle' as const,
-    terminalConfirmBeforeInsert: false,
-    userModels: [],
-    openAiApiKeyConfigured: false
+    sourceControlAi: getDefaultSourceControlAiSettings()
   }
 }
 
