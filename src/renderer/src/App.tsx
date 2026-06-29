@@ -386,10 +386,6 @@ function App(): React.JSX.Element {
       fetchWorktreeLineage: s.fetchWorktreeLineage,
       fetchSettings: s.fetchSettings,
       fetchKeybindings: s.fetchKeybindings,
-      initGitHubCache: s.initGitHubCache,
-      refreshAllGitHub: s.refreshAllGitHub,
-      reportVisibleGitHubPRRefreshCandidates: s.reportVisibleGitHubPRRefreshCandidates,
-      bumpGitHubPRVisibleRefreshGeneration: s.bumpGitHubPRVisibleRefreshGeneration,
       hydrateWorkspaceSession: s.hydrateWorkspaceSession,
       hydrateTabsSession: s.hydrateTabsSession,
       hydrateEditorSession: s.hydrateEditorSession,
@@ -1072,7 +1068,6 @@ function App(): React.JSX.Element {
           }
         }
       }
-      void actions.initGitHubCache()
     })()
 
     return () => {
@@ -1318,20 +1313,6 @@ function App(): React.JSX.Element {
       buildAppFontFamily(settings?.appFontFamily)
     )
   }, [settings?.appFontFamily])
-
-  // Refresh GitHub data (PR/issue status) when window regains focus
-  useEffect(() => {
-    const handler = (): void => {
-      if (document.visibilityState === 'visible') {
-        actions.refreshAllGitHub()
-        actions.bumpGitHubPRVisibleRefreshGeneration()
-      } else {
-        actions.reportVisibleGitHubPRRefreshCandidates([], Date.now())
-      }
-    }
-    document.addEventListener('visibilitychange', handler)
-    return () => document.removeEventListener('visibilitychange', handler)
-  }, [actions])
 
   const hasTabBar = tabCount >= 2
   const showTitlebarExpandButton = workspaceChromeActive && !hasTabBar && effectiveActiveTabExpanded

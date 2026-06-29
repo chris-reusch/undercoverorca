@@ -8,7 +8,6 @@ import {
   WorktreePrefetchCreateBase,
   WorktreePsParams,
   WorktreeRemove,
-  WorktreeResolvePrBase,
   WorktreeSelector,
   WorktreeSet,
   WorktreeSortOrder
@@ -172,18 +171,6 @@ export const WORKTREE_METHODS: RpcMethod[] = [
     params: WorktreeSortOrder,
     handler: async (params, { runtime }) =>
       runtime.persistManagedWorktreeSortOrder(params.orderedIds)
-  }),
-  defineMethod({
-    name: 'worktree.resolvePrBase',
-    params: WorktreeResolvePrBase,
-    handler: async (params, { runtime }) =>
-      runtime.resolveManagedPrBase({
-        repoSelector: params.repo,
-        prNumber: params.prNumber,
-        headRefName: params.headRefName,
-        baseRefName: params.baseRefName,
-        isCrossRepository: params.isCrossRepository
-      })
   }),
   defineMethod({
     name: 'worktree.rm',

@@ -1,6 +1,20 @@
 import type { IssueInfo } from '../../../../shared/types'
-import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
+import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 import type { WorktreeCardDetailsHoverControl } from './worktree-card-details-hover-state'
+
+// Why: the PR/hosted-review fetch+display module was removed in the card
+// teardown. The inert display shape stays here so the hover/detail components
+// that still type a `review` prop keep compiling without that deleted module.
+export type WorktreeCardPrDisplay =
+  | HostedReviewInfo
+  | {
+      provider: Exclude<HostedReviewInfo['provider'], 'unsupported'>
+      number: number
+      title: string
+      state?: HostedReviewInfo['state']
+      url?: string
+      status?: HostedReviewInfo['status']
+    }
 
 export type WorktreeCardIssueDisplay =
   | IssueInfo

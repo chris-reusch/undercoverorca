@@ -34,8 +34,6 @@ import {
 import { useAppStore } from '@/store'
 import { resolveRemoteOperationErrorMessage } from '@/lib/source-control-remote-error'
 import { useActiveWorktree, useRepoById, useWorktreeMap } from '@/store/selectors'
-import { getHostedReviewCacheKey } from '@/store/slices/hosted-review'
-import { getGitHubPRCacheKey } from '@/store/slices/github-cache-key'
 import { detectLanguage } from '@/lib/language-detect'
 import { basename, dirname, joinPath } from '@/lib/path'
 import { cn } from '@/lib/utils'
@@ -230,10 +228,7 @@ import {
 } from './source-control-text-generation-defaults'
 import { useSourceControlAi } from './use-source-control-ai'
 import { translate } from '@/i18n/i18n'
-import {
-  localizedHostedReviewCopy,
-  resolveSupportedHostedReviewCopyProvider
-} from '@/i18n/hosted-review-localized-copy'
+import { localizedHostedReviewCopy } from '@/i18n/hosted-review-localized-copy'
 import {
   createCreatePrIntentRunToken,
   createPrIntentCurrentTargetConflictsWithToken,
@@ -256,14 +251,6 @@ import {
   shouldShowSourceControlCompareUnavailableCard,
   SourceControlHeaderToolbar
 } from './source-control-header-toolbar'
-import {
-  hasPositiveHostedReviewNumberLink,
-  hasResolvableHostedReviewPushTargetLink,
-  hasUsableHostedReviewPushTarget,
-  resolveHostedReviewActionUpstreamStatus,
-  resolveHostedReviewStateForActions
-} from './source-control-hosted-review-push-target'
-export { HostedReviewHeaderLink } from './hosted-review-header-chrome'
 import {
   createRunningCommitMessageGenerationRecord,
   getCommitMessageGenerationRecordKey,
@@ -790,23 +777,17 @@ function SourceControlInner(): React.JSX.Element {
   const updateSettings = useAppStore((s) => s.updateSettings)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
-  const hostedReviewCache = useAppStore((s) => s.hostedReviewCache)
-  const fetchHostedReviewForBranch = useAppStore((s) => s.fetchHostedReviewForBranch)
   const getHostedReviewCreationEligibility = useAppStore(
     (s) => s.getHostedReviewCreationEligibility
   )
   const createHostedReview = useAppStore((s) => s.createHostedReview)
   const updateWorktreeMeta = useAppStore((s) => s.updateWorktreeMeta)
-  const fetchPRForBranch = useAppStore((s) => s.fetchPRForBranch)
-  const prCache = useAppStore((s) => s.prCache)
-  const enqueueGitHubPRRefresh = useAppStore((s) => s.enqueueGitHubPRRefresh)
   const updateRepo = useAppStore((s) => s.updateRepo)
   const setGitStatus = useAppStore((s) => s.setGitStatus)
   const updateWorktreeGitIdentity = useAppStore((s) => s.updateWorktreeGitIdentity)
   const beginGitBranchCompareRequest = useAppStore((s) => s.beginGitBranchCompareRequest)
   const setGitBranchCompareResult = useAppStore((s) => s.setGitBranchCompareResult)
   const fetchUpstreamStatus = useAppStore((s) => s.fetchUpstreamStatus)
-  const ensureHostedReviewPushTarget = useAppStore((s) => s.ensureHostedReviewPushTarget)
   const setUpstreamStatus = useAppStore((s) => s.setUpstreamStatus)
   const pushBranch = useAppStore((s) => s.pushBranch)
   const pullBranch = useAppStore((s) => s.pullBranch)
@@ -833,8 +814,6 @@ function SourceControlInner(): React.JSX.Element {
   const clearDiffComments = useAppStore((s) => s.clearDiffComments)
   const clearDiffCommentsForFile = useAppStore((s) => s.clearDiffCommentsForFile)
   const setScrollToDiffCommentId = useAppStore((s) => s.setScrollToDiffCommentId)
-  const setRightSidebarOpen = useAppStore((s) => s.setRightSidebarOpen)
-  const setRightSidebarTab = useAppStore((s) => s.setRightSidebarTab)
   // Why: pass activeWorktreeId directly (even when null/undefined) so the
   // slice's getDiffComments returns its stable EMPTY_COMMENTS sentinel. An
   // inline `[]` fallback would allocate a new array each store update, break
@@ -1329,44 +1308,9 @@ function SourceControlInner(): React.JSX.Element {
     hostedReviewCreation?.provider
   )
   const hostedReviewCreateCopy = localizedHostedReviewCopy(hostedReviewCreateProvider)
-  const hostedReviewCacheKey =
-    activeRepo && branchName
-      ? getHostedReviewCacheKey(
-          activeRepo.path,
-          branchName,
-          settings,
-          activeRepo.id,
-          activeRepo.connectionId,
-          activeRepo.executionHostId,
-          true
-        )
-      : null
-  const hostedReviewEntry = hostedReviewCacheKey
-    ? hostedReviewCache[hostedReviewCacheKey]
-    : undefined
-  const activePrCacheKey =
-    activeRepo && branchName
-      ? getGitHubPRCacheKey(
-          activeRepo.path,
-          activeRepo.id,
-          branchName,
-          settings,
-          activeRepo.connectionId,
-          activeRepo.executionHostId,
-          true
-        )
-      : null
-  const activePrFromQueue = activePrCacheKey ? (prCache[activePrCacheKey]?.data ?? null) : null
-  const hostedReviewEntryData = hostedReviewEntry?.data ?? null
-  const hostedReview: HostedReviewInfo | null = useMemo(() => {
-    if (!hostedReviewCacheKey) {
-      return null
-    }
-    if (activePrFromQueue) {
-      return { provider: 'github', ...activePrFromQueue, status: activePrFromQueue.checksStatus }
-    }
-    return hostedReviewEntryData
-  }, [activePrFromQueue, hostedReviewCacheKey, hostedReviewEntryData])
+  // Why: hosted-review status fetching/browsing was removed; only the create-PR
+  // flow remains, so there is never a fetched review for the current branch.
+  const hostedReview = null as HostedReviewInfo | null
   const effectiveBaseRef = resolveSourceControlBaseRef({
     worktreeBaseRef: normalizedWorktreeBaseRef,
     reviewBaseRefName: hostedReview?.baseRefName,
@@ -1388,7 +1332,7 @@ function SourceControlInner(): React.JSX.Element {
   }, [activeRepo?.id, activeWorktreeId, branchName, effectiveBaseRef, worktreePath])
 
   const linkedGitHubPR = activeWorktree?.linkedPR ?? null
-  const fallbackGitHubPRNumber = linkedGitHubPR == null ? (activePrFromQueue?.number ?? null) : null
+  const fallbackGitHubPRNumber: number | null = null
   const linkedGitLabMR = activeWorktree?.linkedGitLabMR ?? null
   const linkedBitbucketPR = activeWorktree?.linkedBitbucketPR ?? null
   const linkedAzureDevOpsPR = activeWorktree?.linkedAzureDevOpsPR ?? null
@@ -1496,117 +1440,12 @@ function SourceControlInner(): React.JSX.Element {
     isHostedReviewCreationLoading,
     provisionalHostedReviewProvider
   ])
-  const hasHostedReviewLink = hasPositiveHostedReviewNumberLink({
-    linkedGitHubPR,
-    fallbackGitHubPR: fallbackGitHubPRNumber,
-    linkedGitLabMR,
-    linkedBitbucketPR,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR
-  })
-  // Why: when activeRepo.connectionId is truthy, neither the SourceControl
-  // effect below nor WorktreeCard.tsx fetches hostedReview for this branch,
-  // so hostedReviewEntry would stay undefined forever and would permanently
-  // block Publish Branch on SSH-backed worktrees with linked review metadata
-  // and no upstream. Skip the loading state for those repos so the publish
-  // gate doesn't latch.
-  const isHostedReviewStateLoading =
-    !activeRepo?.connectionId && hasHostedReviewLink && hostedReviewEntry === undefined
-  const hasResolvableReviewPushTargetLink = hasResolvableHostedReviewPushTargetLink({
-    linkedGitHubPR,
-    linkedGitLabMR
-  })
-  useEffect(() => {
-    // Why: resolving review heads can hit provider/SSH APIs, so keep it tied
-    // to the visible Source Control branch view like the adjacent PR polling.
-    if (!isBranchVisible || isFolder || !activeWorktreeId || activeWorktree?.pushTarget) {
-      return
-    }
-    if (!hasResolvableReviewPushTargetLink) {
-      return
-    }
-    void ensureHostedReviewPushTarget(activeWorktreeId)
-  }, [
-    activeWorktree?.pushTarget,
-    activeWorktreeId,
-    ensureHostedReviewPushTarget,
-    hasResolvableReviewPushTargetLink,
-    isBranchVisible,
-    isFolder,
-    linkedGitHubPR,
-    linkedGitLabMR
-  ])
-  const canUseHostedReviewPushTarget = hasUsableHostedReviewPushTarget({
-    pushTarget: activeWorktree?.pushTarget,
-    upstreamStatus: remoteStatus,
-    hasResolvableHostedReviewPushTargetLink: hasResolvableReviewPushTargetLink
-  })
-  const hostedReviewStateForActions = resolveHostedReviewStateForActions({
-    hostedReviewState: hostedReview?.state ?? null,
-    hasResolvableHostedReviewPushTargetLink: hasResolvableReviewPushTargetLink
-  })
-  const remoteStatusForActions: typeof remoteStatus = useMemo(
-    () =>
-      resolveHostedReviewActionUpstreamStatus({
-        hasHostedReviewLink,
-        hasResolvableHostedReviewPushTargetLink: hasResolvableReviewPushTargetLink,
-        hostedReviewState: hostedReviewStateForActions,
-        isHostedReviewStateLoading,
-        canUseHostedReviewPushTarget,
-        upstreamStatus: remoteStatus
-      }),
-    [
-      canUseHostedReviewPushTarget,
-      hasHostedReviewLink,
-      hasResolvableReviewPushTargetLink,
-      hostedReviewStateForActions,
-      isHostedReviewStateLoading,
-      remoteStatus
-    ]
-  )
-  useEffect(() => {
-    if (
-      !isBranchVisible ||
-      !activeRepo ||
-      isFolder ||
-      !branchName ||
-      branchName === 'HEAD' ||
-      !activeWorktreeId
-    ) {
-      return
-    }
-    // Why: the Source Control panel renders branch review status directly.
-    // When a terminal checkout moves this worktree onto a new branch, fetch
-    // immediately; carry a known PR number because branch lookup is lossy for
-    // fork/deleted-head PRs.
-    void fetchHostedReviewForBranch(activeRepo.path, branchName, {
-      repoId: activeRepo.id,
-      linkedGitHubPR,
-      fallbackGitHubPR: fallbackGitHubPRNumber,
-      linkedGitLabMR,
-      linkedBitbucketPR,
-      linkedAzureDevOpsPR,
-      linkedGiteaPR,
-      staleWhileRevalidate: true
-    })
-    // Why: the GitHub-specific cache powers grouping/check panels; keep that
-    // refresh behind the coordinator so Source Control does not bypass pacing.
-    enqueueGitHubPRRefresh(activeWorktreeId, 'swr', 30)
-  }, [
-    activeRepo,
-    activeWorktreeId,
-    branchName,
-    enqueueGitHubPRRefresh,
-    fetchHostedReviewForBranch,
-    isBranchVisible,
-    isFolder,
-    linkedGitHubPR,
-    fallbackGitHubPRNumber,
-    linkedGitLabMR,
-    linkedBitbucketPR,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR
-  ])
+  // Why: hosted-review status fetching/push-target resolution was removed, so
+  // the primary-action publish gate no longer factors in a fetched review.
+  const isHostedReviewStateLoading = false
+  const canUseHostedReviewPushTarget = false
+  const hostedReviewStateForActions = null as HostedReviewInfo['state'] | null
+  const remoteStatusForActions = remoteStatus
 
   // Why: eligibility is recomputed below, after prGenerating / isCreatingPr are
   // available, so the effect can pause refetches while a user-initiated PR flow
@@ -2562,114 +2401,24 @@ function SourceControlInner(): React.JSX.Element {
 
   const handlePullRequestCreated = useCallback(
     async (result: CreatedHostedReview, context?: HostedReviewCreatedContext): Promise<void> => {
-      const repoPath = context?.repoPath ?? activeRepo?.path
-      const repoId = context?.repoId ?? activeRepo?.id
-      const branch = context?.branch ?? branchName
       const worktreeId = context?.worktreeId ?? activeWorktreeId ?? null
-      const openChecks = context?.openChecks ?? true
-      if (!repoPath || !repoId || !branch) {
+      if (!worktreeId) {
         return
       }
-      const copy = localizedHostedReviewCopy(
-        resolveSupportedHostedReviewCopyProvider(result.provider)
-      )
-      if (openChecks) {
-        setRightSidebarOpen(true)
-        setRightSidebarTab('checks')
-      }
-      try {
-        if (worktreeId && result.provider === 'github') {
-          await updateWorktreeMeta(worktreeId, { linkedPR: result.number })
-        }
-        if (worktreeId && result.provider === 'gitlab') {
-          await updateWorktreeMeta(worktreeId, { linkedGitLabMR: result.number })
-        }
-        if (worktreeId && result.provider === 'azure-devops') {
-          await updateWorktreeMeta(worktreeId, { linkedAzureDevOpsPR: result.number })
-        }
-        if (worktreeId && result.provider === 'gitea') {
-          await updateWorktreeMeta(worktreeId, { linkedGiteaPR: result.number })
-        }
-        const linkedReviewNumbers = {
-          linkedGitHubPR: result.provider === 'github' ? result.number : linkedGitHubPR,
-          fallbackGitHubPR: fallbackGitHubPRNumber,
-          linkedGitLabMR: result.provider === 'gitlab' ? result.number : linkedGitLabMR,
-          linkedBitbucketPR,
-          linkedAzureDevOpsPR:
-            result.provider === 'azure-devops' ? result.number : linkedAzureDevOpsPR,
-          linkedGiteaPR: result.provider === 'gitea' ? result.number : linkedGiteaPR
-        }
-        if (result.provider === 'gitlab') {
-          await fetchHostedReviewForBranch(repoPath, branch, {
-            force: true,
-            repoId,
-            ...linkedReviewNumbers
-          })
-          return
-        }
-        if (result.provider !== 'github') {
-          await fetchHostedReviewForBranch(repoPath, branch, {
-            force: true,
-            repoId,
-            ...linkedReviewNumbers
-          })
-          return
-        }
-        await Promise.all([
-          fetchHostedReviewForBranch(repoPath, branch, {
-            force: true,
-            repoId,
-            ...linkedReviewNumbers
-          }),
-          fetchPRForBranch(repoPath, branch, {
-            force: true,
-            repoId,
-            worktreeId: worktreeId ?? undefined,
-            linkedPRNumber: result.number
-          })
-        ])
-      } catch {
-        toast.warning(
-          translate(
-            'auto.components.right.sidebar.SourceControl.0453ca3a9a',
-            '{{value0}} created, but Orca could not refresh it yet.',
-            { value0: copy.titleLabel }
-          ),
-          {
-            action: {
-              label: translate(
-                'auto.components.right.sidebar.SourceControl.812cb992ee',
-                'Open on {{value0}}',
-                { value0: copy.providerName }
-              ),
-              onClick: () => window.api.shell.openUrl(result.url)
-            }
-          }
-        )
+      // Why: review status browsing was removed, but the inert linked-review
+      // metadata fields are still persisted on the worktree for later use.
+      if (result.provider === 'github') {
+        await updateWorktreeMeta(worktreeId, { linkedPR: result.number })
+      } else if (result.provider === 'gitlab') {
+        await updateWorktreeMeta(worktreeId, { linkedGitLabMR: result.number })
+      } else if (result.provider === 'azure-devops') {
+        await updateWorktreeMeta(worktreeId, { linkedAzureDevOpsPR: result.number })
+      } else if (result.provider === 'gitea') {
+        await updateWorktreeMeta(worktreeId, { linkedGiteaPR: result.number })
       }
     },
-    [
-      activeRepo,
-      activeWorktreeId,
-      branchName,
-      fallbackGitHubPRNumber,
-      fetchHostedReviewForBranch,
-      fetchPRForBranch,
-      linkedAzureDevOpsPR,
-      linkedBitbucketPR,
-      linkedGiteaPR,
-      linkedGitHubPR,
-      linkedGitLabMR,
-      setRightSidebarOpen,
-      setRightSidebarTab,
-      updateWorktreeMeta
-    ]
+    [activeWorktreeId, updateWorktreeMeta]
   )
-
-  const openHostedReviewInChecks = useCallback(() => {
-    setRightSidebarOpen(true)
-    setRightSidebarTab('checks')
-  }, [setRightSidebarOpen, setRightSidebarTab])
 
   const handleBranchChangedByPullRequestGeneration = useCallback(async (): Promise<void> => {
     // Why: AI PR detail generation may rebase before summarizing; if HEAD moved,
@@ -5285,11 +5034,9 @@ function SourceControlInner(): React.JSX.Element {
           onFilterQueryChange={setFilterQuery}
           onFilterExpandedChange={setFilterExpanded}
           visibleCreatePrHeaderAction={visibleCreatePrHeaderAction}
-          hostedReview={hostedReview}
           isCreatePrIntentInFlight={isCreatePrIntentInFlight}
           isCreatingPr={isCreatingPr || prGenerating}
           onCreatePrHeaderClick={handleCreatePrHeaderClick}
-          onOpenHostedReviewInChecks={openHostedReviewInChecks}
           sourceControlViewMode={sourceControlViewMode}
           viewModeToggleDisabled={settings === null}
           onToggleViewMode={handleToggleSourceControlViewMode}

@@ -2,8 +2,7 @@ import { ipcMain } from 'electron'
 import { posix, resolve } from 'path'
 import type {
   CreateHostedReviewArgs,
-  HostedReviewCreationEligibilityArgs,
-  HostedReviewForBranchArgs
+  HostedReviewCreationEligibilityArgs
 } from '../../shared/hosted-review'
 import type { Repo } from '../../shared/types'
 import type { Store } from '../persistence'
@@ -12,7 +11,6 @@ import {
   createHostedReview,
   getHostedReviewCreationEligibility
 } from '../source-control/hosted-review-creation'
-import { getHostedReviewForBranch } from '../source-control/hosted-review'
 import { resolveRegisteredWorktreePath } from './filesystem-auth'
 import { listRepoWorktrees } from '../repo-worktrees'
 import { getLocalProjectWorktreeGitOptions } from '../project-runtime-git-options'
@@ -76,32 +74,6 @@ function normalizeRemoteHostedReviewPath(remotePath: string): string {
 }
 
 export function registerHostedReviewHandlers(store: Store, stats: StatsCollector): void {
-  ipcMain.handle('hostedReview:forBranch', async (_event, args: HostedReviewForBranchArgs) => {
-    const repo = assertRegisteredRepo(args.repoPath, store, args.repoId)
-    const localGitOptions = getLocalProjectWorktreeGitOptions(store, repo)
-    const review = await getHostedReviewForBranch({
-      repoPath: repo.path,
-      connectionId: repo.connectionId,
-      branch: args.branch,
-      linkedGitHubPR: args.linkedGitHubPR ?? null,
-      fallbackGitHubPR: args.linkedGitHubPR == null ? (args.fallbackGitHubPR ?? null) : null,
-      linkedGitLabMR: args.linkedGitLabMR ?? null,
-      linkedBitbucketPR: args.linkedBitbucketPR ?? null,
-      linkedAzureDevOpsPR: args.linkedAzureDevOpsPR ?? null,
-      linkedGiteaPR: args.linkedGiteaPR ?? null,
-      ...(Object.keys(localGitOptions).length > 0 ? { localGitExecOptions: localGitOptions } : {})
-    })
-    if (review?.provider === 'github' && !stats.hasCountedPR(review.url)) {
-      stats.record({
-        type: 'pr_created',
-        at: Date.now(),
-        repoId: repo.id,
-        meta: { prNumber: review.number, prUrl: review.url }
-      })
-    }
-    return review
-  })
-
   ipcMain.handle(
     'hostedReview:getCreationEligibility',
     async (_event, args: HostedReviewCreationEligibilityArgs) => {

@@ -39,12 +39,9 @@ import { toast } from 'sonner'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
 import { useAppStore } from '../../store'
 import { getRepoMapFromState, getWorktreeMapFromState } from '../../store/selectors'
-import { getHostedReviewCacheKey } from '../../store/slices/hosted-review'
-import { issueCacheKey as getIssueCacheKey } from '../../store/slices/github'
 import { refreshGitStatusForWorktree } from '../right-sidebar/git-status-refresh'
 import { runWorktreeBatchDelete } from '../sidebar/delete-worktree-flow'
 import { prepareActiveWorktreeFocusAfterDelete } from '../sidebar/active-worktree-focus-after-delete'
-import { branchDisplayName } from '../sidebar/WorktreeCardHelpers'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import {
@@ -134,22 +131,12 @@ type WorkspaceDecisionInputs = {
   browserTabsByWorktree: Record<string, unknown[]>
   gitStatusByWorktree: Record<string, unknown[]>
   remoteStatusesByWorktree: Record<string, { hasUpstream: boolean; ahead: number; behind: number }>
-  hostedReviewCache: Record<
-    string,
-    { data?: { number: number; state: string; status: string; title: string } | null }
-  >
-  issueCache: Record<string, { data?: { number: number; title: string; state: string } | null }>
-  settings: Parameters<typeof getHostedReviewCacheKey>[2]
   activeWorktreeId: string | null
   now: number
 }
 
 function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`
-}
-
-function formatReviewState(state: string): string {
-  return state.charAt(0).toUpperCase() + state.slice(1)
 }
 
 function countLiveTerminals(
@@ -189,49 +176,12 @@ export function getWorkspaceDecisionDetails(
     (file) => file.isDirty || inputs.editorDrafts[file.id] !== undefined
   ).length
   const gitEntries = inputs.gitStatusByWorktree[worktree.worktreeId]
-  const branch = workspaceRecord
-    ? branchDisplayName(workspaceRecord.branch)
-    : getWorkspaceSpaceBranchLabel(worktree)
-  const repo = inputs.repoMap.get(worktree.repoId)
-  const reviewCacheKey = getHostedReviewCacheKey(
-    worktree.repoPath,
-    branch,
-    inputs.settings,
-    worktree.repoId,
-    repo?.connectionId,
-    repo?.executionHostId,
-    repo !== undefined
-  )
-  const hostedReview = inputs.hostedReviewCache[reviewCacheKey]?.data
+  // Why: PR/issue details are no longer fetched for cards; the keep/delete
+  // hints now read only the inert linked-number metadata on the worktree.
   const linkedPR = workspaceRecord?.linkedPR ?? null
-  const reviewLabel =
-    hostedReview !== undefined && hostedReview !== null
-      ? `PR #${hostedReview.number} ${formatReviewState(hostedReview.state)}${
-          hostedReview.status && hostedReview.status !== 'none' ? `, ${hostedReview.status}` : ''
-        }`
-      : linkedPR
-        ? `PR #${linkedPR}`
-        : null
+  const reviewLabel = linkedPR ? `PR #${linkedPR}` : null
   const linkedIssue = workspaceRecord?.linkedIssue ?? null
-  const issue =
-    linkedIssue && repo
-      ? inputs.issueCache[
-          getIssueCacheKey(
-            repo.path,
-            repo.id,
-            linkedIssue,
-            inputs.settings,
-            repo.connectionId,
-            repo.executionHostId,
-            true
-          )
-        ]?.data
-      : null
-  const issueLabel = linkedIssue
-    ? issue
-      ? `#${issue.number} ${issue.state}: ${issue.title}`
-      : `#${linkedIssue}`
-    : null
+  const issueLabel = linkedIssue ? `#${linkedIssue}` : null
 
   return {
     isActive: inputs.activeWorktreeId === worktree.worktreeId,
@@ -1216,8 +1166,6 @@ export function WorkspaceSpaceManagerPanel(): React.JSX.Element {
   const browserTabsByWorktree = useAppStore((state) => state.browserTabsByWorktree)
   const gitStatusByWorktree = useAppStore((state) => state.gitStatusByWorktree)
   const remoteStatusesByWorktree = useAppStore((state) => state.remoteStatusesByWorktree)
-  const hostedReviewCache = useAppStore((state) => state.hostedReviewCache)
-  const issueCache = useAppStore((state) => state.issueCache)
   const settings = useAppStore((state) => state.settings)
   const activeWorktreeId = useAppStore((state) => state.activeWorktreeId)
   const setGitStatus = useAppStore((state) => state.setGitStatus)
@@ -1270,9 +1218,6 @@ export function WorkspaceSpaceManagerPanel(): React.JSX.Element {
           browserTabsByWorktree,
           gitStatusByWorktree,
           remoteStatusesByWorktree,
-          hostedReviewCache,
-          issueCache,
-          settings,
           activeWorktreeId,
           now
         })
@@ -1286,8 +1231,6 @@ export function WorkspaceSpaceManagerPanel(): React.JSX.Element {
     browserTabsByWorktree,
     editorDrafts,
     gitStatusByWorktree,
-    hostedReviewCache,
-    issueCache,
     openFiles,
     ptyIdsByTabId,
     repoMap,
@@ -1295,7 +1238,6 @@ export function WorkspaceSpaceManagerPanel(): React.JSX.Element {
     retainedAgentsByPaneKey,
     migrationUnsupportedByPtyId,
     runtimePaneTitlesByTabId,
-    settings,
     sourceRows,
     tabsByWorktree,
     worktreeMap
@@ -2011,9 +1953,6 @@ export function WorkspaceSpaceManagerPanel(): React.JSX.Element {
                         browserTabsByWorktree,
                         gitStatusByWorktree,
                         remoteStatusesByWorktree,
-                        hostedReviewCache,
-                        issueCache,
-                        settings,
                         activeWorktreeId,
                         now: Date.now()
                       })

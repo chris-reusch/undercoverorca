@@ -247,8 +247,7 @@ describe('createSettingsSlice runtime switching', () => {
       markdownFrontmatterVisible: { '/env-1/repo/stale.md': true },
       editorCursorLine: { '/env-1/repo/stale.md': 4 },
       showDotfilesByWorktree: { 'repo-env-1::/env-1/repo': false },
-      gitIgnoredPathsByWorktree: { 'repo-env-1::/env-1/repo': ['dist/'] },
-      prCache: { '/env-1/repo::main': { data: null, fetchedAt: Date.now() } }
+      gitIgnoredPathsByWorktree: { 'repo-env-1::/env-1/repo': ['dist/'] }
     })
 
     await expect(store.getState().switchRuntimeEnvironment('env-2')).resolves.toBe(true)
@@ -310,9 +309,6 @@ describe('createSettingsSlice runtime switching', () => {
     expect(store.getState().ptyIdsByTabId).toEqual({ tab1: ['remote:env-1@@terminal-a'] })
     expect(store.getState().browserTabsByWorktree).toEqual({
       'repo-env-1::/env-1/repo': [{ id: 'browser-env-1' }]
-    })
-    expect(store.getState().prCache).toEqual({
-      '/env-1/repo::main': expect.objectContaining({ data: null })
     })
   })
 

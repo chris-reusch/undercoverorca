@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { CircleCheck, CircleDot, CircleX, Clock, GitMerge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PullRequestIcon, checksLabel } from './WorktreeCardHelpers'
-import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
+import type { WorktreeCardPrDisplay } from './worktree-card-meta-types'
 import type { IssueInfo } from '../../../../shared/types'
 import { translate } from '@/i18n/i18n'
 

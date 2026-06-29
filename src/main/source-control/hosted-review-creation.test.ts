@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   createGitHubPullRequestMock,
   getRepoSlugMock,
-  getHostedReviewForBranchMock,
   ghExecFileAsyncMock,
   gitExecFileAsyncMock,
   getUpstreamStatusMock,
@@ -12,7 +11,6 @@ const {
 } = vi.hoisted(() => ({
   createGitHubPullRequestMock: vi.fn(),
   getRepoSlugMock: vi.fn(),
-  getHostedReviewForBranchMock: vi.fn(),
   ghExecFileAsyncMock: vi.fn(),
   gitExecFileAsyncMock: vi.fn(),
   getUpstreamStatusMock: vi.fn(),
@@ -20,8 +18,7 @@ const {
 }))
 
 vi.mock('../github/client', () => ({
-  getRepoSlug: getRepoSlugMock,
-  getPRForBranch: vi.fn()
+  getRepoSlug: getRepoSlugMock
 }))
 
 vi.mock('../github/create-pr', () => ({
@@ -43,17 +40,12 @@ vi.mock('../providers/ssh-git-dispatch', () => ({
   getSshGitProvider: getSshGitProviderMock
 }))
 
-vi.mock('./hosted-review', () => ({
-  getHostedReviewForBranch: getHostedReviewForBranchMock
-}))
-
 import { createHostedReview, getHostedReviewCreationEligibility } from './hosted-review-creation'
 
 function resetMocks(): void {
   for (const mock of [
     createGitHubPullRequestMock,
     getRepoSlugMock,
-    getHostedReviewForBranchMock,
     ghExecFileAsyncMock,
     gitExecFileAsyncMock,
     getUpstreamStatusMock,
@@ -72,7 +64,6 @@ describe('createHostedReview', () => {
     resetMocks()
 
     mockGitHubProvider()
-    getHostedReviewForBranchMock.mockResolvedValue(null)
     ghExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
     getUpstreamStatusMock.mockResolvedValue({
       hasUpstream: true,
@@ -197,13 +188,6 @@ describe('createHostedReview', () => {
     expect(getRepoSlugMock).toHaveBeenCalledWith('/repo', null, {
       localGitExecOptions: { wslDistro: 'Ubuntu' }
     })
-    expect(getHostedReviewForBranchMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        repoPath: '/repo',
-        branch: 'feature',
-        localGitExecOptions: { wslDistro: 'Ubuntu' }
-      })
-    )
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
       ['auth', 'status', '--hostname', 'github.com'],
       { cwd: '/repo', wslDistro: 'Ubuntu' }
@@ -284,37 +268,6 @@ describe('createHostedReview', () => {
       'ssh-1'
     )
   })
-
-  it('returns the existing review instead of creating a duplicate', async () => {
-    getHostedReviewForBranchMock.mockResolvedValue({
-      provider: 'github',
-      number: 31,
-      title: 'Existing feature',
-      state: 'open',
-      url: 'https://github.com/acme/orca/pull/31',
-      status: 'pending',
-      updatedAt: '2026-05-15T00:00:00.000Z',
-      mergeable: 'UNKNOWN'
-    })
-
-    await expect(
-      createHostedReview('/repo', {
-        provider: 'github',
-        base: 'main',
-        head: 'feature',
-        title: 'Feature'
-      })
-    ).resolves.toEqual({
-      ok: false,
-      code: 'already_exists',
-      error: 'A pull request already exists for this branch.',
-      existingReview: {
-        number: 31,
-        url: 'https://github.com/acme/orca/pull/31'
-      }
-    })
-    expect(createGitHubPullRequestMock).not.toHaveBeenCalled()
-  })
 })
 
 describe('getHostedReviewCreationEligibility', () => {
@@ -322,7 +275,6 @@ describe('getHostedReviewCreationEligibility', () => {
     resetMocks()
 
     mockGitHubProvider()
-    getHostedReviewForBranchMock.mockResolvedValue(null)
     ghExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
     gitExecFileAsyncMock.mockResolvedValue({ stdout: 'Feature title\n', stderr: '' })
   })
@@ -365,9 +317,7 @@ describe('getHostedReviewCreationEligibility', () => {
     })
   })
 
-  it('keeps dirty feature branches eligible for PR preparation when review lookup fails', async () => {
-    getHostedReviewForBranchMock.mockRejectedValueOnce(new Error('gh lookup failed'))
-
+  it('keeps dirty feature branches eligible for PR preparation', async () => {
     await expect(
       getHostedReviewCreationEligibility({
         repoPath: '/repo',
@@ -432,9 +382,6 @@ describe('getHostedReviewCreationEligibility', () => {
     })
 
     expect(getRepoSlugMock).toHaveBeenCalledWith('/remote/repo', 'ssh-1')
-    expect(getHostedReviewForBranchMock).toHaveBeenCalledWith(
-      expect.objectContaining({ repoPath: '/remote/repo', connectionId: 'ssh-1' })
-    )
     expect(remoteGit.exec).not.toHaveBeenCalled()
   })
 

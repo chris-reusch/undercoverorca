@@ -665,9 +665,7 @@ describe('setActiveWorktree', () => {
             isUnread: false
           })
         ]
-      },
-      refreshGitHubForWorktree: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn()
+      }
     })
 
     store.getState().setActiveWorktree(worktreeId)
@@ -695,9 +693,7 @@ describe('setActiveWorktree', () => {
             lastActivityAt
           })
         ]
-      },
-      refreshGitHubForWorktree: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn()
+      }
     })
 
     store.getState().setActiveWorktree(worktreeId)
@@ -735,9 +731,7 @@ describe('setActiveWorktree', () => {
             lastActivityAt: now - 60_000
           })
         ]
-      },
-      refreshGitHubForWorktree: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn()
+      }
     })
 
     store.getState().setActiveWorktree(focusedId)
@@ -868,9 +862,7 @@ describe('setActiveWorktree', () => {
       },
       activeGroupIdByWorktree: { [wt]: groupId },
       layoutByWorktree: { [wt]: { type: 'leaf', groupId } },
-      everActivatedWorktreeIds: new Set([wt]),
-      refreshGitHubForWorktree: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn()
+      everActivatedWorktreeIds: new Set([wt])
     })
 
     const before = store.getState()
@@ -2592,9 +2584,7 @@ describe('setActiveWorktree', () => {
       openFiles: [makeOpenFile({ id: fileId, worktreeId: wt, filePath: fileId })],
       activeFileIdByWorktree: { [wt]: fileId },
       // User was on the terminal, not the editor
-      activeTabTypeByWorktree: { [wt]: 'terminal' },
-      refreshGitHubForWorktree: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn()
+      activeTabTypeByWorktree: { [wt]: 'terminal' }
     })
 
     store.getState().setActiveWorktree(wt)

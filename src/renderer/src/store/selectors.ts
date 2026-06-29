@@ -344,7 +344,3 @@ export const useSortBy = () => useAppStore((s) => s.sortBy)
 export const useShowActiveOnly = () => useAppStore((s) => s.showActiveOnly)
 export const useShowSleepingWorkspaces = () => useAppStore((s) => s.showSleepingWorkspaces)
 export const useFilterRepoIds = () => useAppStore((s) => s.filterRepoIds)
-
-// ─── GitHub ─────────────────────────────────────────────────────────
-export const usePRCache = () => useAppStore((s) => s.prCache)
-export const useIssueCache = () => useAppStore((s) => s.issueCache)

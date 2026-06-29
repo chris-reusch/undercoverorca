@@ -46,7 +46,6 @@ export function buildWorktreeSectionActivitySummaries({
   groupBy,
   worktrees,
   repoMap,
-  prCache,
   workspaceStatuses,
   settings,
   projectGroups,
@@ -70,7 +69,6 @@ export function buildWorktreeSectionActivitySummaries({
         groupBy,
         worktree,
         repoMap,
-        prCache,
         workspaceStatuses,
         settings,
         projectGroups

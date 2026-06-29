@@ -236,13 +236,7 @@ describe('workspace-tab-palette-search', () => {
       relativePath: 'Conflict Review',
       mode: 'conflict-review'
     })
-    const checkDetailsFile = makeOpenFile({
-      id: 'wt-1::check-details::check-run:42',
-      filePath: WT_ROOT,
-      relativePath: 'CI / Typecheck',
-      mode: 'check-details'
-    })
-    const files = [editorFile, diffFile, conflictReviewFile, checkDetailsFile]
+    const files = [editorFile, diffFile, conflictReviewFile]
     const entries = buildEntries({
       unifiedTabsByWorktree: {
         'wt-1': [
@@ -260,11 +254,6 @@ describe('workspace-tab-palette-search', () => {
             id: 'conflict-tab',
             entityId: conflictReviewFile.id,
             contentType: 'conflict-review'
-          }),
-          makeUnifiedTab({
-            id: 'check-tab',
-            entityId: checkDetailsFile.id,
-            contentType: 'check-details'
           })
         ]
       },
@@ -273,7 +262,7 @@ describe('workspace-tab-palette-search', () => {
         'wt-1': [
           makeGroup({
             activeTabId: 'editor-tab',
-            tabOrder: ['editor-tab', 'diff-tab', 'conflict-tab', 'check-tab']
+            tabOrder: ['editor-tab', 'diff-tab', 'conflict-tab']
           })
         ]
       }
@@ -282,12 +271,10 @@ describe('workspace-tab-palette-search', () => {
     expect(entries.map((entry) => entry.tab.contentType)).toEqual([
       'editor',
       'diff',
-      'conflict-review',
-      'check-details'
+      'conflict-review'
     ])
     expect(searchWorkspaceTabs(entries, 'staged diff')[0]?.tabId).toBe('diff-tab')
     expect(searchWorkspaceTabs(entries, 'conflict review')[0]?.tabId).toBe('conflict-tab')
-    expect(searchWorkspaceTabs(entries, 'typecheck')[0]?.tabId).toBe('check-tab')
   })
 
   it('attaches live, retained, and sleeping agent metadata only to matching terminal tabs', () => {

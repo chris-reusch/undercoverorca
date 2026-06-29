@@ -71,7 +71,7 @@ describe('worktree-palette-search', () => {
   })
 
   it('returns every worktree with no match metadata for an empty query', () => {
-    const results = searchWorktrees([makeWorktree()], '', repoMap, null, null)
+    const results = searchWorktrees([makeWorktree()], '', repoMap)
 
     expect(results).toEqual([
       {
@@ -100,18 +100,12 @@ describe('worktree-palette-search', () => {
     } as Worktree
 
     expect(isWorktreePaletteQueryTooLarge(oversizedQuery)).toBe(true)
-    expect(searchWorktrees([worktree], oversizedQuery, repoMap, null, null)).toEqual([])
+    expect(searchWorktrees([worktree], oversizedQuery, repoMap)).toEqual([])
   })
 
   it('rejects oversized whitespace before trimming worktree palette queries', () => {
     expect(
-      searchWorktrees(
-        [makeWorktree()],
-        ' '.repeat(WORKTREE_PALETTE_QUERY_MAX_BYTES + 1),
-        repoMap,
-        null,
-        null
-      )
+      searchWorktrees([makeWorktree()], ' '.repeat(WORKTREE_PALETTE_QUERY_MAX_BYTES + 1), repoMap)
     ).toEqual([])
   })
 
@@ -120,7 +114,7 @@ describe('worktree-palette-search', () => {
 
     expect(query.length).toBe(WORKTREE_PALETTE_QUERY_MAX_BYTES)
     expect(isWorktreePaletteQueryTooLarge(query)).toBe(true)
-    expect(searchWorktrees([makeWorktree()], query, repoMap, null, null)).toEqual([])
+    expect(searchWorktrees([makeWorktree()], query, repoMap)).toEqual([])
   })
 
   it('returns a truncated comment snippet with the highlighted match range', () => {
@@ -132,9 +126,7 @@ describe('worktree-palette-search', () => {
         })
       ],
       'implementation',
-      repoMap,
-      null,
-      null
+      repoMap
     )
 
     expect(results).toHaveLength(1)
@@ -146,30 +138,6 @@ describe('worktree-palette-search', () => {
         results[0].supportingText.matchRange!.end
       )
     ).toBe('implementation')
-  })
-
-  it('keeps PR title matches in the search result model instead of inferring them during render', () => {
-    const results = searchWorktrees(
-      [makeWorktree({ branch: 'refs/heads/feature/palette-refresh', linkedPR: 426 })],
-      'quick jump',
-      repoMap,
-      {
-        '/repo/orca::feature/palette-refresh': {
-          data: {
-            number: 426,
-            title: 'Refresh the worktree quick jump palette'
-          }
-        }
-      },
-      null
-    )
-
-    expect(results).toHaveLength(1)
-    expect(results[0].supportingText).toEqual({
-      labelKind: 'pr',
-      text: 'Refresh the worktree quick jump palette',
-      matchRange: { start: 21, end: 31 }
-    })
   })
 
   it('preserves input order when query matches a repo name', () => {
@@ -194,7 +162,7 @@ describe('worktree-palette-search', () => {
       })
     ]
 
-    const results = searchWorktrees(worktrees, 'orca', repoMap, null, null)
+    const results = searchWorktrees(worktrees, 'orca', repoMap)
 
     // All three match on the repo name, order preserved from input
     expect(results).toHaveLength(3)
@@ -217,7 +185,7 @@ describe('worktree-palette-search', () => {
       })
     ]
 
-    const results = searchWorktrees(worktrees, 'orca/main', repoMap, null, null)
+    const results = searchWorktrees(worktrees, 'orca/main', repoMap)
 
     expect(results).toHaveLength(1)
     expect(results[0].worktreeId).toBe('wt-main')
@@ -230,9 +198,7 @@ describe('worktree-palette-search', () => {
     const results = searchWorktrees(
       [makeWorktree({ branch: 'refs/heads/feature/palette-refresh' })],
       'feature/palette',
-      repoMap,
-      null,
-      null
+      repoMap
     )
 
     expect(results).toHaveLength(1)
@@ -241,13 +207,7 @@ describe('worktree-palette-search', () => {
   })
 
   it('matches issue numbers with a leading hash and returns issue render context', () => {
-    const results = searchWorktrees(
-      [makeWorktree({ linkedIssue: 304 })],
-      '#304',
-      repoMap,
-      null,
-      null
-    )
+    const results = searchWorktrees([makeWorktree({ linkedIssue: 304 })], '#304', repoMap)
 
     expect(results).toHaveLength(1)
     expect(results[0].supportingText).toEqual({
@@ -262,8 +222,6 @@ describe('worktree-palette-search', () => {
       [makeWorktree({ id: 'wt-port', linkedIssue: 3000 })],
       '3000',
       repoMap,
-      null,
-      null,
       new Map([
         [
           'wt-port',

@@ -31,7 +31,6 @@ import {
 } from '../../../../shared/project-groups'
 import { cloneDefaultWorkspaceStatuses } from '../../../../shared/workspace-statuses'
 import type { AppState } from '../../store/types'
-import { getGitHubPRCacheKey, getLegacyGitHubPRCacheKey } from '../../store/slices/github-cache-key'
 import { getRepoDisplayLabelsByPath } from '@/lib/repo-display-labels'
 import { translate } from '@/i18n/i18n'
 import { getExecutionHostLabel, getRepoExecutionHostId } from '../../../../shared/execution-host'
@@ -345,59 +344,10 @@ export function getLineageRenderInfo(
   }
   return { state: 'valid', lineage, parent }
 }
-export function getPRGroupKey(
-  worktree: Worktree,
-  repoMap: Map<string, Repo>,
-  prCache: Record<string, unknown> | null,
-  settings?: AppState['settings']
-): PRGroupKey {
-  const repo = repoMap.get(worktree.repoId)
-  const branch = branchName(worktree.branch)
-  const repoScopedCacheKey =
-    repo && branch
-      ? getGitHubPRCacheKey(
-          repo.path,
-          repo.id,
-          branch,
-          settings,
-          repo.connectionId,
-          repo.executionHostId,
-          true
-        )
-      : ''
-  const canUseLegacyPRCache = repo !== undefined && !repo.connectionId && !repo.executionHostId
-  const legacyRepoScopedCacheKey =
-    canUseLegacyPRCache && branch ? getLegacyGitHubPRCacheKey(repo.path, repo.id, branch) : ''
-  const legacyPathScopedCacheKey =
-    canUseLegacyPRCache && branch ? getLegacyGitHubPRCacheKey(repo.path, undefined, branch) : ''
-  // Why: PR refreshes now write repo-id scoped entries; legacy path entries may
-  // still exist from persisted cache, but must not override fresher repo data.
-  const prEntry = prCache
-    ? ((repoScopedCacheKey
-        ? (prCache[repoScopedCacheKey] as { data?: { state?: string } } | undefined)
-        : undefined) ??
-      (legacyRepoScopedCacheKey
-        ? (prCache[legacyRepoScopedCacheKey] as { data?: { state?: string } } | undefined)
-        : undefined) ??
-      (legacyPathScopedCacheKey
-        ? (prCache[legacyPathScopedCacheKey] as { data?: { state?: string } } | undefined)
-        : undefined))
-    : undefined
-  const pr = prEntry?.data
-
-  if (!pr) {
-    return 'in-progress'
-  }
-  if (pr.state === 'merged') {
-    return 'done'
-  }
-  if (pr.state === 'closed') {
-    return 'closed'
-  }
-  if (pr.state === 'draft') {
-    return 'in-progress'
-  }
-  return 'in-review'
+export function getPRGroupKey(): PRGroupKey {
+  // Why: PR/check state is no longer fetched for sidebar cards, so PR-status
+  // grouping collapses every workspace into the in-progress lane.
+  return 'in-progress'
 }
 
 /**
@@ -787,7 +737,6 @@ export function buildRows(
   groupBy: WorktreeGroupBy,
   worktrees: Worktree[],
   repoMap: Map<string, Repo>,
-  prCache: Record<string, unknown> | null,
   collapsedGroups: Set<string>,
   repoOrder?: Map<string, number>,
   workspaceStatuses: readonly WorkspaceStatusDefinition[] = cloneDefaultWorkspaceStatuses(),
@@ -797,7 +746,9 @@ export function buildRows(
     worktrees.map((worktree) => [worktree.id, worktree])
   ),
   nestLineage = false,
-  settings?: AppState['settings'],
+  // Why: PR-status grouping no longer reads PR cache state, so settings is kept
+  // only for signature compatibility with existing positional callers.
+  _settings?: AppState['settings'],
   projectGroups: readonly ProjectGroup[] = [],
   placeholderRepoIds: ReadonlySet<string> = new Set(),
   importedWorktreesByRepo: ReadonlyMap<string, ImportedWorktreesCardCandidate> = new Map(),
@@ -879,7 +830,7 @@ export function buildRows(
       label =
         workspaceStatuses.find((status) => status.id === workspaceStatus)?.label ?? workspaceStatus
     } else {
-      const prGroup = getPRGroupKey(w, repoMap, prCache, settings)
+      const prGroup = getPRGroupKey()
       key = `pr:${prGroup}`
       label = PR_GROUP_META[prGroup].label
     }
@@ -1207,9 +1158,10 @@ export function getGroupKeyForWorktree(
   groupBy: WorktreeGroupBy,
   worktree: Worktree,
   repoMap: Map<string, Repo>,
-  prCache: Record<string, unknown> | null,
   workspaceStatuses: readonly WorkspaceStatusDefinition[] = cloneDefaultWorkspaceStatuses(),
-  settings?: AppState['settings'],
+  // Why: PR-status grouping no longer reads PR cache state; settings is retained
+  // only so positional callers keep their existing argument shape.
+  _settings?: AppState['settings'],
   projectGrouping?: ProjectGroupingModel
 ): string | null {
   if (groupBy === 'none') {
@@ -1225,14 +1177,13 @@ export function getGroupKeyForWorktree(
       buildProjectGroupingIndex(projectGrouping)
     ).key
   }
-  return `pr:${getPRGroupKey(worktree, repoMap, prCache, settings)}`
+  return `pr:${getPRGroupKey()}`
 }
 
 export function getGroupKeysForWorktree(
   groupBy: WorktreeGroupBy,
   worktree: Worktree,
   repoMap: Map<string, Repo>,
-  prCache: Record<string, unknown> | null,
   workspaceStatuses: readonly WorkspaceStatusDefinition[] = cloneDefaultWorkspaceStatuses(),
   settings?: AppState['settings'],
   projectGroups: readonly ProjectGroup[] = [],
@@ -1242,7 +1193,6 @@ export function getGroupKeysForWorktree(
     groupBy,
     worktree,
     repoMap,
-    prCache,
     workspaceStatuses,
     settings,
     projectGrouping

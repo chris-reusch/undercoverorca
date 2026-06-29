@@ -113,7 +113,6 @@ export function seedAlreadyActiveWorktree(
     } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
     markWorktreeVisited,
     recordWorktreeVisit,
-    refreshGitHubForWorktreeIfStale: vi.fn(),
     revealWorktreeInSidebar,
     ...overrides
   })

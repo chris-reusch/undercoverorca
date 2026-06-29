@@ -202,102 +202,8 @@ type WebSettingsApi = NonNullable<PreloadApi['settings']>
 type WebKeybindingsApi = NonNullable<PreloadApi['keybindings']>
 type WebGitHubApi = NonNullable<PreloadApi['gh']>
 type WebGitHubResult<K extends keyof WebGitHubApi> = Awaited<ReturnType<WebGitHubApi[K]>>
-type WebGitHubRouteKey =
-  | 'repoSlug'
-  | 'repoUpstream'
-  | 'prForBranch'
-  | 'issue'
-  | 'workItem'
-  | 'workItemByOwnerRepo'
-  | 'workItemDetails'
-  | 'prFileContents'
-  | 'listIssues'
-  | 'createIssue'
-  | 'countWorkItems'
-  | 'listWorkItems'
-  | 'prChecks'
-  | 'prCheckDetails'
-  | 'rerunPRChecks'
-  | 'prComments'
-  | 'resolveReviewThread'
-  | 'setPRFileViewed'
-  | 'updatePRTitle'
-  | 'mergePR'
-  | 'setPRAutoMerge'
-  | 'updatePRState'
-  | 'requestPRReviewers'
-  | 'removePRReviewers'
-  | 'updateIssue'
-  | 'addIssueComment'
-  | 'addPRReviewCommentReply'
-  | 'addPRReviewComment'
-  | 'listLabels'
-  | 'listAssignableUsers'
-  | 'rateLimit'
-  | 'listAccessibleProjects'
-  | 'resolveProjectRef'
-  | 'listProjectViews'
-  | 'getProjectViewTable'
-  | 'projectWorkItemDetailsBySlug'
-  | 'updateProjectItemField'
-  | 'clearProjectItemField'
-  | 'updateIssueBySlug'
-  | 'updatePullRequestBySlug'
-  | 'addIssueCommentBySlug'
-  | 'updateIssueCommentBySlug'
-  | 'deleteIssueCommentBySlug'
-  | 'listLabelsBySlug'
-  | 'listAssignableUsersBySlug'
-  | 'listIssueTypesBySlug'
-  | 'updateIssueTypeBySlug'
-type WebGitHubRuntimeMethod =
-  | 'github.repoSlug'
-  | 'github.repoUpstream'
-  | 'github.prForBranch'
-  | 'github.issue'
-  | 'github.workItem'
-  | 'github.workItemByOwnerRepo'
-  | 'github.workItemDetails'
-  | 'github.prFileContents'
-  | 'github.listIssues'
-  | 'github.createIssue'
-  | 'github.countWorkItems'
-  | 'github.listWorkItems'
-  | 'github.prChecks'
-  | 'github.prCheckDetails'
-  | 'github.rerunPRChecks'
-  | 'github.prComments'
-  | 'github.resolveReviewThread'
-  | 'github.setPRFileViewed'
-  | 'github.updatePRTitle'
-  | 'github.mergePR'
-  | 'github.setPRAutoMerge'
-  | 'github.updatePRState'
-  | 'github.requestPRReviewers'
-  | 'github.removePRReviewers'
-  | 'github.updateIssue'
-  | 'github.addIssueComment'
-  | 'github.addPRReviewCommentReply'
-  | 'github.addPRReviewComment'
-  | 'github.listLabels'
-  | 'github.listAssignableUsers'
-  | 'github.rateLimit'
-  | 'github.project.listAccessible'
-  | 'github.project.resolveRef'
-  | 'github.project.listViews'
-  | 'github.project.viewTable'
-  | 'github.project.workItemDetailsBySlug'
-  | 'github.project.updateItemField'
-  | 'github.project.clearItemField'
-  | 'github.project.updateIssueBySlug'
-  | 'github.project.updatePullRequestBySlug'
-  | 'github.project.addIssueCommentBySlug'
-  | 'github.project.updateIssueCommentBySlug'
-  | 'github.project.deleteIssueCommentBySlug'
-  | 'github.project.listLabelsBySlug'
-  | 'github.project.listAssignableUsersBySlug'
-  | 'github.project.listIssueTypesBySlug'
-  | 'github.project.updateIssueTypeBySlug'
+type WebGitHubRouteKey = 'repoSlug' | 'repoUpstream'
+type WebGitHubRuntimeMethod = 'github.repoSlug' | 'github.repoUpstream'
 type WebKeybindingDocument = {
   version: 1
   keybindings: KeybindingOverrides
@@ -306,52 +212,7 @@ type WebKeybindingDocument = {
 
 export const GITHUB_WEB_RPC_METHODS = {
   repoSlug: 'github.repoSlug',
-  repoUpstream: 'github.repoUpstream',
-  prForBranch: 'github.prForBranch',
-  issue: 'github.issue',
-  workItem: 'github.workItem',
-  workItemByOwnerRepo: 'github.workItemByOwnerRepo',
-  workItemDetails: 'github.workItemDetails',
-  prFileContents: 'github.prFileContents',
-  listIssues: 'github.listIssues',
-  createIssue: 'github.createIssue',
-  countWorkItems: 'github.countWorkItems',
-  listWorkItems: 'github.listWorkItems',
-  prChecks: 'github.prChecks',
-  prCheckDetails: 'github.prCheckDetails',
-  rerunPRChecks: 'github.rerunPRChecks',
-  prComments: 'github.prComments',
-  resolveReviewThread: 'github.resolveReviewThread',
-  setPRFileViewed: 'github.setPRFileViewed',
-  updatePRTitle: 'github.updatePRTitle',
-  mergePR: 'github.mergePR',
-  setPRAutoMerge: 'github.setPRAutoMerge',
-  updatePRState: 'github.updatePRState',
-  requestPRReviewers: 'github.requestPRReviewers',
-  removePRReviewers: 'github.removePRReviewers',
-  updateIssue: 'github.updateIssue',
-  addIssueComment: 'github.addIssueComment',
-  addPRReviewCommentReply: 'github.addPRReviewCommentReply',
-  addPRReviewComment: 'github.addPRReviewComment',
-  listLabels: 'github.listLabels',
-  listAssignableUsers: 'github.listAssignableUsers',
-  rateLimit: 'github.rateLimit',
-  listAccessibleProjects: 'github.project.listAccessible',
-  resolveProjectRef: 'github.project.resolveRef',
-  listProjectViews: 'github.project.listViews',
-  getProjectViewTable: 'github.project.viewTable',
-  projectWorkItemDetailsBySlug: 'github.project.workItemDetailsBySlug',
-  updateProjectItemField: 'github.project.updateItemField',
-  clearProjectItemField: 'github.project.clearItemField',
-  updateIssueBySlug: 'github.project.updateIssueBySlug',
-  updatePullRequestBySlug: 'github.project.updatePullRequestBySlug',
-  addIssueCommentBySlug: 'github.project.addIssueCommentBySlug',
-  updateIssueCommentBySlug: 'github.project.updateIssueCommentBySlug',
-  deleteIssueCommentBySlug: 'github.project.deleteIssueCommentBySlug',
-  listLabelsBySlug: 'github.project.listLabelsBySlug',
-  listAssignableUsersBySlug: 'github.project.listAssignableUsersBySlug',
-  listIssueTypesBySlug: 'github.project.listIssueTypesBySlug',
-  updateIssueTypeBySlug: 'github.project.updateIssueTypeBySlug'
+  repoUpstream: 'github.repoUpstream'
 } as const satisfies Record<WebGitHubRouteKey, WebGitHubRuntimeMethod>
 
 const WEB_KEYBINDING_PLATFORMS: readonly KeybindingPlatform[] = ['darwin', 'linux', 'win32']
@@ -1619,171 +1480,16 @@ function createGitHubApi(): WebGitHubApi {
   const route = <Result>(method: WebGitHubRuntimeMethod, args?: unknown): Promise<Result> =>
     callRuntimeResult<Result>(method, mapRepoPathArg(args))
   const githubApi = {
-    viewer: () => Promise.resolve(null),
     repoSlug: (args) => route<WebGitHubResult<'repoSlug'>>(GITHUB_WEB_RPC_METHODS.repoSlug, args),
     repoUpstream: (args) =>
       route<WebGitHubResult<'repoUpstream'>>(GITHUB_WEB_RPC_METHODS.repoUpstream, args),
-    prForBranch: (args) =>
-      route<WebGitHubResult<'prForBranch'>>(GITHUB_WEB_RPC_METHODS.prForBranch, args),
-    refreshPRNow: async ({ candidate }) => {
-      const acceptMergedFallbackPR =
-        candidate.linkedPRNumber == null &&
-        candidate.fallbackPRNumber != null &&
-        candidate.fallbackPRSource != null
-      const pr = await route<WebGitHubResult<'prForBranch'>>(GITHUB_WEB_RPC_METHODS.prForBranch, {
-        repoPath: candidate.repoPath,
-        repoId: candidate.repoId,
-        branch: candidate.branch,
-        linkedPRNumber: candidate.linkedPRNumber ?? null,
-        fallbackPRNumber: candidate.fallbackPRNumber ?? null,
-        ...(acceptMergedFallbackPR ? { acceptMergedFallbackPR: true } : {})
-      })
-      return pr
-        ? { kind: 'found', pr, fetchedAt: Date.now() }
-        : { kind: 'no-pr', fetchedAt: Date.now() }
-    },
-    enqueuePRRefresh: () => Promise.resolve(false),
-    reportVisiblePRRefreshCandidates: () => Promise.resolve(false),
-    onPRRefreshEvent: () => noopUnsubscribe,
-    issue: (args) => route<WebGitHubResult<'issue'>>(GITHUB_WEB_RPC_METHODS.issue, args),
-    workItem: (args) => route<WebGitHubResult<'workItem'>>(GITHUB_WEB_RPC_METHODS.workItem, args),
-    workItemByOwnerRepo: ({ repo: ownerRepo, ...args }) =>
-      route<WebGitHubResult<'workItemByOwnerRepo'>>(GITHUB_WEB_RPC_METHODS.workItemByOwnerRepo, {
-        ...args,
-        ownerRepo
-      }),
-    workItemDetails: (args) =>
-      route<WebGitHubResult<'workItemDetails'>>(GITHUB_WEB_RPC_METHODS.workItemDetails, args),
-    prFileContents: (args) =>
-      route<WebGitHubResult<'prFileContents'>>(GITHUB_WEB_RPC_METHODS.prFileContents, args),
-    listIssues: (args) =>
-      route<WebGitHubResult<'listIssues'>>(GITHUB_WEB_RPC_METHODS.listIssues, args),
-    createIssue: (args) =>
-      route<WebGitHubResult<'createIssue'>>(GITHUB_WEB_RPC_METHODS.createIssue, args),
-    countWorkItems: (args) =>
-      route<WebGitHubResult<'countWorkItems'>>(GITHUB_WEB_RPC_METHODS.countWorkItems, args),
-    listWorkItems: (args) =>
-      route<WebGitHubResult<'listWorkItems'>>(GITHUB_WEB_RPC_METHODS.listWorkItems, args),
-    prChecks: (args) => route<WebGitHubResult<'prChecks'>>(GITHUB_WEB_RPC_METHODS.prChecks, args),
-    prCheckDetails: (args) =>
-      route<WebGitHubResult<'prCheckDetails'>>(GITHUB_WEB_RPC_METHODS.prCheckDetails, args),
-    rerunPRChecks: (args) =>
-      route<WebGitHubResult<'rerunPRChecks'>>(GITHUB_WEB_RPC_METHODS.rerunPRChecks, args),
-    prComments: (args) =>
-      route<WebGitHubResult<'prComments'>>(GITHUB_WEB_RPC_METHODS.prComments, args),
-    resolveReviewThread: (args) =>
-      route<WebGitHubResult<'resolveReviewThread'>>(
-        GITHUB_WEB_RPC_METHODS.resolveReviewThread,
-        args
-      ),
-    setPRFileViewed: (args) =>
-      route<WebGitHubResult<'setPRFileViewed'>>(GITHUB_WEB_RPC_METHODS.setPRFileViewed, args),
-    updatePRTitle: (args) =>
-      route<WebGitHubResult<'updatePRTitle'>>(GITHUB_WEB_RPC_METHODS.updatePRTitle, args),
-    mergePR: (args) => route<WebGitHubResult<'mergePR'>>(GITHUB_WEB_RPC_METHODS.mergePR, args),
-    setPRAutoMerge: (args) =>
-      route<WebGitHubResult<'setPRAutoMerge'>>(GITHUB_WEB_RPC_METHODS.setPRAutoMerge, args),
-    updatePRState: (args) =>
-      route<WebGitHubResult<'updatePRState'>>(GITHUB_WEB_RPC_METHODS.updatePRState, args),
-    requestPRReviewers: (args) =>
-      route<WebGitHubResult<'requestPRReviewers'>>(GITHUB_WEB_RPC_METHODS.requestPRReviewers, args),
-    removePRReviewers: (args) =>
-      route<WebGitHubResult<'removePRReviewers'>>(GITHUB_WEB_RPC_METHODS.removePRReviewers, args),
-    updateIssue: (args) =>
-      route<WebGitHubResult<'updateIssue'>>(GITHUB_WEB_RPC_METHODS.updateIssue, args),
-    addIssueComment: (args) =>
-      route<WebGitHubResult<'addIssueComment'>>(GITHUB_WEB_RPC_METHODS.addIssueComment, args),
-    addPRReviewCommentReply: (args) =>
-      route<WebGitHubResult<'addPRReviewCommentReply'>>(
-        GITHUB_WEB_RPC_METHODS.addPRReviewCommentReply,
-        args
-      ),
-    addPRReviewComment: (args) =>
-      route<WebGitHubResult<'addPRReviewComment'>>(GITHUB_WEB_RPC_METHODS.addPRReviewComment, args),
-    listLabels: (args) =>
-      route<WebGitHubResult<'listLabels'>>(GITHUB_WEB_RPC_METHODS.listLabels, args),
-    listAssignableUsers: (args) =>
-      route<WebGitHubResult<'listAssignableUsers'>>(
-        GITHUB_WEB_RPC_METHODS.listAssignableUsers,
-        args
-      ),
-    onWorkItemMutated: () => noopUnsubscribe,
     checkOrcaStarred: () => Promise.resolve(null),
     starOrca: () => Promise.resolve(false),
-    rateLimit: (args) =>
-      route<WebGitHubResult<'rateLimit'>>(GITHUB_WEB_RPC_METHODS.rateLimit, args),
     diagnoseAuth: () =>
       Promise.resolve({
         ok: false,
         message: translate('auto.web.web.preload.api.31bfe8ae1a', 'Unavailable in the web client.')
-      } as never),
-    listAccessibleProjects: () =>
-      route<WebGitHubResult<'listAccessibleProjects'>>(
-        GITHUB_WEB_RPC_METHODS.listAccessibleProjects
-      ),
-    resolveProjectRef: (args) =>
-      route<WebGitHubResult<'resolveProjectRef'>>(GITHUB_WEB_RPC_METHODS.resolveProjectRef, args),
-    listProjectViews: (args) =>
-      route<WebGitHubResult<'listProjectViews'>>(GITHUB_WEB_RPC_METHODS.listProjectViews, args),
-    getProjectViewTable: (args) =>
-      route<WebGitHubResult<'getProjectViewTable'>>(
-        GITHUB_WEB_RPC_METHODS.getProjectViewTable,
-        args
-      ),
-    projectWorkItemDetailsBySlug: (args) =>
-      route<WebGitHubResult<'projectWorkItemDetailsBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.projectWorkItemDetailsBySlug,
-        args
-      ),
-    updateProjectItemField: (args) =>
-      route<WebGitHubResult<'updateProjectItemField'>>(
-        GITHUB_WEB_RPC_METHODS.updateProjectItemField,
-        args
-      ),
-    clearProjectItemField: (args) =>
-      route<WebGitHubResult<'clearProjectItemField'>>(
-        GITHUB_WEB_RPC_METHODS.clearProjectItemField,
-        args
-      ),
-    updateIssueBySlug: (args) =>
-      route<WebGitHubResult<'updateIssueBySlug'>>(GITHUB_WEB_RPC_METHODS.updateIssueBySlug, args),
-    updatePullRequestBySlug: (args) =>
-      route<WebGitHubResult<'updatePullRequestBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.updatePullRequestBySlug,
-        args
-      ),
-    addIssueCommentBySlug: (args) =>
-      route<WebGitHubResult<'addIssueCommentBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.addIssueCommentBySlug,
-        args
-      ),
-    updateIssueCommentBySlug: (args) =>
-      route<WebGitHubResult<'updateIssueCommentBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.updateIssueCommentBySlug,
-        args
-      ),
-    deleteIssueCommentBySlug: (args) =>
-      route<WebGitHubResult<'deleteIssueCommentBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.deleteIssueCommentBySlug,
-        args
-      ),
-    listLabelsBySlug: (args) =>
-      route<WebGitHubResult<'listLabelsBySlug'>>(GITHUB_WEB_RPC_METHODS.listLabelsBySlug, args),
-    listAssignableUsersBySlug: (args) =>
-      route<WebGitHubResult<'listAssignableUsersBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.listAssignableUsersBySlug,
-        args
-      ),
-    listIssueTypesBySlug: (args) =>
-      route<WebGitHubResult<'listIssueTypesBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.listIssueTypesBySlug,
-        args
-      ),
-    updateIssueTypeBySlug: (args) =>
-      route<WebGitHubResult<'updateIssueTypeBySlug'>>(
-        GITHUB_WEB_RPC_METHODS.updateIssueTypeBySlug,
-        args
-      )
+      } as never)
   } satisfies WebGitHubApi
 
   return githubApi
@@ -2761,10 +2467,6 @@ function mergeSettings(
       ...base.notifications,
       ...updates.notifications
     },
-    githubProjects: {
-      ...(base.githubProjects ?? defaults.githubProjects),
-      ...updates.githubProjects
-    } as GlobalSettings['githubProjects'],
     disabledTuiAgents: normalizeDisabledTuiAgents(
       updates.disabledTuiAgents ?? base.disabledTuiAgents
     ),

@@ -1,14 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { createGitHubPullRequestMock, getPRForBranchMock, getRepoSlugMock } = vi.hoisted(() => ({
+const { createGitHubPullRequestMock, getRepoSlugMock } = vi.hoisted(() => ({
   createGitHubPullRequestMock: vi.fn(),
-  getPRForBranchMock: vi.fn(),
   getRepoSlugMock: vi.fn()
 }))
 
 vi.mock('../github/client', () => ({
-  getRepoSlug: getRepoSlugMock,
-  getPRForBranch: getPRForBranchMock
+  getRepoSlug: getRepoSlugMock
 }))
 
 vi.mock('../github/create-pr', () => ({
@@ -25,7 +23,6 @@ import {
 describe('forge provider interface', () => {
   beforeEach(() => {
     createGitHubPullRequestMock.mockReset()
-    getPRForBranchMock.mockReset()
     getRepoSlugMock.mockReset()
   })
 
@@ -66,34 +63,6 @@ describe('forge provider interface', () => {
       base: 'main',
       head: 'feature/provider-interface',
       title: 'Add provider interface'
-    })
-  })
-
-  it('adapts GitHub branch lookup through the shared provider contract', async () => {
-    getPRForBranchMock.mockResolvedValue({
-      number: 7,
-      title: 'Provider branch',
-      state: 'open',
-      url: 'https://github.com/team/orca/pull/7',
-      checksStatus: 'success',
-      updatedAt: '2026-05-29T00:00:00.000Z',
-      mergeable: 'MERGEABLE'
-    })
-
-    await expect(
-      getForgeProviderById('github').getReviewForBranch({
-        repoPath: '/repo',
-        connectionId: 'ssh-1',
-        branch: '',
-        fallbackReviewNumber: 7
-      })
-    ).resolves.toMatchObject({
-      provider: 'github',
-      number: 7,
-      status: 'success'
-    })
-    expect(getPRForBranchMock).toHaveBeenCalledWith('/repo', '', null, 'ssh-1', 7, {
-      acceptMergedFallbackPR: true
     })
   })
 })

@@ -9,17 +9,13 @@ import {
   normalizeTuiAgentEnvRecord
 } from '../../../../shared/tui-agent-launch-defaults'
 import { isTuiAgent } from '../../../../shared/tui-agent-config'
-import { isTaskProvider } from '../../../../shared/task-providers'
 import { normalizeDisabledTuiAgents } from '../../../../shared/tui-agent-selection'
 import { normalizeWorktreeCardProperties } from '../../../../shared/worktree-card-properties'
-import type { PersistedUIState, TaskProvider } from '../../../../shared/types'
+import type { PersistedUIState } from '../../../../shared/types'
 import { defineMethod, type RpcMethod } from '../core'
 
 const NullableString = z.string().nullable()
 const StringArray = z.array(z.string())
-const TaskProviderParam = z.custom<TaskProvider>(isTaskProvider, {
-  message: 'Unknown task provider'
-})
 const FeatureTipIds = z.array(z.custom(isFeatureTipId, { message: 'Unknown feature tip id' }))
 const UnknownRecord = z.record(z.string(), z.unknown())
 const UnknownRecordArray = z.array(UnknownRecord)
@@ -92,26 +88,6 @@ const FeatureInteractions = z
 const FeatureInteractionIdParam = z.custom<FeatureInteractionId>(isFeatureInteractionId, {
   message: 'Unknown feature interaction id'
 })
-const GitHubProjectRef = z
-  .object({
-    owner: z.string(),
-    ownerType: z.enum(['organization', 'user']),
-    number: z.number().int()
-  })
-  .strict()
-const GitHubProjectSettings = z
-  .object({
-    pinned: z.array(GitHubProjectRef),
-    recent: z.array(
-      GitHubProjectRef.extend({
-        lastOpenedAt: z.string()
-      }).strict()
-    ),
-    lastViewByProject: z.record(z.string(), z.object({ viewId: z.string() }).strict()),
-    activeProject: GitHubProjectRef.nullable()
-  })
-  .strict()
-
 const SettingsUpdate = z
   .object({
     defaultTuiAgent: z
@@ -132,8 +108,6 @@ const SettingsUpdate = z
       .unknown()
       .transform((value) => normalizeTuiAgentEnvRecord(value))
       .optional(),
-    defaultTaskSource: TaskProviderParam.optional(),
-    visibleTaskProviders: z.array(TaskProviderParam).optional(),
     defaultTaskViewPreset: z
       .enum(['issues', 'my-issues', 'prs', 'my-prs', 'review', 'all'])
       .optional(),
@@ -141,8 +115,7 @@ const SettingsUpdate = z
     agentStatusHooksEnabled: z.boolean().optional(),
     defaultRepoSelection: z.array(z.string()).nullable().optional(),
     defaultLinearTeamSelection: z.array(z.string()).nullable().optional(),
-    compactWorktreeCards: z.boolean().optional(),
-    githubProjects: GitHubProjectSettings.optional()
+    compactWorktreeCards: z.boolean().optional()
   })
   .strict()
   .default({})

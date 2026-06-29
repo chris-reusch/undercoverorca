@@ -58,7 +58,6 @@ import type {
   ProjectOrderBy,
   WorktreeLineage,
   WorktreeMeta,
-  WorkspaceLineage,
   WorkspaceStatus,
   WorkspaceStatusDefinition
 } from '../../../../shared/types'
@@ -67,7 +66,6 @@ import { buildWorktreeComparator } from './smart-sort'
 import { buildAttentionByWorktree, type WorktreeAttention } from './smart-attention'
 import { tabHasLivePty } from '@/lib/tab-has-live-pty'
 import { deriveRunningAgentSendTargets } from '@/lib/running-agent-targets'
-import { rightSidebarShowsPullRequestData } from '@/lib/right-sidebar-visibility'
 import {
   type Row,
   type ProjectGroupingModel,
@@ -252,8 +250,6 @@ import {
   getFolderWorkspaceExecutionHostIdForRows,
   getProjectGroupExecutionHostIdForRows
 } from './worktree-list-host-filtering'
-import { getFolderWorkspaceCardPrDisplay } from './folder-workspace-card-pr-display'
-
 export {
   getScrollTopToRevealBounds,
   WORKTREE_SIDEBAR_REVEAL_TOP_INSET
@@ -610,7 +606,6 @@ type VirtualizedWorktreeViewportProps = {
   repoMap: Map<string, Repo>
   worktreeMap: Map<string, Worktree>
   worktreeLineageById: Record<string, WorktreeLineage>
-  workspaceLineageByChildKey: Record<string, WorkspaceLineage>
   repoOrder: Map<string, number>
   // The full canonical state.repos id ordering — the drag controller commits
   // permutations of this list, even when some repos aren't currently visible
@@ -619,8 +614,6 @@ type VirtualizedWorktreeViewportProps = {
   allRepoIds: string[]
   onReorderHostSections: (orderedHostIds: ExecutionHostId[]) => void
   onHostDragActiveChange: (active: boolean) => void
-  prCache: Record<string, unknown> | null
-  hostedReviewCache: Record<string, unknown> | null
   workspaceStatuses: readonly WorkspaceStatusDefinition[]
   projectGrouping?: ProjectGroupingModel
   projectGroups?: readonly ProjectGroup[]
@@ -1237,13 +1230,10 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   repoMap,
   worktreeMap,
   worktreeLineageById,
-  workspaceLineageByChildKey,
   repoOrder,
   allRepoIds,
   onReorderHostSections,
   onHostDragActiveChange,
-  prCache,
-  hostedReviewCache,
   workspaceStatuses,
   projectGrouping,
   projectGroups = EMPTY_PROJECT_GROUPS,
@@ -1272,7 +1262,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
     WORKTREE_ROW_DRAG_INITIAL_STATE
   )
   const [pendingRevealRetryTick, setPendingRevealRetryTick] = useState(0)
-  const [documentVisibilityRevision, setDocumentVisibilityRevision] = useState(0)
   const [highlightedRevealRowKey, setHighlightedRevealRowKey] = useState<string | null>(null)
   const setRenamingWorktreeId = useAppStore((s) => s.setRenamingWorktreeId)
   const assignWorktreeParent = useAppStore((s) => s.assignWorktreeParent)
@@ -1335,15 +1324,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
   const hasProjectGroups = projectGroups.length > 0
   const canReorderRepoHeaders = groupBy === 'repo' && projectOrderBy === 'manual'
   const moveProjectToGroup = useAppStore((s) => s.moveProjectToGroup)
-  const lastVisibleRefreshKeyRef = useRef('')
-  const reportVisibleGitHubPRRefreshCandidates = useAppStore(
-    (s) => s.reportVisibleGitHubPRRefreshCandidates
-  )
-  const cardProps = useAppStore((s) => s.worktreeCardProperties)
-  const rightSidebarShowsPR = useAppStore((s) => rightSidebarShowsPullRequestData(s))
   const keybindings = useAppStore((s) => s.keybindings)
-  const sshConnectedGeneration = useAppStore((s) => s.sshConnectedGeneration)
-  const prVisibleRefreshGeneration = useAppStore((s) => s.prVisibleRefreshGeneration)
   const settings = useAppStore((s) => s.settings)
   const newCardStyle = settings?.experimentalNewWorktreeCardStyle === true
   const reorderRepos = useAppStore((s) => s.reorderRepos)
@@ -1355,20 +1336,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
           .map((group) => group.id)
       ),
     [projectGroups]
-  )
-
-  useEffect(
-    () =>
-      installWorktreeVisibleRefreshVisibilityListener(() => {
-        if (document.visibilityState !== 'visible') {
-          // Why: the visible row identity can be unchanged after returning
-          // from a hidden window; reset the key so visible PR/CI rows catch up.
-          lastVisibleRefreshKeyRef.current = '__document_hidden__'
-          return
-        }
-        setDocumentVisibilityRevision((revision) => revision + 1)
-      }),
-    []
   )
 
   // Why: a project reorder relocates a whole group (header + its worktree
@@ -1934,7 +1901,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
             groupBy,
             targetWorktree,
             repoMap,
-            prCache,
             workspaceStatuses,
             settings,
             projectGroups
@@ -2051,7 +2017,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
     worktrees,
     folderWorkspaces,
     repoMap,
-    prCache,
     worktreeLineageById,
     worktreeMap,
     renderRows,
@@ -2192,8 +2157,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
     cancelPendingRevealFrames
   ])
 
-  const prCacheLen = useAppStore((s) => countRecordKeysByReference(s.prCache))
-  const issueCacheLen = useAppStore((s) => countRecordKeysByReference(s.issueCache))
   const renderRowKeySignature = useMemo(
     () => renderRows.map(getRenderRowKey).join('\n'),
     [renderRows]
@@ -2245,14 +2208,7 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
     measureMountedRows()
     const frameId = window.requestAnimationFrame(measureMountedRows)
     return () => window.cancelAnimationFrame(frameId)
-  }, [
-    activeRenderRowKeys,
-    prCacheLen,
-    issueCacheLen,
-    measureMountedRows,
-    renderRowKeySignature,
-    virtualizer
-  ])
+  }, [activeRenderRowKeys, measureMountedRows, renderRowKeySignature, virtualizer])
 
   useVirtualizedScrollAnchor({
     anchorRef: scrollAnchorRef,
@@ -2290,7 +2246,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
         groupBy,
         worktrees,
         repoMap,
-        prCache,
         new Set<string>(),
         repoOrder,
         workspaceStatuses,
@@ -2352,7 +2307,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
       projectOrderBy,
       worktrees,
       repoMap,
-      prCache,
       repoOrder,
       workspaceStatuses,
       worktreeLineageById,
@@ -3480,79 +3434,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
       worktreeDragUnitGroups
     ]
   )
-
-  useEffect(() => {
-    if (document.visibilityState !== 'visible') {
-      lastVisibleRefreshKeyRef.current = '__document_hidden__'
-      return
-    }
-    const currentWorktree = currentWorktreeId ? (worktreeMap.get(currentWorktreeId) ?? null) : null
-    // Why: this visible reporter feeds the GitHub coordinator; GitLab-only MR
-    // panels refresh through hosted-review paths instead.
-    const sidebarWorktreeHasGitHubReview =
-      currentWorktree !== null &&
-      ((currentWorktree.linkedGitLabMR ?? null) === null ||
-        (currentWorktree.linkedPR ?? null) !== null)
-    const shouldTrackSidebarWorktree = rightSidebarShowsPR && sidebarWorktreeHasGitHubReview
-    const shouldTrackVisibleRows =
-      groupBy === 'pr-status' ||
-      (newCardStyle
-        ? cardProps.includes('status')
-        : cardProps.includes('pr') || cardProps.includes('ci'))
-    if (!shouldTrackVisibleRows && !shouldTrackSidebarWorktree) {
-      if (lastVisibleRefreshKeyRef.current !== '__hidden__') {
-        lastVisibleRefreshKeyRef.current = '__hidden__'
-        reportVisibleGitHubPRRefreshCandidates([], Date.now())
-      }
-      return
-    }
-    const scrollEl = scrollRef.current
-    if (!scrollEl) {
-      return
-    }
-    const viewportTop = scrollEl.scrollTop
-    const viewportBottom = viewportTop + scrollEl.clientHeight
-    const visibleRows = virtualItems
-      .filter((item) => item.start < viewportBottom && item.end > viewportTop)
-      .map((item) => renderRows[item.index])
-      .filter((row): row is WorktreeItemRow => row?.type === 'item')
-      .filter((row) => row.repo?.kind === 'git' && !row.worktree.isBare && row.worktree.branch)
-    const visibleWorktreeIds = new Set(visibleRows.map((row) => row.worktree.id))
-    if (
-      shouldTrackSidebarWorktree &&
-      currentWorktree &&
-      !currentWorktree.isBare &&
-      currentWorktree.branch
-    ) {
-      visibleWorktreeIds.add(currentWorktree.id)
-    }
-    const visibleIdentity = visibleRows
-      .map((row) => `${row.worktree.id}:${row.worktree.branch}:${row.worktree.linkedPR ?? ''}`)
-      .join('|')
-    const sidebarIdentity =
-      shouldTrackSidebarWorktree && currentWorktree
-        ? `${currentWorktree.id}:${currentWorktree.branch}:${currentWorktree.linkedPR ?? ''}`
-        : ''
-    const key = `${visibleIdentity}:${sidebarIdentity}:${sshConnectedGeneration}:${prVisibleRefreshGeneration}:${cardProps.join(',')}`
-    if (!key || key === lastVisibleRefreshKeyRef.current) {
-      return
-    }
-    lastVisibleRefreshKeyRef.current = key
-    reportVisibleGitHubPRRefreshCandidates(Array.from(visibleWorktreeIds), Date.now())
-  }, [
-    cardProps,
-    currentWorktreeId,
-    documentVisibilityRevision,
-    groupBy,
-    renderRows,
-    reportVisibleGitHubPRRefreshCandidates,
-    prVisibleRefreshGeneration,
-    rightSidebarShowsPR,
-    sshConnectedGeneration,
-    newCardStyle,
-    virtualItems,
-    worktreeMap
-  ])
 
   const activeDescendantId = getActiveDescendantOptionId({
     activeWorktreeId,
@@ -4762,16 +4643,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
                 folderWorkspacePathStatus?.exists === false &&
                 (isConfirmedStaleFolderPathStatus(folderWorkspacePathStatus) ||
                   folderWorkspacePathStatus.reason === 'ambiguous-connection')
-              const folderPrDisplay = getFolderWorkspaceCardPrDisplay({
-                folderWorkspaceId: folderWorkspaceRow.folderWorkspace.id,
-                workspaceLineageByChildKey,
-                worktreeLineageById,
-                worktreeMap,
-                repoMap,
-                hostedReviewCache,
-                prCache,
-                settings
-              })
               const isFolderBackedWorkspaceChild =
                 groupBy === 'repo' && folderWorkspaceRow.projectGroup.createdFrom === 'folder-scan'
               const { surfaceInset, cardContentIndent } = getFolderWorkspaceRowGeometry({
@@ -4822,7 +4693,6 @@ const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktreeViewp
                       activationRowKey={folderWorktree.id}
                       onSelectionGesture={onSelectionGesture}
                       onContextMenuSelect={onContextMenuSelect}
-                      statusPrDisplay={folderPrDisplay}
                     />
                     <div className="pointer-events-auto absolute right-3 top-1.5">
                       <FolderPathStatusIndicator status={folderWorkspacePathStatus} />
@@ -4889,11 +4759,6 @@ type WorktreeListProps = {
   onWorkspaceBoardDragPreviewCancel?: () => void
 }
 
-export function installWorktreeVisibleRefreshVisibilityListener(onChange: () => void): () => void {
-  document.addEventListener('visibilitychange', onChange)
-  return () => document.removeEventListener('visibilitychange', onChange)
-}
-
 const WorktreeList = React.memo(function WorktreeList({
   scrollOffsetRef,
   scrollAnchorRef,
@@ -4907,7 +4772,6 @@ const WorktreeList = React.memo(function WorktreeList({
   const repoMap = useRepoMap()
   const worktreeMap = useWorktreeMap()
   const worktreeLineageById = useAppStore((s) => s.worktreeLineageById)
-  const workspaceLineageByChildKey = useAppStore((s) => s.workspaceLineageByChildKey)
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
   const detectedWorktreesByRepo = useAppStore((s) => s.detectedWorktreesByRepo)
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
@@ -5002,23 +4866,6 @@ const WorktreeList = React.memo(function WorktreeList({
     !showSleepingWorkspaces ? getVisibleWorktreeBrowserActivityTabs(s.browserTabsByWorktree) : null
   )
 
-  const cardProps = useAppStore((s) => s.worktreeCardProperties)
-
-  // PR cache is needed for PR-status grouping and when the status lane can
-  // show PR state on quiet/done workspace cards.
-  const prCache = useAppStore((s) =>
-    groupBy === 'pr-status' ||
-    (s.settings?.experimentalNewWorktreeCardStyle === true
-      ? cardProps.includes('status')
-      : cardProps.includes('pr'))
-      ? s.prCache
-      : null
-  )
-  const hostedReviewCache = useAppStore((s) =>
-    s.settings?.experimentalNewWorktreeCardStyle === true && cardProps.includes('status')
-      ? s.hostedReviewCache
-      : null
-  )
   const settings = useAppStore((s) => s.settings)
   const sshTargetLabels = useAppStore((s) => s.sshTargetLabels)
   const sshConnectionStates = useAppStore((s) => s.sshConnectionStates)
@@ -5254,7 +5101,6 @@ const WorktreeList = React.memo(function WorktreeList({
         groupBy,
         targetWorktree,
         repoMap,
-        prCache,
         workspaceStatuses,
         settings,
         projectGroups,
@@ -5286,7 +5132,6 @@ const WorktreeList = React.memo(function WorktreeList({
     agentSendTargetWorktreeId,
     collapsedGroups,
     groupBy,
-    prCache,
     projectGroups,
     projectGrouping,
     repoMap,
@@ -5420,7 +5265,6 @@ const WorktreeList = React.memo(function WorktreeList({
         groupBy,
         worktrees,
         repoMap,
-        prCache,
         effectiveCollapsedGroups,
         repoOrder,
         workspaceStatuses,
@@ -5441,7 +5285,6 @@ const WorktreeList = React.memo(function WorktreeList({
       groupBy,
       worktrees,
       repoMap,
-      prCache,
       effectiveCollapsedGroups,
       repoOrder,
       workspaceStatuses,
@@ -5643,8 +5486,7 @@ const WorktreeList = React.memo(function WorktreeList({
 
   // Why: full-page navigation views are not scoped to one worktree, so no
   // sidebar card should appear selected while one of them is active.
-  const selectedSidebarWorktreeId =
-    activeView === 'activity' ? null : currentSidebarWorktreeId
+  const selectedSidebarWorktreeId = activeView === 'activity' ? null : currentSidebarWorktreeId
 
   // Why layout effect instead of effect: the global Cmd/Ctrl+1–9 key handler
   // can fire immediately after React commits the new grouped/collapsed order.
@@ -6313,13 +6155,10 @@ const WorktreeList = React.memo(function WorktreeList({
         repoMap={repoMap}
         worktreeMap={worktreeMap}
         worktreeLineageById={worktreeLineageById}
-        workspaceLineageByChildKey={workspaceLineageByChildKey}
         repoOrder={repoOrder}
         allRepoIds={allRepoIds}
         onReorderHostSections={handleReorderHostSections}
         onHostDragActiveChange={setHostDragActive}
-        prCache={prCache}
-        hostedReviewCache={hostedReviewCache}
         workspaceStatuses={workspaceStatuses}
         projectGrouping={projectGrouping}
         projectGroups={projectGroups}

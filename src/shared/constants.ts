@@ -347,16 +347,6 @@ export function getDefaultSettings(homedir: string): GlobalSettings {
     // Why: local desktop remains the default server until the user explicitly
     // selects a saved runtime environment.
     activeRuntimeEnvironmentId: null,
-    // Why: hydrate an empty default so the renderer's optional-chained reads
-    // (`settings?.githubProjects?.activeProject`) land on a stable shape
-    // instead of `undefined`. Upgraded profiles inherit this via the
-    // `{ ...defaults, ...parsed }` merge in persistence.ts.
-    githubProjects: {
-      pinned: [],
-      recent: [],
-      lastViewByProject: {},
-      activeProject: null
-    },
     // Why: default-on uses the user's default agent when it supports
     // non-interactive commit-message generation. Keep agent/model maps empty
     // so first use follows the default agent's configured default model instead

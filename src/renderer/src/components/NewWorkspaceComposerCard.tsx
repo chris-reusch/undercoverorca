@@ -43,7 +43,6 @@ import type { NewWorkspaceProjectOption } from '@/lib/new-workspace-project-opti
 import type { ProjectHostSetupOption } from '@/lib/project-host-setup-options'
 import type { WorkspaceCreateErrorDisplay } from '@/lib/workspace-create-error-format'
 import type { SshConnectionStatus } from '../../../shared/ssh-types'
-import type { TaskSourceContext } from '../../../shared/task-source-context'
 import { translate } from '@/i18n/i18n'
 
 type RepoOption = React.ComponentProps<typeof RepoCombobox>['repos'][number]
@@ -91,7 +90,6 @@ type NewWorkspaceComposerCardProps = {
   showCreateMultiple?: boolean
   createMultiple?: boolean
   onCreateMultipleChange?: (next: boolean) => void
-  smartNameGitHubSourceContext?: TaskSourceContext | null
   /** Advisory shown under the name field when a fork PR can't accept maintainer pushes. */
   forkPushWarning: string | null
   detectedAgentIds: Set<TuiAgent> | null
@@ -328,7 +326,6 @@ export default function NewWorkspaceComposerCard({
   showCreateMultiple = false,
   createMultiple = false,
   onCreateMultipleChange,
-  smartNameGitHubSourceContext,
   forkPushWarning,
   detectedAgentIds,
   onOpenAgentSettings,
@@ -671,7 +668,6 @@ export default function NewWorkspaceComposerCard({
             onBranchSelect={onSmartBranchSelect}
             selectedSource={smartNameSelection}
             onClearSelectedSource={onClearSmartNameSelection}
-            githubSourceContext={smartNameGitHubSourceContext}
             disabled={selectedRepoRequiresConnection}
             disabledPlaceholder={translate(
               'auto.components.NewWorkspaceComposerCard.connectProjectFirst',

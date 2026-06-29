@@ -2335,10 +2335,6 @@ export const createRepoSlice: StateCreator<AppState, [], [], RepoSlice> = (set, 
         : callRuntimeRpc(target, 'repo.rm', { repo: projectId }, { timeoutMs: 15_000 }))
 
       get().clearOrcaHookTrustForRepo(projectId)
-      const repoPath = get().repos.find((repo) =>
-        repoMatchesHostIdentity(repo, projectId, ownerHostId)
-      )?.path
-      get().evictGitHubRepoCaches(projectId, repoPath)
       const { clearRepoSlugCacheEntry } = await import('../../lib/repo-slug-index')
       clearRepoSlugCacheEntry(projectId)
 

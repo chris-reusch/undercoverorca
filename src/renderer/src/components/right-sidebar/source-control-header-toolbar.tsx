@@ -5,13 +5,11 @@ import type {
   GitUpstreamStatus,
   SourceControlViewMode
 } from '../../../../shared/types'
-import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 import type { PrimaryAction } from './source-control-primary-action'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
-import { HostedReviewHeaderLink, HostedReviewIcon } from './hosted-review-header-chrome'
 import {
   shouldShowSourceControlBranchContextRow,
   SourceControlBranchContextRow
@@ -24,11 +22,9 @@ type SourceControlHeaderToolbarProps = {
   onFilterQueryChange: (value: string) => void
   onFilterExpandedChange: (expanded: boolean) => void
   visibleCreatePrHeaderAction: PrimaryAction | null
-  hostedReview: HostedReviewInfo | null
   isCreatePrIntentInFlight: boolean
   isCreatingPr: boolean
   onCreatePrHeaderClick: () => void
-  onOpenHostedReviewInChecks: () => void
   sourceControlViewMode: SourceControlViewMode
   viewModeToggleDisabled: boolean
   onToggleViewMode: () => void
@@ -40,31 +36,6 @@ type SourceControlHeaderToolbarProps = {
   branchSummary: GitBranchCompareSummary | null
   compareBaseRef: string | null
   upstreamStatus?: GitUpstreamStatus
-}
-
-function HostedReviewToolbarLink({
-  review,
-  onOpenHostedReviewInChecks,
-  compact
-}: {
-  review: HostedReviewInfo
-  onOpenHostedReviewInChecks: () => void
-  compact?: boolean
-}): React.JSX.Element {
-  return (
-    <div
-      className={cn(
-        'flex min-w-0 items-center gap-1 text-[11.5px] leading-none',
-        compact ? 'max-w-[72px] shrink-0' : 'flex-1'
-      )}
-    >
-      <HostedReviewIcon review={review} className="size-3 shrink-0" />
-      <HostedReviewHeaderLink
-        review={review}
-        onOpenHostedReviewInChecks={onOpenHostedReviewInChecks}
-      />
-    </div>
-  )
 }
 
 function CreatePrHeaderButton({
@@ -128,11 +99,9 @@ export function SourceControlHeaderToolbar({
   onFilterQueryChange,
   onFilterExpandedChange,
   visibleCreatePrHeaderAction,
-  hostedReview,
   isCreatePrIntentInFlight,
   isCreatingPr,
   onCreatePrHeaderClick,
-  onOpenHostedReviewInChecks,
   sourceControlViewMode,
   viewModeToggleDisabled,
   onToggleViewMode,
@@ -194,12 +163,7 @@ export function SourceControlHeaderToolbar({
       >
         {showCollapsedToolbar ? (
           <>
-            {hostedReview ? (
-              <HostedReviewToolbarLink
-                review={hostedReview}
-                onOpenHostedReviewInChecks={onOpenHostedReviewInChecks}
-              />
-            ) : visibleCreatePrHeaderAction ? (
+            {visibleCreatePrHeaderAction ? (
               <CreatePrHeaderButton
                 action={visibleCreatePrHeaderAction}
                 isCreatePrIntentInFlight={isCreatePrIntentInFlight}
@@ -209,7 +173,7 @@ export function SourceControlHeaderToolbar({
             ) : (
               <span className="min-w-0 flex-1" aria-hidden="true" />
             )}
-            {visibleCreatePrHeaderAction && !hostedReview ? (
+            {visibleCreatePrHeaderAction ? (
               // Why: keep filter/overflow pinned right without stretching Create PR.
               <span className="min-w-0 flex-1" aria-hidden="true" />
             ) : null}

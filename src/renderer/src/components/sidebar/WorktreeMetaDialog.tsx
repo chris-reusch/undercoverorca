@@ -10,12 +10,9 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { parseGitHubIssueOrPRNumber } from '@/lib/github-links'
 import { buildWorktreeMetaUpdates, type WorktreeMetaSavedPayload } from './worktree-meta-updates'
-import { useWorktreeIssueLink } from './use-worktree-issue-link'
 import { getScreenSubmitShortcutLabel, isScreenSubmitShortcut } from '@/lib/screen-submit-shortcut'
-import { ExternalLink, LoaderCircle } from 'lucide-react'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
 
@@ -53,10 +50,6 @@ const WorktreeMetaDialog = React.memo(function WorktreeMetaDialog() {
   const [prInput, setPrInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [saving, setSaving] = useState(false)
-  const { canOpenIssue, openingIssue, handleOpenIssue, resetOpeningIssue } = useWorktreeIssueLink({
-    worktreeId,
-    issueInput
-  })
 
   const issueInputRef = useRef<HTMLInputElement>(null)
   const prInputRef = useRef<HTMLInputElement>(null)
@@ -69,7 +62,6 @@ const WorktreeMetaDialog = React.memo(function WorktreeMetaDialog() {
     setIssueInput(currentIssue)
     setPrInput(currentPR)
     setCommentInput(currentComment)
-    resetOpeningIssue()
   }
   prevIsOpenRef.current = isOpen
 
@@ -233,47 +225,17 @@ const WorktreeMetaDialog = React.memo(function WorktreeMetaDialog() {
             <label className="text-[11px] font-medium text-muted-foreground">
               {translate('auto.components.sidebar.WorktreeMetaDialog.645fa4a0fd', 'GH Issue')}
             </label>
-            <div className="relative">
-              <Input
-                ref={issueInputRef}
-                value={issueInput}
-                onChange={(e) => setIssueInput(e.target.value)}
-                onKeyDown={handleIssueKeyDown}
-                placeholder={translate(
-                  'auto.components.sidebar.WorktreeMetaDialog.741279e7b7',
-                  'Issue # or GitHub URL'
-                )}
-                className="h-8 pr-9 text-xs"
-              />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={translate(
-                      'auto.components.sidebar.WorktreeMetaDialog.029ea5ec57',
-                      'Open GitHub issue'
-                    )}
-                    disabled={!canOpenIssue || openingIssue}
-                    onClick={handleOpenIssue}
-                    className="absolute right-1 top-1 text-muted-foreground"
-                  >
-                    {openingIssue ? (
-                      <LoaderCircle className="size-3 animate-spin" />
-                    ) : (
-                      <ExternalLink className="size-3" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={4}>
-                  {translate(
-                    'auto.components.sidebar.WorktreeMetaDialog.029ea5ec57',
-                    'Open GitHub issue'
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            <Input
+              ref={issueInputRef}
+              value={issueInput}
+              onChange={(e) => setIssueInput(e.target.value)}
+              onKeyDown={handleIssueKeyDown}
+              placeholder={translate(
+                'auto.components.sidebar.WorktreeMetaDialog.741279e7b7',
+                'Issue # or GitHub URL'
+              )}
+              className="h-8 text-xs"
+            />
             <p className="text-[10px] text-muted-foreground">
               {translate(
                 'auto.components.sidebar.WorktreeMetaDialog.7c454be4c5',

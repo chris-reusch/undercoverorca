@@ -132,76 +132,20 @@ function makeDetectedWorktree(overrides: Partial<DetectedWorktree> = {}): Detect
 }
 
 describe('getPRGroupKey', () => {
-  it('puts merged PRs in the done group', () => {
-    const prCache = {
-      'repo-1::feature/super-critical': {
-        data: { state: 'merged' }
-      }
-    }
-
-    expect(getPRGroupKey(worktree, repoMap, prCache)).toBe('done')
-  })
-
-  it('prefers repo-scoped PR status over stale legacy path-scoped status', () => {
-    const prCache = {
-      '/tmp/orca::feature/super-critical': {
-        data: { state: 'closed' }
-      },
-      'repo-1::feature/super-critical': {
-        data: { state: 'merged' }
-      }
-    }
-
-    expect(getPRGroupKey(worktree, repoMap, prCache)).toBe('done')
-  })
-
-  it('falls back to legacy path-scoped PR status when no repo-scoped entry exists', () => {
-    const prCache = {
-      '/tmp/orca::feature/super-critical': {
-        data: { state: 'closed' }
-      }
-    }
-
-    expect(getPRGroupKey(worktree, repoMap, prCache)).toBe('closed')
-  })
-
-  it('uses local PR cache for a known local repo while a runtime is focused', () => {
-    const prCache = {
-      'repo-1::feature/super-critical': {
-        data: { state: 'merged' }
-      }
-    }
-
-    expect(
-      getPRGroupKey(worktree, repoMap, prCache, {
-        activeRuntimeEnvironmentId: 'env-1'
-      } as never)
-    ).toBe('done')
-  })
-
-  it('uses SSH-scoped PR cache entries instead of local entries for SSH repos', () => {
-    const sshRepo = { ...repo, connectionId: 'ssh-1' }
-    const sshRepoMap = new Map([[sshRepo.id, sshRepo]])
-    const prCache = {
-      'repo-1::feature/super-critical': {
-        data: { state: 'merged' }
-      },
-      'ssh:ssh-1::repo-1::feature/super-critical': {
-        data: { state: 'closed' }
-      }
-    }
-
-    expect(getPRGroupKey(worktree, sshRepoMap, prCache)).toBe('closed')
+  it('collapses every workspace into the in-progress lane', () => {
+    // Why: PR/check state is no longer fetched for sidebar cards, so PR-status
+    // grouping always reports in-progress.
+    expect(getPRGroupKey()).toBe('in-progress')
   })
 })
 
 describe('getGroupKeyForWorktree', () => {
   it('returns the all group key for the ungrouped mode', () => {
-    expect(getGroupKeyForWorktree('none', worktree, repoMap, null)).toBe('all')
+    expect(getGroupKeyForWorktree('none', worktree, repoMap)).toBe('all')
   })
 
   it('returns a workspace-status key only in status grouping mode', () => {
-    expect(getGroupKeyForWorktree('workspace-status', worktree, repoMap, null)).toBe(
+    expect(getGroupKeyForWorktree('workspace-status', worktree, repoMap)).toBe(
       'workspace-status:in-progress'
     )
   })
@@ -213,7 +157,7 @@ describe('buildRows with pinned worktrees', () => {
   const unpinned2 = { ...worktree, id: 'wt-2', displayName: 'beta' }
 
   it('emits Pinned and All headers in groupBy none', () => {
-    const rows = buildRows('none', [unpinned1, pinned, unpinned2], repoMap, null, new Set())
+    const rows = buildRows('none', [unpinned1, pinned, unpinned2], repoMap, new Set())
     expect(rows[0]).toMatchObject({ type: 'header', key: 'pinned', label: 'Pinned' })
     expect(rows[1]).toMatchObject({ type: 'item', worktree: { id: 'wt-pinned' } })
     expect(rows[2]).toMatchObject({ type: 'header', key: 'all', label: 'All', count: 3 })
@@ -221,7 +165,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('groups all worktrees under All in groupBy none', () => {
-    const rows = buildRows('none', [unpinned1, unpinned2], repoMap, null, new Set())
+    const rows = buildRows('none', [unpinned1, unpinned2], repoMap, new Set())
 
     expect(rows).toMatchObject([
       { type: 'header', key: 'all', label: 'All' },
@@ -231,7 +175,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('keeps pinned worktrees above the All group', () => {
-    const rows = buildRows('none', [unpinned1, pinned, unpinned2], repoMap, null, new Set())
+    const rows = buildRows('none', [unpinned1, pinned, unpinned2], repoMap, new Set())
 
     expect(rows).toMatchObject([
       { type: 'header', key: 'pinned' },
@@ -244,7 +188,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('collapses the All group in groupBy none', () => {
-    const rows = buildRows('none', [unpinned1, pinned, unpinned2], repoMap, null, new Set(['all']))
+    const rows = buildRows('none', [unpinned1, pinned, unpinned2], repoMap, new Set(['all']))
 
     expect(rows).toMatchObject([
       { type: 'header', key: 'pinned' },
@@ -254,13 +198,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('emits status headers for all matching worktrees in groupBy workspace-status', () => {
-    const rows = buildRows(
-      'workspace-status',
-      [unpinned1, pinned, unpinned2],
-      repoMap,
-      null,
-      new Set()
-    )
+    const rows = buildRows('workspace-status', [unpinned1, pinned, unpinned2], repoMap, new Set())
     expect(rows[2]).toMatchObject({
       type: 'header',
       key: 'workspace-status:in-progress',
@@ -273,7 +211,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('keeps pinned items in regular groups in pr-status mode', () => {
-    const rows = buildRows('pr-status', [unpinned1, pinned], repoMap, null, new Set())
+    const rows = buildRows('pr-status', [unpinned1, pinned], repoMap, new Set())
     const pinnedHeader = rows.find((r) => r.type === 'header' && r.key === 'pinned')
     expect(pinnedHeader).toBeDefined()
     const prGroup = rows.filter((r) => r.type === 'header' && r.key.startsWith('pr:'))
@@ -285,7 +223,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('omits empty pinned sections in groupBy workspace-status', () => {
-    const rows = buildRows('workspace-status', [unpinned1, unpinned2], repoMap, null, new Set())
+    const rows = buildRows('workspace-status', [unpinned1, unpinned2], repoMap, new Set())
     expect(rows[0]).toMatchObject({
       type: 'header',
       key: 'workspace-status:in-progress',
@@ -296,13 +234,7 @@ describe('buildRows with pinned worktrees', () => {
   })
 
   it('collapses pinned group when in collapsedGroups', () => {
-    const rows = buildRows(
-      'workspace-status',
-      [pinned, unpinned1],
-      repoMap,
-      null,
-      new Set(['pinned'])
-    )
+    const rows = buildRows('workspace-status', [pinned, unpinned1], repoMap, new Set(['pinned']))
     expect(rows[0]).toMatchObject({ type: 'header', key: 'pinned' })
     expect(rows[1]).toMatchObject({ type: 'header', key: 'workspace-status:in-progress' })
     expect(rows[2]).toMatchObject({ type: 'item', worktree: { id: 'wt-pinned' } })
@@ -311,7 +243,7 @@ describe('buildRows with pinned worktrees', () => {
 
   it('keeps status sections complete when all worktrees are pinned', () => {
     const allPinned = { ...unpinned1, isPinned: true }
-    const rows = buildRows('workspace-status', [pinned, allPinned], repoMap, null, new Set())
+    const rows = buildRows('workspace-status', [pinned, allPinned], repoMap, new Set())
     expect(rows.filter((r) => r.type === 'header')).toHaveLength(2)
     expect(rows[0]).toMatchObject({ type: 'header', key: 'pinned', count: 2 })
     expect(rows[3]).toMatchObject({
@@ -323,7 +255,7 @@ describe('buildRows with pinned worktrees', () => {
 
   it('preserves repo display casing in group labels', () => {
     const lowercaseRepo = { ...repo, displayName: 'c15t' }
-    const rows = buildRows('repo', [worktree], new Map([[repo.id, lowercaseRepo]]), null, new Set())
+    const rows = buildRows('repo', [worktree], new Map([[repo.id, lowercaseRepo]]), new Set())
 
     expect(rows[0]).toMatchObject({ type: 'header', label: 'c15t' })
   })
@@ -336,7 +268,6 @@ describe('buildRows with pinned worktrees', () => {
         [repo.id, repo],
         [remoteRepo.id, remoteRepo]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -425,7 +356,6 @@ describe('buildRows with pinned worktrees', () => {
         [sshRepo.id, sshRepo],
         [runtimeRepo.id, runtimeRepo]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -503,7 +433,6 @@ describe('buildRows with pinned worktrees', () => {
         [remoteRepo.id, remoteRepo],
         [analyticsRepo.id, analyticsRepo]
       ]),
-      null,
       new Set(),
       repoOrder,
       undefined,
@@ -560,7 +489,6 @@ describe('buildRows with pinned worktrees', () => {
         [repo.id, repo],
         [repoB.id, repoB]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -627,7 +555,6 @@ describe('buildRows with pinned worktrees', () => {
         [localRepoB.id, localRepoB],
         [remoteRepo.id, remoteRepo]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -707,7 +634,6 @@ describe('buildRows with pinned worktrees', () => {
         [windowsRepo.id, windowsRepo],
         [wslRepo.id, wslRepo]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -765,7 +691,6 @@ describe('buildRows with pinned worktrees', () => {
         [repo.id, repo],
         [runtimeRepo.id, runtimeRepo]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -806,7 +731,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [worktree, secondLocalWorktree],
       new Map([[repo.id, repo]]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -848,7 +772,6 @@ describe('buildRows with pinned worktrees', () => {
         [repo.id, { ...repo, displayName: 'orca' }],
         [remoteRepo.id, { ...remoteRepo, displayName: 'orca' }]
       ]),
-      null,
       new Set()
     )
 
@@ -864,7 +787,6 @@ describe('buildRows with pinned worktrees', () => {
         'repo',
         remoteWorktree,
         new Map([[remoteRepo.id, remoteRepo]]),
-        null,
         undefined,
         undefined,
         {
@@ -885,7 +807,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [worktree],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -917,7 +838,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [worktree],
       repoMap,
-      null,
       new Set(['repo:repo-1']),
       undefined,
       undefined,
@@ -939,7 +859,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -968,7 +887,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [],
       repoMap,
-      null,
       new Set(),
       new Map([[repo.id, 0]]),
       undefined,
@@ -997,7 +915,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [],
       new Map(),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1018,7 +935,6 @@ describe('buildRows with pinned worktrees', () => {
       'workspace-status',
       [worktree],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1053,7 +969,6 @@ describe('buildRows with pinned worktrees', () => {
         [repo.id, repo],
         [repoTwo.id, repoTwo]
       ]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1114,7 +1029,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [pinnedWorktree, worktree],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1142,7 +1056,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [pinnedWorktree],
       repoMap,
-      null,
       new Set(['pinned']),
       undefined,
       undefined,
@@ -1185,7 +1098,6 @@ describe('buildRows with pinned worktrees', () => {
       'repo',
       [folderWorktree],
       new Map([[folderRepo.id, folderRepo]]),
-      null,
       new Set()
     )
 
@@ -1200,7 +1112,7 @@ describe('buildRows with pinned worktrees', () => {
 
   it('emits assigned workspace statuses as sections in groupBy workspace-status', () => {
     const review = { ...worktree, id: 'wt-review', workspaceStatus: 'in-review' as const }
-    const rows = buildRows('workspace-status', [review], repoMap, null, new Set())
+    const rows = buildRows('workspace-status', [review], repoMap, new Set())
 
     expect(
       rows.filter((r) => r.type === 'header').map((r) => ({ key: r.key, label: r.label }))
@@ -1219,7 +1131,6 @@ describe('buildRows with pinned worktrees', () => {
       'workspace-status',
       [doing, blocked],
       repoMap,
-      null,
       new Set(),
       undefined,
       customStatuses
@@ -1281,7 +1192,7 @@ describe('buildRows project grouping order', () => {
       [repoA.id, 1],
       [repoC.id, 2]
     ])
-    const rows = buildRows('repo', [wC, wA, wB], map, null, new Set(), repoOrder)
+    const rows = buildRows('repo', [wC, wA, wB], map, new Set(), repoOrder)
     const headerKeys = rows.filter((r) => r.type === 'header').map((r) => r.key)
     expect(headerKeys).toEqual(['repo:repo-b', 'repo:repo-a', 'repo:repo-c'])
   })
@@ -1289,7 +1200,7 @@ describe('buildRows project grouping order', () => {
   it('places unknown repo ids last and sorts them by label', () => {
     // Only repoB is in repoOrder; repoA and repoC fall through to label sort.
     const repoOrder = new Map([[repoB.id, 0]])
-    const rows = buildRows('repo', [wC, wA, wB], map, null, new Set(), repoOrder)
+    const rows = buildRows('repo', [wC, wA, wB], map, new Set(), repoOrder)
     const headerKeys = rows.filter((r) => r.type === 'header').map((r) => r.key)
     expect(headerKeys).toEqual(['repo:repo-b', 'repo:repo-a', 'repo:repo-c'])
   })
@@ -1303,16 +1214,7 @@ describe('buildRows project grouping order', () => {
       [repoA.id, 1],
       [repoC.id, 2]
     ])
-    const rows = buildRows(
-      'repo',
-      [wA, wB, wC],
-      map,
-      null,
-      new Set(),
-      repoOrder,
-      undefined,
-      'recent'
-    )
+    const rows = buildRows('repo', [wA, wB, wC], map, new Set(), repoOrder, undefined, 'recent')
     const headerKeys = rows.filter((r) => r.type === 'header').map((r) => r.key)
     expect(headerKeys).toEqual(['repo:repo-c', 'repo:repo-a', 'repo:repo-b'])
   })
@@ -1323,7 +1225,6 @@ describe('buildRows project grouping order', () => {
       'repo',
       [wAStale, wA, wB, wC],
       map,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1361,7 +1262,6 @@ describe('buildRows project grouping order', () => {
       'repo',
       [freshChild, wB, main],
       map,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1383,7 +1283,7 @@ describe('buildRows project grouping order', () => {
       [repoA.id, 1],
       [repoC.id, 2]
     ])
-    const rows = buildRows('repo', [wC, wA, wB], map, null, new Set(), repoOrder)
+    const rows = buildRows('repo', [wC, wA, wB], map, new Set(), repoOrder)
     const headerKeys = rows.filter((r) => r.type === 'header').map((r) => r.key)
     expect(headerKeys).toEqual(['repo:repo-b', 'repo:repo-a', 'repo:repo-c'])
   })
@@ -1397,7 +1297,7 @@ describe('buildRows project grouping order', () => {
       return { ...worktree, id: `wt-${index}`, repoId, displayName: `workspace ${index}` }
     })
 
-    const rows = buildRows('repo', worktrees, repos, null, new Set())
+    const rows = buildRows('repo', worktrees, repos, new Set())
 
     expect(rows).toHaveLength(count * 2)
     expect(rows[0]).toMatchObject({ type: 'header', key: 'repo:repo-0' })
@@ -1428,7 +1328,6 @@ describe('buildRows Recent project order fallbacks', () => {
       'repo',
       [activeWorktree],
       map,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1464,7 +1363,6 @@ describe('project groups', () => {
       'repo',
       [],
       new Map(),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1505,7 +1403,6 @@ describe('project groups', () => {
       'repo',
       [],
       new Map([[groupedRepo.id, groupedRepo]]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1548,7 +1445,6 @@ describe('project groups', () => {
       'repo',
       [],
       new Map([[groupedRepo.id, groupedRepo]]),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -1584,7 +1480,6 @@ describe('project groups', () => {
       'repo',
       [worktree],
       repoMap,
-      null,
       new Set(),
       new Map([[repo.id, 0]]),
       undefined,
@@ -1621,7 +1516,6 @@ describe('project groups', () => {
       'repo',
       [worktree],
       new Map([[repoWithMissingGroup.id, repoWithMissingGroup]]),
-      null,
       new Set(),
       new Map([[repoWithMissingGroup.id, 0]]),
       undefined,
@@ -1668,7 +1562,6 @@ describe('project groups', () => {
       'repo',
       [worktree],
       new Map([[repoInChildGroup.id, repoInChildGroup]]),
-      null,
       new Set(['project-group:parent-group']),
       new Map([[repoInChildGroup.id, 0]]),
       undefined,
@@ -1731,7 +1624,6 @@ describe('project groups', () => {
       'repo',
       worktrees,
       repos,
-      null,
       new Set(),
       new Map([
         [paymentsApi.id, 0],
@@ -1809,7 +1701,6 @@ describe('project groups', () => {
       'repo',
       worktrees,
       repos,
-      null,
       new Set(),
       new Map([
         [paymentsApi.id, 0],
@@ -1877,7 +1768,6 @@ describe('project groups', () => {
       'repo',
       [worktreeA, worktreeB],
       groupedMap,
-      null,
       new Set(),
       repoOrder,
       undefined,
@@ -1931,7 +1821,6 @@ describe('project groups', () => {
         { ...worktree, id: 'wt-c', repoId: repoC.id }
       ],
       groupedMap,
-      null,
       new Set(),
       repoOrder,
       undefined,
@@ -1992,7 +1881,6 @@ describe('project groups', () => {
         { ...worktree, id: 'wt-c', repoId: repoC.id }
       ],
       groupedMap,
-      null,
       new Set(),
       repoOrder,
       undefined,
@@ -2055,7 +1943,6 @@ describe('project groups', () => {
       'repo',
       worktrees,
       groupedMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2115,7 +2002,6 @@ describe('project groups', () => {
       'repo',
       [groupedWorktree],
       new Map([[groupedRepo.id, groupedRepo]]),
-      null,
       new Set(),
       new Map([[groupedRepo.id, 0]]),
       undefined,
@@ -2174,7 +2060,6 @@ describe('project groups', () => {
       'repo',
       [],
       new Map(),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2251,7 +2136,6 @@ describe('project groups', () => {
       'repo',
       [],
       new Map(),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2320,7 +2204,6 @@ describe('project groups', () => {
       'repo',
       [],
       new Map(),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2396,7 +2279,6 @@ describe('project groups', () => {
         [serviceA.id, serviceA],
         [serviceB.id, serviceB]
       ]),
-      null,
       new Set(),
       new Map([
         [serviceA.id, 0],
@@ -2444,7 +2326,6 @@ describe('project groups', () => {
         'repo',
         worktree,
         new Map([[groupedRepo.id, groupedRepo]]),
-        null,
         undefined,
         undefined,
         [group]
@@ -2472,7 +2353,6 @@ describe('project groups', () => {
         'repo',
         worktree,
         new Map([[groupedRepo.id, groupedRepo]]),
-        null,
         undefined,
         undefined,
         [loadedGroup]
@@ -2481,7 +2361,7 @@ describe('project groups', () => {
   })
 
   it('returns only the repo key for ungrouped repo reveals', () => {
-    expect(getGroupKeysForWorktree('repo', worktree, repoMap, null)).toEqual(['repo:repo-1'])
+    expect(getGroupKeysForWorktree('repo', worktree, repoMap)).toEqual(['repo:repo-1'])
   })
 })
 
@@ -2528,7 +2408,6 @@ describe('buildRows workspace lineage nesting', () => {
       'none',
       [child, parent],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2554,7 +2433,6 @@ describe('buildRows workspace lineage nesting', () => {
       'none',
       [child, parent],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2581,7 +2459,6 @@ describe('buildRows workspace lineage nesting', () => {
       'none',
       [grandchild, child, parent],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2622,7 +2499,6 @@ describe('buildRows workspace lineage nesting', () => {
       'none',
       [grandchild, child, parent],
       repoMap,
-      null,
       new Set([getLineageGroupKey(parent.id)]),
       undefined,
       undefined,
@@ -2652,7 +2528,6 @@ describe('buildRows workspace lineage nesting', () => {
       'none',
       [child],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2693,7 +2568,6 @@ describe('buildRows workspace lineage nesting', () => {
       'none',
       [parent, pinnedChild],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2762,7 +2636,6 @@ describe('buildRows pending creations', () => {
       'repo',
       [worktree],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2793,7 +2666,6 @@ describe('buildRows pending creations', () => {
       'repo',
       [],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2816,7 +2688,6 @@ describe('buildRows pending creations', () => {
       'repo',
       [],
       new Map(),
-      null,
       new Set(),
       undefined,
       undefined,
@@ -2842,7 +2713,6 @@ describe('buildRows pending creations', () => {
       'none',
       [worktree],
       repoMap,
-      null,
       new Set(),
       undefined,
       undefined,

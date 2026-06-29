@@ -5,11 +5,6 @@ import { joinPath } from '@/lib/path'
 import { toast } from 'sonner'
 import { isPathInsideOrEqual } from '../../../../shared/cross-platform-path'
 import { resolveMarkdownLinkTarget } from '@/components/editor/markdown-internal-links'
-import {
-  buildCheckRunDetailsTabId,
-  getCheckRunDetailsTabLabel,
-  type OpenCheckRunDetailsState
-} from '@/components/editor/check-run-details-tab'
 import { openHttpLink } from '@/lib/http-link-routing'
 import { isLocalPathOpenBlocked, showLocalPathOpenBlockedToast } from '@/lib/local-path-open-guard'
 import { detectLanguage } from '@/lib/language-detect'
@@ -255,15 +250,12 @@ export type OpenFile = {
   /** Why: terminal/agent links can be the user's manual recovery path when a
    * remote watcher misses an external write. Bumping this refetches clean tabs. */
   fileContentReloadNonce?: number
-  /** Why: CI check full-details tabs are virtual editor tabs backed by fetched
-   *  PR check-run metadata instead of a file on disk. */
-  checkRunDetails?: OpenCheckRunDetailsState
   /** Why: on the web client an editor tab can either be mirrored from the host
    *  runtime's session snapshot or opened locally by the web user. Only mirrored
    *  tabs may be culled when they vanish from a later host snapshot; locally
    *  opened tabs have no host counterpart and must survive snapshot syncs. */
   mirroredFromRuntimeSession?: boolean
-  mode: 'edit' | 'diff' | 'conflict-review' | 'markdown-preview' | 'check-details'
+  mode: 'edit' | 'diff' | 'conflict-review' | 'markdown-preview'
 }
 
 export type ActivityBarPosition = 'top' | 'side'
@@ -527,19 +519,6 @@ export type EditorSlice = {
     entries: ConflictReviewEntry[],
     source: ConflictReviewState['source']
   ) => void
-  openCheckRunDetails: (
-    worktreeId: string,
-    contextKey: string,
-    check: OpenCheckRunDetailsState['check'],
-    state: Pick<OpenCheckRunDetailsState, 'details' | 'loading' | 'error'>
-  ) => void
-  patchOpenCheckRunDetails: (
-    worktreeId: string,
-    contextKey: string,
-    check: OpenCheckRunDetailsState['check'],
-    state: Pick<OpenCheckRunDetailsState, 'details' | 'loading' | 'error'>
-  ) => void
-  reloadOpenCheckRunDetailsTab: (fileId: string) => Promise<void>
   openBranchAllDiffs: (
     worktreeId: string,
     worktreePath: string,
@@ -699,7 +678,7 @@ function openWorkspaceEditorItem(
   fileId: string,
   worktreeId: string,
   label: string,
-  contentType: 'editor' | 'diff' | 'conflict-review' | 'check-details',
+  contentType: 'editor' | 'diff' | 'conflict-review',
   isPreview?: boolean,
   targetGroupId?: string
 ): string {
@@ -728,12 +707,7 @@ function openWorkspaceEditorItem(
 }
 
 function isEditorTabContentType(contentType: Tab['contentType']): boolean {
-  return (
-    contentType === 'editor' ||
-    contentType === 'diff' ||
-    contentType === 'conflict-review' ||
-    contentType === 'check-details'
-  )
+  return contentType === 'editor' || contentType === 'diff' || contentType === 'conflict-review'
 }
 
 function getReplaceablePreviewFileId(
@@ -1496,14 +1470,8 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     let editorItemWorktreeId = file.worktreeId
     let editorItemFileId = file.filePath
     let editorItemLabel = file.relativePath
-    let editorItemContentType: 'editor' | 'diff' | 'conflict-review' | 'check-details' =
-      file.mode === 'conflict-review'
-        ? 'conflict-review'
-        : file.mode === 'check-details'
-          ? 'check-details'
-          : file.mode === 'diff'
-            ? 'diff'
-            : 'editor'
+    let editorItemContentType: 'editor' | 'diff' | 'conflict-review' =
+      file.mode === 'conflict-review' ? 'conflict-review' : file.mode === 'diff' ? 'diff' : 'editor'
     let editorItemTargetGroupId = options?.targetGroupId
     set((s) => {
       const worktreeId = file.worktreeId
@@ -2124,8 +2092,7 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
           entry.entityId === fileId &&
           (entry.contentType === 'editor' ||
             entry.contentType === 'diff' ||
-            entry.contentType === 'conflict-review' ||
-            entry.contentType === 'check-details')
+            entry.contentType === 'conflict-review')
       )
       if (unifiedTab) {
         get().closeUnifiedTab(unifiedTab.id)
@@ -2176,8 +2143,7 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
         (item) =>
           (item.contentType === 'editor' ||
             item.contentType === 'diff' ||
-            item.contentType === 'conflict-review' ||
-            item.contentType === 'check-details') &&
+            item.contentType === 'conflict-review') &&
           (!activeWorktreeId || item.worktreeId === activeWorktreeId)
       )
       .map((item) => item.id)
@@ -3030,152 +2996,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     void openWorkspaceEditorItem(get(), id, worktreeId, 'Conflict Review', 'conflict-review')
   },
 
-  // Why: the checks sidebar only has room for inline summaries; full logs and
-  // annotations belong in the center editor pane like diff tabs.
-  openCheckRunDetails: (worktreeId, contextKey, check, state) => {
-    const id = buildCheckRunDetailsTabId(worktreeId, check)
-    const label = getCheckRunDetailsTabLabel(check)
-    const checkRunDetails: OpenCheckRunDetailsState = {
-      contextKey,
-      check,
-      details: state.details,
-      loading: state.loading,
-      error: state.error
-    }
-    set((s) => {
-      const existing = s.openFiles.find((f) => f.id === id)
-      if (existing) {
-        return {
-          openFiles: s.openFiles.map((f) =>
-            f.id === id
-              ? {
-                  ...f,
-                  mode: 'check-details' as const,
-                  relativePath: label,
-                  language: 'plaintext',
-                  checkRunDetails
-                }
-              : f
-          ),
-          activeFileId: id,
-          activeTabType: 'editor',
-          activeFileIdByWorktree: { ...s.activeFileIdByWorktree, [worktreeId]: id },
-          activeTabTypeByWorktree: { ...s.activeTabTypeByWorktree, [worktreeId]: 'editor' }
-        }
-      }
-
-      const newFile: OpenFile = {
-        id,
-        filePath: id,
-        relativePath: label,
-        worktreeId,
-        language: 'plaintext',
-        isDirty: false,
-        mode: 'check-details',
-        checkRunDetails
-      }
-
-      return {
-        openFiles: [...s.openFiles, newFile],
-        activeFileId: id,
-        activeTabType: 'editor',
-        activeFileIdByWorktree: { ...s.activeFileIdByWorktree, [worktreeId]: id },
-        activeTabTypeByWorktree: { ...s.activeTabTypeByWorktree, [worktreeId]: 'editor' }
-      }
-    })
-    void openWorkspaceEditorItem(get(), id, worktreeId, label, 'check-details')
-  },
-
-  // Why: sidebar detail fetches can finish after a full-details tab is already
-  // open; this updates the tab snapshot without stealing focus from the user.
-  patchOpenCheckRunDetails: (worktreeId, contextKey, check, state) => {
-    const id = buildCheckRunDetailsTabId(worktreeId, check)
-    const nextCheckRunDetails: OpenCheckRunDetailsState = {
-      contextKey,
-      check,
-      details: state.details,
-      loading: state.loading,
-      error: state.error
-    }
-    set((s) => {
-      const existing = s.openFiles.find((f) => f.id === id)
-      if (!existing?.checkRunDetails) {
-        return s
-      }
-      const current = existing.checkRunDetails
-      if (
-        current.contextKey === nextCheckRunDetails.contextKey &&
-        current.check.status === nextCheckRunDetails.check.status &&
-        current.check.conclusion === nextCheckRunDetails.check.conclusion &&
-        current.loading === nextCheckRunDetails.loading &&
-        current.error === nextCheckRunDetails.error &&
-        current.details === nextCheckRunDetails.details
-      ) {
-        return s
-      }
-      return {
-        openFiles: s.openFiles.map((f) =>
-          f.id === id ? { ...f, checkRunDetails: nextCheckRunDetails } : f
-        )
-      }
-    })
-  },
-
-  reloadOpenCheckRunDetailsTab: async (fileId) => {
-    const state = get()
-    const file = state.openFiles.find((candidate) => candidate.id === fileId)
-    const checkRunDetails = file?.checkRunDetails
-    if (!file || file.mode !== 'check-details' || !checkRunDetails) {
-      return
-    }
-    const worktree = findWorktreeById(state.worktreesByRepo, file.worktreeId)
-    const repoId = worktree?.repoId ?? getRepoIdFromWorktreeId(file.worktreeId)
-    const repo = state.repos.find((candidate) => candidate.id === repoId)
-    if (!repo?.path) {
-      return
-    }
-    const { contextKey, check } = checkRunDetails
-    const patch = (next: Pick<OpenCheckRunDetailsState, 'details' | 'loading' | 'error'>): void => {
-      get().patchOpenCheckRunDetails(file.worktreeId, contextKey, check, next)
-    }
-    patch({ details: checkRunDetails.details, loading: true, error: null })
-    try {
-      const details = await get().fetchPRCheckDetails(
-        repo.path,
-        {
-          checkRunId: check.checkRunId,
-          workflowRunId: check.workflowRunId,
-          checkName: check.name,
-          url: check.url,
-          prRepo: null
-        },
-        { repoId: repo.id }
-      )
-      patch({
-        details,
-        loading: false,
-        error: details
-          ? null
-          : translate(
-              'auto.store.slices.editor.checkRunDetailsUnavailable',
-              'No details are available for this check.'
-            )
-      })
-    } catch (error) {
-      patch({
-        details: null,
-        loading: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : translate(
-                'auto.store.slices.editor.checkRunDetailsLoadFailed',
-                'Failed to load check details.'
-              )
-      })
-    }
-  },
-
   openBranchAllDiffs: (worktreeId, worktreePath, compare, alternate) => {
     const branchCompare = toBranchCompareSnapshot(compare)
     const id = `${worktreeId}::all-diffs::branch::${compare.baseRef}::${branchCompare.compareVersion}`
@@ -3639,10 +3459,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     void get().fetchUpstreamStatus(worktreeId, worktreePath, connectionId, pushTarget, {
       runtimeTargetSettings: runtimeSettings
     })
-    const refreshGitHubForWorktree = get().refreshGitHubForWorktree
-    if (typeof refreshGitHubForWorktree === 'function') {
-      refreshGitHubForWorktree(worktreeId)
-    }
   },
   pullBranch: async (worktreeId, worktreePath, connectionId, pushTarget, options) => {
     get().beginRemoteOperation('pull')
@@ -3661,10 +3477,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     void get().fetchUpstreamStatus(worktreeId, worktreePath, connectionId, pushTarget, {
       runtimeTargetSettings: runtimeSettings
     })
-    const refreshGitHubForWorktree = get().refreshGitHubForWorktree
-    if (typeof refreshGitHubForWorktree === 'function') {
-      refreshGitHubForWorktree(worktreeId)
-    }
   },
   fastForwardBranch: async (worktreeId, worktreePath, connectionId, pushTarget, options) => {
     get().beginRemoteOperation('fast_forward')
@@ -3683,10 +3495,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     void get().fetchUpstreamStatus(worktreeId, worktreePath, connectionId, pushTarget, {
       runtimeTargetSettings: runtimeSettings
     })
-    const refreshGitHubForWorktree = get().refreshGitHubForWorktree
-    if (typeof refreshGitHubForWorktree === 'function') {
-      refreshGitHubForWorktree(worktreeId)
-    }
   },
   syncBranch: async (worktreeId, worktreePath, connectionId, pushTarget, options) => {
     // Why: same shape as pushBranch / pullBranch — fire-and-forget the
@@ -3698,7 +3506,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     // user invoked Sync; the underlying push is implementation detail. The
     // outer catch must then skip toasting to avoid a double-toast.
     let pushStageToastShown = false
-    let pushed = false
     const runtimeSettings = options?.runtimeTargetSettings ?? get().settings
     try {
       const context = { settings: runtimeSettings, worktreeId, worktreePath, connectionId }
@@ -3707,7 +3514,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
       if (shouldForcePushWithLeaseForUpstream(upstreamStatusBeforePull)) {
         try {
           await pushRuntimeGit(context, { pushTarget, forceWithLease: true })
-          pushed = true
         } catch (error) {
           toast.error(resolveRemoteOperationErrorMessage(error, { isSync: true }))
           pushStageToastShown = true
@@ -3723,7 +3529,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
         if (upstreamStatus.ahead > 0) {
           try {
             await pushRuntimeGit(context, { pushTarget })
-            pushed = true
           } catch (error) {
             // Why: format under the user-facing operation (sync) rather than
             // the inner step (push) — the user clicked Sync and shouldn't see
@@ -3749,12 +3554,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     void get().fetchUpstreamStatus(worktreeId, worktreePath, connectionId, pushTarget, {
       runtimeTargetSettings: runtimeSettings
     })
-    if (pushed) {
-      const refreshGitHubForWorktree = get().refreshGitHubForWorktree
-      if (typeof refreshGitHubForWorktree === 'function') {
-        refreshGitHubForWorktree(worktreeId)
-      }
-    }
   },
   rebaseFromBase: async (worktreeId, worktreePath, baseRef, connectionId, pushTarget, options) => {
     get().beginRemoteOperation('rebase')
@@ -3773,10 +3572,6 @@ export const createEditorSlice: StateCreator<AppState, [], [], EditorSlice> = (s
     void get().fetchUpstreamStatus(worktreeId, worktreePath, connectionId, pushTarget, {
       runtimeTargetSettings: runtimeSettings
     })
-    const refreshGitHubForWorktree = get().refreshGitHubForWorktree
-    if (typeof refreshGitHubForWorktree === 'function') {
-      refreshGitHubForWorktree(worktreeId)
-    }
   },
   fetchBranch: async (worktreeId, worktreePath, connectionId, pushTarget, options) => {
     // Why: same shape as pushBranch / pullBranch — fire-and-forget the
@@ -4417,7 +4212,7 @@ function reconcileOpenFilesForStatus(
       return [file]
     }
 
-    if (file.mode === 'conflict-review' || file.mode === 'check-details') {
+    if (file.mode === 'conflict-review') {
       return [file]
     }
 

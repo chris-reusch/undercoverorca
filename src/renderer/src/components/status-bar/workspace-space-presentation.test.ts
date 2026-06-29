@@ -128,9 +128,6 @@ function decisionInputs(
     browserTabsByWorktree: {},
     gitStatusByWorktree: {},
     remoteStatusesByWorktree: {},
-    hostedReviewCache: {},
-    issueCache: {},
-    settings: null,
     activeWorktreeId: null,
     now: 1_000,
     ...overrides
@@ -301,35 +298,21 @@ describe('workspace space presentation helpers', () => {
     ).toBe(0)
   })
 
-  it('reads review and issue details from local owner cache while a runtime is focused', () => {
+  it('derives review and issue labels from inert linked metadata', () => {
     const details = getWorkspaceDecisionDetails(
       row({ branch: 'refs/heads/feature/local' }),
       decisionInputs({
-        settings: { activeRuntimeEnvironmentId: 'env-1' },
-        hostedReviewCache: {
-          'local::repo::feature/local': {
-            data: { number: 12, state: 'open', status: 'success', title: 'Local owner PR' }
-          },
-          'runtime:env-1::repo::feature/local': {
-            data: { number: 99, state: 'open', status: 'failure', title: 'Runtime fallback PR' }
-          }
-        },
-        issueCache: {
-          'repo::123': {
-            data: { number: 123, title: 'Local owner issue', state: 'open' }
-          },
-          'runtime:env-1::repo::123': {
-            data: { number: 123, title: 'Runtime fallback issue', state: 'closed' }
-          }
-        },
         worktreeMap: new Map([
-          ['wt', worktreeRecord({ branch: 'refs/heads/feature/local', linkedIssue: 123 })]
+          [
+            'wt',
+            worktreeRecord({ branch: 'refs/heads/feature/local', linkedPR: 12, linkedIssue: 123 })
+          ]
         ])
       })
     )
 
-    expect(details.reviewLabel).toBe('PR #12 Open, success')
-    expect(details.issueLabel).toBe('#123 open: Local owner issue')
+    expect(details.reviewLabel).toBe('PR #12')
+    expect(details.issueLabel).toBe('#123')
   })
 
   it('counts migration-unsupported agent entries by worktree id', () => {

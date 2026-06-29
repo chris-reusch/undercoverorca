@@ -1,4 +1,3 @@
-/* oxlint-disable react-doctor/no-adjust-state-on-prop-change -- Why: feedback viewer details are loaded through GitHub IPC after the dialog receives the issue URL. */
 import React, { useRef, useState } from 'react'
 import { ExternalLink, Github } from 'lucide-react'
 import { toast } from 'sonner'
@@ -12,18 +11,11 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useMountedRef } from '@/hooks/useMountedRef'
-import { cn } from '@/lib/utils'
-import type { GitHubViewer } from '../../../../shared/types'
 import { translate } from '@/i18n/i18n'
 
 const GITHUB_ISSUES_URL = 'https://github.com/stablyai/orca/issues/'
 const DISCORD_URL = 'https://discord.gg/fzjDKHxv8Q'
 const X_URL = 'https://x.com/orca_build'
-
-type SubmitIdentity = {
-  githubLogin: string | null
-  githubEmail: string | null
-}
 
 type SidebarFeedbackDialogProps = {
   open: boolean
@@ -34,62 +26,14 @@ function openExternalUrl(url: string): void {
   void window.api.shell.openUrl(url)
 }
 
-function getSubmitIdentity(viewer: GitHubViewer | null, anonymous: boolean): SubmitIdentity {
-  if (anonymous || !viewer) {
-    return {
-      githubLogin: null,
-      githubEmail: null
-    }
-  }
-
-  return {
-    githubLogin: viewer.login,
-    githubEmail: viewer.email
-  }
-}
-
 export function SidebarFeedbackDialog({
   open,
   onOpenChange
 }: SidebarFeedbackDialogProps): React.JSX.Element {
   const [feedback, setFeedback] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [viewer, setViewer] = useState<GitHubViewer | null>(null)
-  const [isViewerLoading, setIsViewerLoading] = useState(false)
-  const [submitAnonymously, setSubmitAnonymously] = useState(false)
   const mountedRef = useMountedRef()
   const feedbackTextareaRef = useRef<HTMLTextAreaElement>(null)
-
-  React.useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    let cancelled = false
-    setIsViewerLoading(true)
-    void window.api.gh
-      .viewer()
-      .then((nextViewer) => {
-        if (!cancelled) {
-          setViewer(nextViewer)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setViewer(null)
-          console.error('Failed to load GitHub viewer:', err)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsViewerLoading(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [open])
 
   const handleSubmit = async (): Promise<void> => {
     const trimmed = feedback.trim()
@@ -105,7 +49,6 @@ export function SidebarFeedbackDialog({
 
     setIsSubmitting(true)
     try {
-      const identity = getSubmitIdentity(viewer, submitAnonymously)
       // Why: submission is proxied through the main process via IPC because
       // the packaged Mac build loads the renderer from file://, which makes
       // cross-origin fetch() fail CORS preflight. Electron's net module in
@@ -113,9 +56,9 @@ export function SidebarFeedbackDialog({
       // and prod.
       const result = await window.api.feedback.submit({
         feedback: trimmed,
-        submitAnonymously,
-        githubLogin: identity.githubLogin,
-        githubEmail: identity.githubEmail
+        submitAnonymously: true,
+        githubLogin: null,
+        githubEmail: null
       })
 
       if (!result.ok) {
@@ -130,7 +73,6 @@ export function SidebarFeedbackDialog({
           )
         )
         setFeedback('')
-        setSubmitAnonymously(false)
         onOpenChange(false)
       }
     } catch (err) {
@@ -238,46 +180,12 @@ export function SidebarFeedbackDialog({
         />
 
         <div className="min-h-9 rounded-md border border-border/70 bg-muted/30 px-3 py-2">
-          {viewer ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span>
-                {translate('auto.components.sidebar.SidebarFeedbackDialog.c9e5ea0791', 'GitHub:')}{' '}
-                <span className="font-mono text-foreground">
-                  {viewer.login}
-                  {viewer.email ? ` (${viewer.email})` : ''}
-                </span>
-              </span>
-              <label className="flex cursor-pointer items-center gap-2 text-foreground">
-                <input
-                  type="checkbox"
-                  checked={submitAnonymously}
-                  onChange={(event) => setSubmitAnonymously(event.target.checked)}
-                  className={cn(
-                    'size-3.5 rounded border border-border bg-background align-middle',
-                    'accent-foreground'
-                  )}
-                />
-                {translate(
-                  'auto.components.sidebar.SidebarFeedbackDialog.5b120b9634',
-                  'Submit anonymously'
-                )}
-              </label>
-            </div>
-          ) : isViewerLoading ? (
-            <div className="text-xs text-muted-foreground">
-              {translate(
-                'auto.components.sidebar.SidebarFeedbackDialog.d20439c560',
-                'Checking GitHub identity…'
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">
-              {translate(
-                'auto.components.sidebar.SidebarFeedbackDialog.8de03e23c5',
-                'Submit with your typed feedback only, or connect `gh` to include GitHub identity.'
-              )}
-            </div>
-          )}
+          <div className="text-xs text-muted-foreground">
+            {translate(
+              'auto.components.sidebar.SidebarFeedbackDialog.feedbackOnly',
+              'Your feedback is submitted without any GitHub identity.'
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>

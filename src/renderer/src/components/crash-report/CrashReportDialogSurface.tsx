@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Clipboard, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ import {
   isReactErrorBoundaryReport,
   type CrashReportRecord
 } from '../../../../shared/crash-reporting'
-import type { GitHubViewer } from '../../../../shared/types'
 import { translate } from '@/i18n/i18n'
 
 function formatSummary(report: CrashReportRecord): string {
@@ -77,10 +76,6 @@ export function CrashReportDialogSurface({
   const [notes, setNotes] = useState('')
   const [includeDiagnosticLogs, setIncludeDiagnosticLogs] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [viewer, setViewer] = useState<GitHubViewer | null>(null)
-  // Why: account lookup can resolve after the dialog closes or reopens.
-  // Sequence the request so a stale viewer is never used for submission.
-  const viewerRequestIdRef = useRef(0)
   const deferredNotes = useDeferredValue(notes)
   const diagnosticText = useMemo(
     // Why: formatting applies redaction and truncation over the full crash
@@ -89,37 +84,12 @@ export function CrashReportDialogSurface({
     [deferredNotes, report]
   )
 
-  const clearViewer = useCallback((): void => {
-    viewerRequestIdRef.current += 1
-    setViewer(null)
-  }, [])
-
-  const loadViewerForOpenDialog = useCallback((): void => {
-    const requestId = ++viewerRequestIdRef.current
-    setViewer(null)
-    void window.api.gh
-      .viewer()
-      .then((nextViewer) => {
-        if (mountedRef.current && requestId === viewerRequestIdRef.current) {
-          setViewer(nextViewer)
-        }
-      })
-      .catch((error) => {
-        if (mountedRef.current && requestId === viewerRequestIdRef.current) {
-          setViewer(null)
-          console.error('Failed to load GitHub viewer for crash report:', error)
-        }
-      })
-  }, [mountedRef])
-
   useEffect(() => {
     if (!open) {
-      clearViewer()
       return
     }
     setIncludeDiagnosticLogs(true)
-    loadViewerForOpenDialog()
-  }, [clearViewer, loadViewerForOpenDialog, open])
+  }, [open])
 
   const handleCopy = async (): Promise<void> => {
     const result = await window.api.crashReports.copyLatestDiagnostics(
@@ -157,10 +127,10 @@ export function CrashReportDialogSurface({
         ...(report ? { reportId: report.id } : {}),
         notes,
         includeDiagnosticLogs,
-        // Why: crash reporting must degrade to anonymous if gh is unavailable;
-        // identity lookup is best-effort and never blocks report creation.
-        submitAnonymously: !viewer,
-        githubLogin: viewer?.login ?? null,
+        // Why: renderer no longer resolves a GitHub identity, so crash reports
+        // are always submitted anonymously.
+        submitAnonymously: true,
+        githubLogin: null,
         githubEmail: null
       })
       if (!result.ok) {
@@ -215,7 +185,6 @@ export function CrashReportDialogSurface({
           return
         }
         if (!nextOpen) {
-          clearViewer()
           void dismissReportIfNeeded().finally(() => {
             if (mountedRef.current) {
               onOpenChange(false)

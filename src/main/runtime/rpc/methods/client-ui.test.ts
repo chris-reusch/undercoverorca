@@ -41,26 +41,16 @@ describe('client UI RPC methods', () => {
     expect(response).toMatchObject({ ok: true, result: { settings } })
   })
 
-  it('persists the runtime host task source settings for mobile Tasks', async () => {
+  it('persists the runtime host agent settings for mobile Tasks', async () => {
     const settings = {
       defaultTuiAgent: null,
       disabledTuiAgents: ['claude'],
       agentCmdOverrides: {},
-      defaultTaskSource: 'linear',
       defaultTaskViewPreset: 'issues',
-      visibleTaskProviders: ['github', 'linear'],
       defaultRepoSelection: ['repo-1', 'repo-2'],
       defaultLinearTeamSelection: ['team-1', 'team-2'],
       experimentalNewWorktreeCardStyle: true,
-      compactWorktreeCards: true,
-      githubProjects: {
-        pinned: [],
-        recent: [],
-        lastViewByProject: {
-          'organization:stablyai:1': { viewId: 'view-1' }
-        },
-        activeProject: { owner: 'stablyai', ownerType: 'organization', number: 1 }
-      }
+      compactWorktreeCards: true
     }
     const runtime = {
       getRuntimeId: () => 'test-runtime',
@@ -72,43 +62,24 @@ describe('client UI RPC methods', () => {
       makeRequest('settings.update', {
         defaultTuiAgent: 'codex',
         disabledTuiAgents: ['claude', 'not-real', 'claude'],
-        defaultTaskSource: 'linear',
-        visibleTaskProviders: ['github', 'linear'],
         defaultTaskViewPreset: 'my-prs',
         experimentalNewWorktreeCardStyle: true,
         compactWorktreeCards: true,
         defaultRepoSelection: settings.defaultRepoSelection,
-        defaultLinearTeamSelection: ['team-1', 'team-2'],
-        githubProjects: settings.githubProjects
+        defaultLinearTeamSelection: ['team-1', 'team-2']
       })
     )
 
     expect(runtime.updateClientSettings).toHaveBeenCalledWith({
       defaultTuiAgent: 'codex',
       disabledTuiAgents: ['claude'],
-      defaultTaskSource: 'linear',
-      visibleTaskProviders: ['github', 'linear'],
       defaultTaskViewPreset: 'my-prs',
       experimentalNewWorktreeCardStyle: true,
       compactWorktreeCards: true,
       defaultRepoSelection: settings.defaultRepoSelection,
-      defaultLinearTeamSelection: ['team-1', 'team-2'],
-      githubProjects: settings.githubProjects
+      defaultLinearTeamSelection: ['team-1', 'team-2']
     })
     expect(response).toMatchObject({ ok: true, result: { settings } })
-
-    vi.mocked(runtime.updateClientSettings).mockClear()
-    await dispatcher.dispatch(
-      makeRequest('settings.update', {
-        defaultTaskSource: 'linear',
-        visibleTaskProviders: ['github', 'linear']
-      })
-    )
-
-    expect(runtime.updateClientSettings).toHaveBeenCalledWith({
-      defaultTaskSource: 'linear',
-      visibleTaskProviders: ['github', 'linear']
-    })
   })
 
   it('returns the runtime host persisted UI state', async () => {

@@ -85,7 +85,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar
     })
 
@@ -164,7 +163,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar: vi.fn()
     })
 
@@ -241,7 +239,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar
     })
 
@@ -295,7 +292,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar
     })
 
@@ -352,7 +348,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar: vi.fn()
     })
 
@@ -417,7 +412,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       } as unknown as ReturnType<typeof useAppStore.getState>['settings'],
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar: vi.fn()
     })
 
@@ -487,7 +481,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       },
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar: vi.fn()
     })
 
@@ -640,7 +633,6 @@ describe('activateAndRevealWorktree created agent reopen', () => {
       },
       markWorktreeVisited: vi.fn(),
       recordWorktreeVisit: vi.fn(),
-      refreshGitHubForWorktreeIfStale: vi.fn(),
       revealWorktreeInSidebar: vi.fn(),
       reconcileWorktreeTabModel: vi.fn(() => ({
         renderableTabCount: 1,

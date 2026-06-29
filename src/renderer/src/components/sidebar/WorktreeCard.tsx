@@ -1,9 +1,6 @@
 /* eslint-disable max-lines -- Why: the worktree card centralizes sidebar card state (selection, drag, agent status, git info, context menu) in one cohesive component so sidebar rendering doesn't fan out across files. */
-import React, { useEffect, useCallback, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useAppStore } from '@/store'
-import { getHostedReviewCacheKey } from '@/store/slices/hosted-review'
-import { issueCacheKey as getIssueCacheKey } from '@/store/slices/github'
-import { getGitHubPRCacheKey } from '@/store/slices/github-cache-key'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -29,20 +26,15 @@ import { WorktreeCardStatusSlot } from './WorktreeCardStatusSlot'
 import { cn } from '@/lib/utils'
 import { activateWorktreeFromSidebar } from '@/lib/sidebar-worktree-activation'
 import { isFolderRepo } from '../../../../shared/repo-kind'
-import type { HostedReviewInfo } from '../../../../shared/hosted-review'
-import { hostedReviewInfoFromGitHubPRInfo } from '../../../../shared/hosted-review-github'
-import type { Worktree, Repo, IssueInfo, PRInfo } from '../../../../shared/types'
+import type { Worktree, Repo } from '../../../../shared/types'
 import { CONFLICT_OPERATION_LABELS } from './WorktreeCardHelpers'
 import {
   WorktreeCardDetailsHover,
   hasWorktreeCardDetails,
-  WorktreeCardMetaBadges,
-  type WorktreeCardIssueDisplay
+  WorktreeCardMetaBadges
 } from './WorktreeCardMeta'
 import { WorktreeCardPortsDetails, WorktreeCardPortsTrigger } from './WorktreeCardPorts'
 import { writeWorkspaceDragData } from './workspace-status'
-import { getWorktreeCardPrDisplay } from './worktree-card-pr-display'
-import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
 import {
   coerceWorktreeCardVisibleTitle,
   getWorktreeCardTitleDisplay
@@ -53,8 +45,6 @@ import { getWorkspacePortsByWorktreeId } from '@/lib/workspace-port-groups'
 import { RepoBadgeMark } from '@/components/repo/RepoBadgeLabel'
 import { RepoIconGlyph } from '@/components/repo/repo-icon'
 import { resolveRepoHeaderColor } from './project-header-color'
-import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
-import { isMacAppDataPath } from '@/lib/passive-macos-app-data-access'
 import { runWorktreeDelete } from './delete-worktree-flow'
 import { WorktreeTitleInlineRename } from './WorktreeTitleInlineRename'
 import { TruncatedSidebarLabel } from './truncated-sidebar-label'
@@ -120,11 +110,9 @@ type WorktreeCardProps = {
   onCardDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void
   nativeDragEnabled?: boolean
   affiliateListMode?: boolean
-  statusPrDisplay?: WorktreeCardPrDisplay | null
 }
 
 const EMPTY_WORKSPACE_PORTS = []
-const HOSTED_REVIEW_CARD_REFRESH_INTERVAL_MS = 60_000
 
 export function shouldBeginWorktreeRename(
   request: WorktreeRenameRequest | null,
@@ -140,24 +128,6 @@ export function shouldBeginWorktreeRename(
 function formatSparseDirectoryPreview(directories: string[]): string {
   const preview = directories.slice(0, 4).join(', ')
   return directories.length <= 4 ? preview : `${preview}, +${directories.length - 4} more`
-}
-
-function isWebClient(): boolean {
-  return Boolean((window as unknown as { __ORCA_WEB_CLIENT__?: boolean }).__ORCA_WEB_CLIENT__)
-}
-
-function isCachedMergedBranchPRCurrentForWorktree(
-  cachedPR: PRInfo | null | undefined,
-  worktree: Worktree
-): boolean {
-  return (
-    cachedPR?.state === 'merged' &&
-    typeof cachedPR.headSha === 'string' &&
-    cachedPR.headSha.length > 0 &&
-    typeof worktree.head === 'string' &&
-    worktree.head.length > 0 &&
-    cachedPR.headSha === worktree.head
-  )
 }
 
 function getDirectoryName(folderPath: string): string {
@@ -226,8 +196,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
   lineageChildrenStyle,
   onLineageToggle,
   isLineageDropTarget = false,
-  affiliateListMode = false,
-  statusPrDisplay = null
+  affiliateListMode = false
 }: WorktreeCardProps) {
   const openModal = useAppStore((s) => s.openModal)
   const updateWorktreeMeta = useAppStore((s) => s.updateWorktreeMeta)
@@ -235,9 +204,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const setActiveWorktree = useAppStore((s) => s.setActiveWorktree)
   const renamingWorktreeId = useAppStore((s) => s.renamingWorktreeId)
   const setRenamingWorktreeId = useAppStore((s) => s.setRenamingWorktreeId)
-  const fetchHostedReviewForBranch = useAppStore((s) => s.fetchHostedReviewForBranch)
   const settings = useAppStore((s) => s.settings)
-  const fetchIssue = useAppStore((s) => s.fetchIssue)
   const cardProps = useAppStore((s) => s.worktreeCardProperties)
   const agentActivityDisplayMode =
     useAppStore((s) => s.agentActivityDisplayMode) ?? DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE
@@ -245,21 +212,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const newCardStyle = settings?.experimentalNewWorktreeCardStyle === true
   const compactCards = !newCardStyle && settings?.compactWorktreeCards === true
   const activeSurfaceIsSecondary = isActiveSurface && activeSurfaceVariant === 'secondary'
-  const handleEditIssue = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      openModal('edit-meta', {
-        worktreeId: worktree.id,
-        currentDisplayName: worktree.displayName,
-        currentIssue: worktree.linkedIssue,
-        currentPR: worktree.linkedPR,
-        currentComment: worktree.comment,
-        focus: 'issue'
-      })
-    },
-    [worktree, openModal]
-  )
-
   const handleEditComment = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -346,123 +298,9 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const folderMetaRowContent = newCardStyle
     ? hasPathIdentityEnabled && Boolean(folderPathIdentityDisplay)
     : isFolder
-  const hostedReviewCacheKey =
-    repo && branch
-      ? getHostedReviewCacheKey(
-          repo.path,
-          branch,
-          settings,
-          repo.id,
-          repo.connectionId,
-          repo.executionHostId,
-          true
-        )
-      : ''
-  const prCacheKey =
-    repo && branch
-      ? getGitHubPRCacheKey(
-          repo.path,
-          repo.id,
-          branch,
-          settings,
-          repo.connectionId,
-          repo.executionHostId,
-          true
-        )
-      : ''
-  const issueCacheKey =
-    repo && worktree.linkedIssue
-      ? getIssueCacheKey(
-          repo.path,
-          repo.id,
-          worktree.linkedIssue,
-          settings,
-          repo.connectionId,
-          repo.executionHostId,
-          true
-        )
-      : ''
-
-  // Subscribe to ONLY the specific cache entry, not entire review/issue caches.
-  const hostedReviewEntry = useAppStore((s) =>
-    hostedReviewCacheKey ? s.hostedReviewCache[hostedReviewCacheKey] : undefined
-  )
-  const prCacheEntry = useAppStore((s) => (prCacheKey ? s.prCache?.[prCacheKey] : undefined))
-  const issueEntry = useAppStore((s) => (issueCacheKey ? s.issueCache[issueCacheKey] : undefined))
-
-  const hostedReview: HostedReviewInfo | null | undefined =
-    hostedReviewEntry !== undefined ? hostedReviewEntry.data : undefined
-  const linkedGitHubPR = worktree.linkedPR ?? null
-  const linkedGitLabMR = worktree.linkedGitLabMR ?? null
-  const linkedBitbucketPR = worktree.linkedBitbucketPR ?? null
-  const linkedAzureDevOpsPR = worktree.linkedAzureDevOpsPR ?? null
-  const linkedGiteaPR = worktree.linkedGiteaPR ?? null
-  const hasNonGitHubLinkedReview =
-    linkedGitLabMR !== null ||
-    linkedBitbucketPR !== null ||
-    linkedAzureDevOpsPR !== null ||
-    linkedGiteaPR !== null
-  const hasLinkedReview =
-    linkedGitHubPR !== null ||
-    linkedGitLabMR !== null ||
-    linkedBitbucketPR !== null ||
-    linkedAzureDevOpsPR !== null ||
-    linkedGiteaPR !== null
-  // Why: ChecksPanel can discover a branch PR before hosted-review metadata
-  // warms, and transient older hosted-review misses can race with that cache.
-  // A newer miss only yields to merged PR cache when the stored worktree head
-  // proves the cached PR still describes the checked-out commit.
-  const cachedBranchPR = prCacheEntry?.data
-  const cachedBranchPRFetchedAt = prCacheEntry?.fetchedAt
-  const cachedMergedBranchPRMatchesCurrentHead = isCachedMergedBranchPRCurrentForWorktree(
-    cachedBranchPR,
-    worktree
-  )
-  const useCachedBranchReview =
-    cachedBranchPR !== undefined &&
-    cachedBranchPR !== null &&
-    !hasNonGitHubLinkedReview &&
-    (hostedReview === undefined ||
-      (hostedReview === null &&
-        ((cachedBranchPRFetchedAt !== undefined &&
-          cachedBranchPRFetchedAt > (hostedReviewEntry?.fetchedAt ?? 0)) ||
-          cachedMergedBranchPRMatchesCurrentHead)))
-  const cachedBranchReview = useCachedBranchReview
-    ? hostedReviewInfoFromGitHubPRInfo(cachedBranchPR)
-    : hostedReview
-  const prDisplay = getWorktreeCardPrDisplay(
-    cachedBranchReview,
-    linkedGitHubPR,
-    linkedGitLabMR,
-    linkedBitbucketPR,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR,
-    {
-      reviewHintKey:
-        useCachedBranchReview && !hasLinkedReview ? '' : hostedReviewEntry?.linkedReviewHintKey
-    }
-  )
-  const issue: IssueInfo | null | undefined = worktree.linkedIssue
-    ? issueEntry !== undefined
-      ? issueEntry.data
-      : undefined
-    : null
-  const issueDisplay: WorktreeCardIssueDisplay | null =
-    issue ??
-    (worktree.linkedIssue
-      ? {
-          number: worktree.linkedIssue,
-          // Why: linked metadata is persisted immediately, but GitHub details
-          // arrive asynchronously. Show the durable link number instead of
-          // making the worktree look unlinked while the cache warms.
-          title: issue === null ? 'Issue details unavailable' : 'Loading issue...'
-        }
-      : null)
   const cardTitleDisplay = getWorktreeCardTitleDisplay({
     storedDisplayName: worktree.displayName,
-    branchName: branch,
-    issueTitle: issueDisplay?.title,
-    reviewTitle: prDisplay?.title
+    branchName: branch
   })
   const legacyCardTitleDisplay = coerceWorktreeCardVisibleTitle(worktree.displayName)
   const visibleCardTitle = newCardStyle ? cardTitleDisplay : legacyCardTitleDisplay
@@ -470,161 +308,9 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const deleteModifierPressed = useWorkspaceDeleteModifierPressed()
 
   const showStatus = cardProps.includes('status')
-  const showIssue = cardProps.includes('issue')
-  const showPR = cardProps.includes('pr')
   const showComment = cardProps.includes('comment')
   const showPorts = cardProps.includes('ports')
-  const shouldRefreshHostedReview = newCardStyle ? showStatus : showPR
   const detailsHoverControl = useWorktreeCardDetailsHoverControl()
-  const hoverDetailsOpen = detailsHoverControl.hoverOpen
-
-  // Skip hosted-review fetches when the corresponding card surfaces are hidden.
-  // This preference is purely presentational, so background refreshes would
-  // spend rate limit budget on data the user cannot see.
-  useEffect(() => {
-    // Why: paired web should not fan out per-card decoration RPCs during
-    // startup; host session/tab parity is the critical path.
-    if (isWebClient()) {
-      return
-    }
-    if (
-      !repo ||
-      isFolder ||
-      worktree.isBare ||
-      !hostedReviewCacheKey ||
-      !shouldRefreshHostedReview ||
-      isMacAppDataPath(repo.path)
-    ) {
-      return
-    }
-    const refreshHostedReview = (): void => {
-      // Why: branch lookup is lossy for fork/deleted-head PRs; reuse a known PR
-      // number from explicit metadata whenever we have one.
-      void fetchHostedReviewForBranch(repo.path, branch, {
-        repoId: repo.id,
-        linkedGitHubPR: worktree.linkedPR ?? null,
-        linkedGitLabMR,
-        linkedBitbucketPR,
-        linkedAzureDevOpsPR,
-        linkedGiteaPR,
-        staleWhileRevalidate: true
-      })
-    }
-    // Why: PRs created outside Orca (for example `gh pr create`) do not emit a
-    // renderer event; visible-card polling discovers them after an earlier miss.
-    return installWindowVisibilityInterval({
-      run: refreshHostedReview,
-      intervalMs: HOSTED_REVIEW_CARD_REFRESH_INTERVAL_MS
-    })
-  }, [
-    repo,
-    isFolder,
-    worktree.isBare,
-    worktree.linkedPR,
-    linkedGitLabMR,
-    linkedBitbucketPR,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR,
-    fetchHostedReviewForBranch,
-    branch,
-    hostedReviewCacheKey,
-    shouldRefreshHostedReview
-  ])
-
-  useEffect(() => {
-    if (
-      !newCardStyle ||
-      !hoverDetailsOpen ||
-      shouldRefreshHostedReview ||
-      isWebClient() ||
-      !repo ||
-      isFolder ||
-      worktree.isBare ||
-      !hostedReviewCacheKey ||
-      isMacAppDataPath(repo.path)
-    ) {
-      return
-    }
-    // Why: hidden card metadata is revealed on whole-card hover. Fetch lazily
-    // here instead of restoring always-on background decoration polling.
-    void fetchHostedReviewForBranch(repo.path, branch, {
-      repoId: repo.id,
-      linkedGitHubPR: worktree.linkedPR ?? null,
-      linkedGitLabMR,
-      linkedBitbucketPR,
-      linkedAzureDevOpsPR,
-      linkedGiteaPR,
-      staleWhileRevalidate: true
-    })
-  }, [
-    hoverDetailsOpen,
-    newCardStyle,
-    shouldRefreshHostedReview,
-    repo,
-    isFolder,
-    worktree.isBare,
-    worktree.linkedPR,
-    linkedGitLabMR,
-    linkedBitbucketPR,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR,
-    fetchHostedReviewForBranch,
-    branch,
-    hostedReviewCacheKey
-  ])
-
-  // Same rationale for issues: once that surface is hidden, polling only burns
-  // GitHub calls and keeps stale-but-invisible data warm for no user benefit.
-  useEffect(() => {
-    // Why: paired web startup can render hundreds of visible workspace cards.
-    // The host is authoritative for repo metadata; issuing decoration lookups
-    // from the browser floods the runtime RPC path and delays live surfaces.
-    if (
-      isWebClient() ||
-      !repo ||
-      isFolder ||
-      !worktree.linkedIssue ||
-      !issueCacheKey ||
-      !showIssue
-    ) {
-      return
-    }
-
-    const issueNumber = worktree.linkedIssue
-
-    // Background poll as fallback (activity triggers handle the fast path).
-    // The interval itself is stopped while hidden so issue cards do not keep
-    // long-lived workspaces waking just to skip their fetch.
-    return installWindowVisibilityInterval({
-      run: () => void fetchIssue(repo.path, issueNumber, { repoId: repo.id }),
-      intervalMs: 5 * 60_000
-    })
-  }, [repo, isFolder, worktree.linkedIssue, fetchIssue, issueCacheKey, showIssue])
-
-  useEffect(() => {
-    if (
-      !newCardStyle ||
-      !hoverDetailsOpen ||
-      showIssue ||
-      isWebClient() ||
-      !repo ||
-      isFolder ||
-      !worktree.linkedIssue ||
-      !issueCacheKey
-    ) {
-      return
-    }
-    void fetchIssue(repo.path, worktree.linkedIssue, { repoId: repo.id })
-  }, [
-    newCardStyle,
-    hoverDetailsOpen,
-    showIssue,
-    repo,
-    isFolder,
-    worktree.linkedIssue,
-    fetchIssue,
-    issueCacheKey
-  ])
 
   // Stable click handler – ignore clicks that are really text selections.
   const handleClick = useCallback(
@@ -854,12 +540,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
   // owns both the dot/PR slot and unread emphasis. The persisted
   // `worktree.isUnread` flag is unchanged; only the rendering changes.
   const showUnreadEmphasis = showStatus && worktree.isUnread
-  const hoverIssue = issueDisplay
-  const hoverReview = prDisplay
-  const statusLaneReview = statusPrDisplay ?? hoverReview
   const hoverComment = worktree.comment
-  const metaIssue = showIssue ? hoverIssue : null
-  const metaReview = showPR ? hoverReview : null
   const metaComment = showComment ? hoverComment : null
   const showInlineAgentList = cardProps.includes('inline-agents') && (newCardStyle || !compactCards)
   const compactInlineAgentRows = useWorktreeAgentRows(
@@ -871,37 +552,9 @@ const WorktreeCard = React.memo(function WorktreeCard({
     agentActivityDisplayMode === 'compact' &&
     compactInlineAgentRows.length > 0
   const showAggregateCacheTimer = !compactCards && !compactInlineAgentRowsVisible
-  const hasExplicitLinkedReview =
-    (hoverReview?.provider === 'github' && worktree.linkedPR !== null) ||
-    (hoverReview?.provider === 'gitlab' && linkedGitLabMR !== null) ||
-    (hoverReview?.provider === 'bitbucket' && linkedBitbucketPR !== null) ||
-    (hoverReview?.provider === 'azure-devops' && linkedAzureDevOpsPR !== null) ||
-    (hoverReview?.provider === 'gitea' && linkedGiteaPR !== null)
-  const handleUnlinkReview = useCallback(() => {
-    switch (hoverReview?.provider) {
-      case 'github':
-        void updateWorktreeMeta(worktree.id, { linkedPR: null })
-        return
-      case 'gitlab':
-        void updateWorktreeMeta(worktree.id, { linkedGitLabMR: null })
-        return
-      case 'bitbucket':
-        void updateWorktreeMeta(worktree.id, { linkedBitbucketPR: null })
-        return
-      case 'azure-devops':
-        void updateWorktreeMeta(worktree.id, { linkedAzureDevOpsPR: null })
-        return
-      case 'gitea':
-        void updateWorktreeMeta(worktree.id, { linkedGiteaPR: null })
-        return
-      case 'unsupported':
-      case undefined:
-        break
-    }
-  }, [hoverReview?.provider, updateWorktreeMeta, worktree.id])
   const hasDetails = hasWorktreeCardDetails({
-    issue: metaIssue,
-    review: newCardStyle ? null : metaReview,
+    issue: null,
+    review: null,
     comment: metaComment
   })
   const hasPorts = showPorts && workspacePorts.length > 0
@@ -977,8 +630,8 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const hasHoverDetails =
     newCardStyle &&
     (hasWorktreeCardDetails({
-      issue: hoverIssue,
-      review: hoverReview,
+      issue: null,
+      review: null,
       comment: hoverComment
     }) ||
       workspacePorts.length > 0 ||
@@ -992,8 +645,8 @@ const WorktreeCard = React.memo(function WorktreeCard({
     : compactCards && (showBranchIdentityHover || hasDetails || hasPorts)
       ? (title: React.ReactElement): React.ReactElement => (
           <WorktreeCardDetailsHover
-            issue={metaIssue}
-            review={metaReview}
+            issue={null}
+            review={null}
             comment={metaComment}
             branchName={showBranchIdentityHover ? branch : undefined}
             workspaceTitle={worktree.displayName}
@@ -1001,13 +654,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
             detailsAfter={hasPorts ? <WorktreeCardPortsDetails ports={workspacePorts} /> : null}
             openDelay={100}
             hoverControl={detailsHoverControl}
-            onEditIssue={affiliateListMode ? undefined : handleEditIssue}
             onEditComment={affiliateListMode ? undefined : handleEditComment}
-            // Why: compact mode hides the metadata badge row, so title hover
-            // carries the same explicit-link affordance without adding chrome.
-            onUnlinkReview={
-              !affiliateListMode && hasExplicitLinkedReview ? handleUnlinkReview : undefined
-            }
           >
             {title}
           </WorktreeCardDetailsHover>
@@ -1032,8 +679,8 @@ const WorktreeCard = React.memo(function WorktreeCard({
         {hasPorts && <WorktreeCardPortsTrigger ports={workspacePorts} />}
         {hasDetails && (
           <WorktreeCardMetaBadges
-            issue={metaIssue}
-            review={newCardStyle ? null : metaReview}
+            issue={null}
+            review={null}
             comment={metaComment}
             className="ml-0 pr-0"
           />
@@ -1043,18 +690,12 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const detailsAndPorts =
     detailsAndPortsContent && !newCardStyle ? (
       <WorktreeCardDetailsHover
-        issue={metaIssue}
-        review={metaReview}
+        issue={null}
+        review={null}
         comment={metaComment}
         detailsAfter={hasPorts ? <WorktreeCardPortsDetails ports={workspacePorts} /> : null}
         hoverControl={detailsHoverControl}
-        onEditIssue={affiliateListMode ? undefined : handleEditIssue}
         onEditComment={affiliateListMode ? undefined : handleEditComment}
-        // Why: branch lookup can show a review without persisted metadata. Only
-        // expose unlink when this workspace has an explicit linked PR/MR.
-        onUnlinkReview={
-          !affiliateListMode && hasExplicitLinkedReview ? handleUnlinkReview : undefined
-        }
       >
         {detailsAndPortsContent}
       </WorktreeCardDetailsHover>
@@ -1096,7 +737,6 @@ const WorktreeCard = React.memo(function WorktreeCard({
             unreadTooltip={unreadTooltip}
             onPointerDown={stopQuickActionPointerPropagation}
             onToggleUnread={handleToggleUnreadQuick}
-            prDisplay={statusLaneReview}
             newCardStyle={newCardStyle}
             hasBranchIdentity={Boolean(branchIdentityDisplay)}
           />
@@ -1515,8 +1155,8 @@ const WorktreeCard = React.memo(function WorktreeCard({
   const parentCardBodyWithHoverDetails =
     hasHoverDetails && !titleRenaming ? (
       <WorktreeCardDetailsHover
-        issue={hoverIssue}
-        review={hoverReview}
+        issue={null}
+        review={null}
         comment={hoverComment}
         branchName={hoverBranchName}
         workspaceTitle={hoverWorkspaceTitle}
@@ -1525,13 +1165,7 @@ const WorktreeCard = React.memo(function WorktreeCard({
         }
         openDelay={100}
         hoverControl={detailsHoverControl}
-        onEditIssue={affiliateListMode ? undefined : handleEditIssue}
         onEditComment={affiliateListMode ? undefined : handleEditComment}
-        // Why: branch lookup can show a review without persisted metadata. Only
-        // expose unlink when this workspace has an explicit linked PR/MR.
-        onUnlinkReview={
-          !affiliateListMode && hasExplicitLinkedReview ? handleUnlinkReview : undefined
-        }
       >
         {parentHoverTriggerBody}
       </WorktreeCardDetailsHover>

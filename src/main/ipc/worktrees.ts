@@ -19,7 +19,6 @@ import type {
   DetectedWorktree,
   DetectedWorktreeListResult,
   ForceDeleteWorktreeBranchResult,
-  GitHubPrStartPoint,
   GitPushTarget,
   GitWorktreeInfo,
   OrcaHooks,
@@ -41,9 +40,6 @@ import {
 } from '../git/worktree'
 import { gitExecFileAsync } from '../git/runner'
 import { withWorktreeSpan } from '../observability/instrumentation'
-import { resolveGitHubPrStartPoint } from '../github/pr-start-point'
-import { fetchPrHeadTrackingRef } from '../github/pr-head-tracking-ref'
-import { getDefaultRemote } from '../git/repo'
 import { listRepoWorktrees } from '../repo-worktrees'
 import { getSshGitProvider, requireSshGitProvider } from '../providers/ssh-git-dispatch'
 import { getSshFilesystemProvider } from '../providers/ssh-filesystem-dispatch'
@@ -102,10 +98,7 @@ import { isWindowsAbsolutePathLike } from '../../shared/cross-platform-path'
 import { DEFAULT_WORKSPACE_STATUS_ID } from '../../shared/workspace-statuses'
 import { FOLDER_WORKSPACE_INSTANCE_SEPARATOR } from '../../shared/worktree-id'
 import { prefetchWorktreeCreateBase } from '../worktree-create-base-prefetch'
-import {
-  getLocalProjectGitExecOptions,
-  getLocalProjectWorktreeGitOptions
-} from '../project-runtime-git-options'
+import { getLocalProjectWorktreeGitOptions } from '../project-runtime-git-options'
 import {
   getLocalWorktreePathAccess,
   removeLocalWorktreePath,
@@ -1139,74 +1132,6 @@ export function registerWorktreeHandlers(
         }
 
         return result
-      })
-    }
-  )
-
-  ipcMain.handle(
-    'worktrees:resolvePrBase',
-    async (
-      _event,
-      args: {
-        repoId: string
-        prNumber: number
-        headRefName?: string
-        baseRefName?: string
-        isCrossRepository?: boolean
-      }
-    ): Promise<GitHubPrStartPoint | { error: string }> => {
-      const repo = store.getRepo(args.repoId)
-      if (!repo) {
-        return { error: 'Repo not found' }
-      }
-      if (isFolderRepo(repo)) {
-        return { error: 'Folder mode does not support creating worktrees.' }
-      }
-      const gitExec = async (args: string[]): Promise<{ stdout: string; stderr: string }> => {
-        if (!repo.connectionId) {
-          return gitExecFileAsync(args, getLocalProjectGitExecOptions(store, repo))
-        }
-        const provider = getSshGitProvider(repo.connectionId)
-        if (!provider) {
-          throw new Error(
-            'SSH Git provider is not available. Reconnect to this target and try again.'
-          )
-        }
-        return provider.exec(args, repo.path)
-      }
-      // Why: SSH repos can't fetch over the relay's read-only git.exec channel, so
-      // route the PR head fetch through the write-capable helper instead of gitExec.
-      const fetchRemoteTrackingRef = (remote: string, branch: string): Promise<void> =>
-        fetchPrHeadTrackingRef(
-          repo,
-          repo.connectionId ? getSshGitProvider(repo.connectionId) : undefined,
-          remote,
-          branch,
-          { localGitExecOptions: getLocalProjectGitExecOptions(store, repo) }
-        )
-
-      return resolveGitHubPrStartPoint({
-        repoPath: repo.path,
-        prNumber: args.prNumber,
-        headRefName: args.headRefName,
-        baseRefName: args.baseRefName,
-        isCrossRepository: args.isCrossRepository,
-        connectionId: repo.connectionId ?? null,
-        localGitOptions: getLocalProjectWorktreeGitOptions(store, repo),
-        gitExec,
-        fetchRemoteTrackingRef,
-        resolveRemote: async () => {
-          if (repo.connectionId) {
-            const { stdout } = await gitExec(['remote'])
-            return (
-              stdout
-                .split('\n')
-                .map((line) => line.trim())
-                .find(Boolean) ?? 'origin'
-            )
-          }
-          return getDefaultRemote(repo.path, getLocalProjectWorktreeGitOptions(store, repo))
-        }
       })
     }
   )

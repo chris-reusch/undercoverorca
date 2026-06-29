@@ -47,11 +47,8 @@ import type {
   DetectedWorktree,
   DetectedWorktreeListResult,
   ForceDeleteWorktreeBranchResult,
-  GitHubPrStartPoint,
   GitPushTarget,
   GitWorktreeInfo,
-  GitHubCreateIssueFields,
-  GitHubOwnerRepo,
   GlobalSettings,
   PersistedUIState,
   Project,
@@ -112,7 +109,6 @@ import { parsePtySessionId } from '../../shared/pty-session-id-format'
 import { isFolderRepo } from '../../shared/repo-kind'
 import { DEFAULT_WORKSPACE_STATUS_ID } from '../../shared/workspace-statuses'
 import { buildSetupRunnerCommand } from '../../shared/setup-runner-command'
-import { TASK_PROVIDERS } from '../../shared/task-providers'
 import { FIRST_PANE_ID } from '../../shared/pane-key'
 import { isTerminalLeafId, makePaneKey, parsePaneKey } from '../../shared/stable-pane-id'
 import { parseAppSshPtyId } from '../../shared/ssh-pty-id'
@@ -264,57 +260,14 @@ import { BrowserWindow, ipcMain } from 'electron'
 import type { AgentBrowserBridge } from '../browser/agent-browser-bridge'
 import type { BrowserBackend } from '../browser/browser-backend'
 import { BrowserError } from '../browser/cdp-bridge'
-import {
-  getPRForBranch,
-  getRepoSlug,
-  getRepoUpstream,
-  getWorkItem,
-  listIssues as listGitHubIssues,
-  listWorkItems,
-  countWorkItems,
-  getPRChecks,
-  getPRCheckDetails,
-  rerunPRChecks,
-  getPRComments,
-  getIssue,
-  resolveReviewThread,
-  setPRFileViewed,
-  getWorkItemByOwnerRepo,
-  updatePRTitle,
-  updatePRDetails,
-  mergePR,
-  setPRAutoMerge,
-  updatePRState,
-  requestPRReviewers,
-  removePRReviewers,
-  createIssue,
-  updateIssue,
-  addIssueComment,
-  addPRReviewComment,
-  addPRReviewCommentReply,
-  listLabels,
-  listAssignableUsers
-} from '../github/client'
-import type { GitHubPRBranchLookupOptions } from '../github/client'
-import { resolveGitHubPrStartPoint } from '../github/pr-start-point'
-import { fetchPrHeadTrackingRef } from '../github/pr-head-tracking-ref'
-import { getWorkItemDetails, getPRFileContents } from '../github/work-item-details'
-import { getRateLimit } from '../github/rate-limit'
-import type {
-  GitHubIssueUpdate,
-  GitHubPullRequestStateUpdate,
-  GitHubPRFile,
-  GitHubPRReviewCommentInput
-} from '../../shared/types'
+import { getRepoSlug, getRepoUpstream } from '../github/client'
 import { inspectSetupScriptImportCandidates } from '../../shared/setup-script-imports'
 import type {
   CreateHostedReviewInput,
   CreateHostedReviewResult,
   HostedReviewCreationEligibility,
-  HostedReviewCreationEligibilityArgs,
-  HostedReviewInfo
+  HostedReviewCreationEligibilityArgs
 } from '../../shared/hosted-review'
-import { getHostedReviewForBranch as getHostedReviewForBranchFromRepo } from '../source-control/hosted-review'
 import type { ForgeProviderId } from '../source-control/forge-provider'
 import {
   createHostedReview as createHostedReviewFromRepo,
@@ -336,45 +289,9 @@ import {
   recoverLocalWindowsLongPathWorktreeRemoval
 } from '../local-worktree-removal-recovery'
 import {
-  clearProjectItemFieldValue,
-  getProjectViewTable,
-  getWorkItemDetailsBySlug,
-  listAccessibleProjects,
-  listProjectViews,
-  resolveProjectRef,
-  addIssueCommentBySlug,
-  deleteIssueCommentBySlug,
-  listAssignableUsersBySlug,
-  listIssueTypesBySlug,
-  listLabelsBySlug,
-  updateIssueCommentBySlug,
-  updateIssueBySlug,
-  updateIssueTypeBySlug,
-  updateProjectItemFieldValue,
-  updatePullRequestBySlug
-} from '../github/project-view'
-import type {
-  ClearProjectItemFieldArgs,
-  GetProjectViewTableArgs,
-  ListAssignableUsersBySlugArgs,
-  ListIssueTypesBySlugArgs,
-  ListLabelsBySlugArgs,
-  ListProjectViewsArgs,
-  ProjectWorkItemDetailsBySlugArgs,
-  ResolveProjectRefArgs,
-  AddIssueCommentBySlugArgs,
-  DeleteIssueCommentBySlugArgs,
-  UpdateIssueBySlugArgs,
-  UpdateIssueCommentBySlugArgs,
-  UpdateIssueTypeBySlugArgs,
-  UpdateProjectItemFieldArgs,
-  UpdatePullRequestBySlugArgs
-} from '../../shared/github-project-types'
-import {
   getGitUsername,
   getBaseRefDefault,
   getDefaultBaseRef,
-  getDefaultRemote,
   getBranchConflictKind,
   isGitRepo,
   getRepoName,
@@ -577,12 +494,9 @@ type RuntimeStore = {
     agentDefaultArgs?: GlobalSettings['agentDefaultArgs']
     agentDefaultEnv?: GlobalSettings['agentDefaultEnv']
     agentStatusHooksEnabled?: GlobalSettings['agentStatusHooksEnabled']
-    defaultTaskSource?: GlobalSettings['defaultTaskSource']
     defaultTaskViewPreset?: GlobalSettings['defaultTaskViewPreset']
-    visibleTaskProviders?: GlobalSettings['visibleTaskProviders']
     defaultRepoSelection?: GlobalSettings['defaultRepoSelection']
     defaultLinearTeamSelection?: GlobalSettings['defaultLinearTeamSelection']
-    githubProjects?: GlobalSettings['githubProjects']
     experimentalNewWorktreeCardStyle?: GlobalSettings['experimentalNewWorktreeCardStyle']
     compactWorktreeCards?: GlobalSettings['compactWorktreeCards']
     experimentalWorktreeSymlinks?: boolean
@@ -1225,18 +1139,6 @@ function hasLocalGitOptions(gitOptions: { wslDistro?: string }): boolean {
   return Object.keys(gitOptions).length > 0
 }
 
-function getLocalGitHubPrForBranch(
-  repoPath: string,
-  branchName: string,
-  gitOptions: { wslDistro?: string }
-): ReturnType<typeof getPRForBranch> {
-  return hasLocalGitOptions(gitOptions)
-    ? getPRForBranch(repoPath, branchName, null, null, null, {
-        localGitExecOptions: gitOptions
-      })
-    : getPRForBranch(repoPath, branchName)
-}
-
 type SelectedReviewBranchInput = {
   branchNameOverride?: string
   linkedPR?: number | null
@@ -1271,30 +1173,11 @@ function getSelectedReviewBranch(args: SelectedReviewBranchInput): SelectedRevie
   return null
 }
 
-function isSelectedGitHubPrBranchOverride(
-  args: SelectedReviewBranchInput,
-  branchName: string
-): boolean {
-  return typeof args.linkedPR === 'number' && args.branchNameOverride === branchName
-}
-
 function isSelectedReviewBranchOverride(
   args: SelectedReviewBranchInput,
   branchName: string
 ): boolean {
   return getSelectedReviewBranch(args) !== null && args.branchNameOverride === branchName
-}
-
-function isMatchingSelectedGitHubPr(
-  existingPR: Awaited<ReturnType<typeof getPRForBranch>>,
-  args: SelectedReviewBranchInput,
-  branchName: string
-): boolean {
-  return Boolean(
-    existingPR &&
-    isSelectedGitHubPrBranchOverride(args, branchName) &&
-    existingPR.number === args.linkedPR
-  )
 }
 
 function isAllowedPushTargetRemoteConflict(
@@ -1307,49 +1190,6 @@ function isAllowedPushTargetRemoteConflict(
     isSelectedReviewBranchOverride(args, branchName) &&
     args.pushTarget?.branchName === branchName
   )
-}
-
-function getSelectedReviewLookupHints(args: SelectedReviewBranchInput): {
-  linkedGitHubPR?: number | null
-  linkedGitLabMR?: number | null
-  linkedBitbucketPR?: number | null
-  linkedAzureDevOpsPR?: number | null
-  linkedGiteaPR?: number | null
-} {
-  return {
-    linkedGitHubPR: args.linkedPR ?? null,
-    linkedGitLabMR: args.linkedGitLabMR ?? null,
-    linkedBitbucketPR: args.linkedBitbucketPR ?? null,
-    linkedAzureDevOpsPR: args.linkedAzureDevOpsPR ?? null,
-    linkedGiteaPR: args.linkedGiteaPR ?? null
-  }
-}
-
-async function getSelectedHostedReviewForBranch(
-  repo: Pick<Repo, 'path' | 'connectionId'>,
-  branchName: string,
-  args: SelectedReviewBranchInput,
-  executionOptions: { localGitExecOptions?: { wslDistro?: string } } = {}
-): Promise<{ matchesSelected: boolean; number: number } | null> {
-  const selectedReview = getSelectedReviewBranch(args)
-  if (!selectedReview) {
-    return null
-  }
-  const review = await getHostedReviewForBranchFromRepo({
-    repoPath: repo.path,
-    connectionId: repo.connectionId ?? null,
-    branch: branchName,
-    ...executionOptions,
-    ...getSelectedReviewLookupHints(args)
-  })
-  if (!review) {
-    return null
-  }
-  return {
-    matchesSelected:
-      review.provider === selectedReview.provider && review.number === selectedReview.number,
-    number: review.number
-  }
 }
 
 async function pathExists(pathValue: string): Promise<boolean> {
@@ -1932,12 +1772,9 @@ export class OrcaRuntimeService {
     | 'agentDefaultArgs'
     | 'agentDefaultEnv'
     | 'agentStatusHooksEnabled'
-    | 'defaultTaskSource'
     | 'defaultTaskViewPreset'
-    | 'visibleTaskProviders'
     | 'defaultRepoSelection'
     | 'defaultLinearTeamSelection'
-    | 'githubProjects'
     | 'experimentalNewWorktreeCardStyle'
     | 'compactWorktreeCards'
   > {
@@ -1952,12 +1789,9 @@ export class OrcaRuntimeService {
       agentDefaultArgs: settings.agentDefaultArgs ?? {},
       agentDefaultEnv: settings.agentDefaultEnv ?? {},
       agentStatusHooksEnabled: settings.agentStatusHooksEnabled !== false,
-      defaultTaskSource: settings.defaultTaskSource ?? 'github',
       defaultTaskViewPreset: settings.defaultTaskViewPreset ?? 'issues',
-      visibleTaskProviders: settings.visibleTaskProviders ?? [...TASK_PROVIDERS],
       defaultRepoSelection: settings.defaultRepoSelection ?? null,
       defaultLinearTeamSelection: settings.defaultLinearTeamSelection ?? null,
-      githubProjects: settings.githubProjects,
       experimentalNewWorktreeCardStyle: settings.experimentalNewWorktreeCardStyle === true,
       compactWorktreeCards: settings.compactWorktreeCards === true
     }
@@ -1971,12 +1805,9 @@ export class OrcaRuntimeService {
       | 'disabledTuiAgents'
       | 'agentDefaultArgs'
       | 'agentDefaultEnv'
-      | 'defaultTaskSource'
       | 'defaultTaskViewPreset'
-      | 'visibleTaskProviders'
       | 'defaultRepoSelection'
       | 'defaultLinearTeamSelection'
-      | 'githubProjects'
       | 'experimentalNewWorktreeCardStyle'
       | 'compactWorktreeCards'
     >
@@ -1988,12 +1819,9 @@ export class OrcaRuntimeService {
     | 'agentDefaultArgs'
     | 'agentDefaultEnv'
     | 'agentStatusHooksEnabled'
-    | 'defaultTaskSource'
     | 'defaultTaskViewPreset'
-    | 'visibleTaskProviders'
     | 'defaultRepoSelection'
     | 'defaultLinearTeamSelection'
-    | 'githubProjects'
     | 'experimentalNewWorktreeCardStyle'
     | 'compactWorktreeCards'
   > {
@@ -9675,187 +9503,6 @@ export class OrcaRuntimeService {
     }
   }
 
-  async listRepoWorkItems(
-    repoSelector: string,
-    limit?: number,
-    query?: string,
-    before?: string,
-    noCache?: boolean
-  ): Promise<Awaited<ReturnType<typeof listWorkItems>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return listWorkItems(
-      repo.path,
-      limit,
-      query,
-      before,
-      repo.issueSourcePreference,
-      repo.connectionId ?? null,
-      noCache,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async listRepoIssues(
-    repoSelector: string,
-    limit?: number
-  ): Promise<Awaited<ReturnType<typeof listGitHubIssues>>['items']> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    const result = await listGitHubIssues(
-      repo.path,
-      limit,
-      repo.issueSourcePreference,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-    return result.items
-  }
-
-  async getRepoWorkItem(
-    repoSelector: string,
-    number: number,
-    type?: 'issue' | 'pr'
-  ): Promise<Awaited<ReturnType<typeof getWorkItem>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getWorkItem(
-      repo.path,
-      number,
-      type,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async getRepoWorkItemByOwnerRepo(
-    repoSelector: string,
-    ownerRepo: { owner: string; repo: string },
-    number: number,
-    type: 'issue' | 'pr'
-  ): Promise<Awaited<ReturnType<typeof getWorkItemByOwnerRepo>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getWorkItemByOwnerRepo(
-      repo.path,
-      ownerRepo,
-      number,
-      type,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async getRepoWorkItemDetails(
-    repoSelector: string,
-    number: number,
-    type?: 'issue' | 'pr'
-  ): Promise<Awaited<ReturnType<typeof getWorkItemDetails>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getWorkItemDetails(
-      repo.path,
-      number,
-      type,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async countRepoWorkItems(repoSelector: string, query?: string): Promise<number> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return countWorkItems(
-      repo.path,
-      query,
-      repo.issueSourcePreference,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async listRepoLabels(repoSelector: string): Promise<Awaited<ReturnType<typeof listLabels>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return listLabels(
-      repo.path,
-      repo.issueSourcePreference,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async listRepoAssignableUsers(
-    repoSelector: string
-  ): Promise<Awaited<ReturnType<typeof listAssignableUsers>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return listAssignableUsers(
-      repo.path,
-      repo.issueSourcePreference,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  getGitHubRateLimit(options?: {
-    force?: boolean
-  }): Promise<Awaited<ReturnType<typeof getRateLimit>>> {
-    return getRateLimit(options)
-  }
-
-  async getRepoPRForBranch(
-    repoSelector: string,
-    branch: string,
-    linkedPRNumber?: number | null,
-    fallbackPRNumber?: number | null,
-    acceptMergedFallbackPR?: boolean
-  ): Promise<Awaited<ReturnType<typeof getPRForBranch>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    const options: GitHubPRBranchLookupOptions = this.getHostedReviewExecutionOptions(repo) ?? {}
-    const lookupOptions = { ...options }
-    if (acceptMergedFallbackPR === true) {
-      lookupOptions.acceptMergedFallbackPR = true
-    }
-    const lookupOptionArgs: [] | [GitHubPRBranchLookupOptions] =
-      Object.keys(lookupOptions).length > 0 ? [lookupOptions] : []
-    return getPRForBranch(
-      repo.path,
-      branch,
-      linkedPRNumber ?? null,
-      repo.connectionId ?? null,
-      linkedPRNumber == null ? (fallbackPRNumber ?? null) : null,
-      ...lookupOptionArgs
-    )
-  }
-
-  async getHostedReviewForBranch(args: {
-    repoSelector: string
-    branch: string
-    linkedGitHubPR?: number | null
-    fallbackGitHubPR?: number | null
-    linkedGitLabMR?: number | null
-    linkedBitbucketPR?: number | null
-    linkedAzureDevOpsPR?: number | null
-    linkedGiteaPR?: number | null
-  }): Promise<HostedReviewInfo | null> {
-    const repo = await this.resolveRepoSelector(args.repoSelector)
-    const executionOptions = this.getHostedReviewExecutionOptions(repo)
-    const review = await getHostedReviewForBranchFromRepo({
-      repoPath: repo.path,
-      connectionId: repo.connectionId ?? null,
-      branch: args.branch,
-      linkedGitHubPR: args.linkedGitHubPR ?? null,
-      fallbackGitHubPR: args.linkedGitHubPR == null ? (args.fallbackGitHubPR ?? null) : null,
-      linkedGitLabMR: args.linkedGitLabMR ?? null,
-      linkedBitbucketPR: args.linkedBitbucketPR ?? null,
-      linkedAzureDevOpsPR: args.linkedAzureDevOpsPR ?? null,
-      linkedGiteaPR: args.linkedGiteaPR ?? null,
-      ...executionOptions
-    })
-    if (review?.provider === 'github' && this.stats && !this.stats.hasCountedPR(review.url)) {
-      this.stats.record({
-        type: 'pr_created',
-        at: Date.now(),
-        repoId: repo.id,
-        meta: { prNumber: review.number, prUrl: review.url }
-      })
-    }
-    return review
-  }
-
   async getHostedReviewCreationEligibility(
     args: Omit<HostedReviewCreationEligibilityArgs, 'repoPath'> & {
       repoSelector: string
@@ -9914,439 +9561,6 @@ export class OrcaRuntimeService {
       })
     }
     return result
-  }
-
-  async getRepoIssue(
-    repoSelector: string,
-    number: number
-  ): Promise<Awaited<ReturnType<typeof getIssue>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getIssue(
-      repo.path,
-      number,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async getRepoPRChecks(
-    repoSelector: string,
-    prNumber: number,
-    headSha?: string,
-    prRepo?: GitHubOwnerRepo | null,
-    options?: { noCache?: boolean }
-  ): Promise<Awaited<ReturnType<typeof getPRChecks>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getPRChecks(
-      repo.path,
-      prNumber,
-      headSha,
-      prRepo ?? null,
-      options,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async rerunRepoPRChecks(
-    repoSelector: string,
-    prNumber: number,
-    options?: { headSha?: string; failedOnly?: boolean }
-  ): Promise<Awaited<ReturnType<typeof rerunPRChecks>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return rerunPRChecks(
-      repo.path,
-      prNumber,
-      options,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async getRepoPRCheckDetails(
-    repoSelector: string,
-    args: {
-      checkRunId?: number
-      workflowRunId?: number
-      checkName?: string
-      url?: string | null
-      prRepo?: GitHubOwnerRepo | null
-    }
-  ): Promise<Awaited<ReturnType<typeof getPRCheckDetails>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getPRCheckDetails(
-      repo.path,
-      { ...args, prRepo: args.prRepo ?? null },
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async getRepoPRComments(
-    repoSelector: string,
-    prNumber: number,
-    prRepo?: GitHubOwnerRepo | null,
-    options?: { noCache?: boolean }
-  ): Promise<Awaited<ReturnType<typeof getPRComments>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getPRComments(
-      repo.path,
-      prNumber,
-      { ...options, prRepo: prRepo ?? null },
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async getRepoPRFileContents(
-    repoSelector: string,
-    args: {
-      prNumber: number
-      path: string
-      oldPath?: string
-      status: GitHubPRFile['status']
-      headSha: string
-      baseSha: string
-    }
-  ): Promise<Awaited<ReturnType<typeof getPRFileContents>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return getPRFileContents({
-      repoPath: repo.path,
-      connectionId: repo.connectionId ?? null,
-      localGitOptions: this.getLocalGitExecutionOptionArgs(repo)[0],
-      ...args
-    })
-  }
-
-  async resolveRepoReviewThread(
-    repoSelector: string,
-    threadId: string,
-    resolve: boolean
-  ): Promise<Awaited<ReturnType<typeof resolveReviewThread>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return resolveReviewThread(
-      repo.path,
-      threadId,
-      resolve,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async setRepoPRFileViewed(
-    repoSelector: string,
-    args: {
-      pullRequestId: string
-      path: string
-      viewed: boolean
-    }
-  ): Promise<Awaited<ReturnType<typeof setPRFileViewed>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return setPRFileViewed({
-      repoPath: repo.path,
-      connectionId: repo.connectionId ?? null,
-      localGitOptions: this.getLocalGitExecutionOptionArgs(repo)[0],
-      ...args
-    })
-  }
-
-  async updateRepoPRTitle(
-    repoSelector: string,
-    prNumber: number,
-    title: string,
-    prRepo?: GitHubOwnerRepo | null
-  ): Promise<Awaited<ReturnType<typeof updatePRTitle>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return updatePRTitle(
-      repo.path,
-      prNumber,
-      title,
-      repo.connectionId ?? null,
-      prRepo ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async updateRepoPRDetails(
-    repoSelector: string,
-    prNumber: number,
-    updates: { title?: string; body?: string },
-    prRepo?: GitHubOwnerRepo | null
-  ): Promise<Awaited<ReturnType<typeof updatePRDetails>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return updatePRDetails(
-      repo.path,
-      prNumber,
-      updates,
-      repo.connectionId ?? null,
-      prRepo ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async mergeRepoPR(
-    repoSelector: string,
-    prNumber: number,
-    method?: 'merge' | 'squash' | 'rebase',
-    prRepo?: GitHubOwnerRepo | null
-  ): Promise<Awaited<ReturnType<typeof mergePR>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return mergePR(
-      repo.path,
-      prNumber,
-      method,
-      repo.connectionId ?? null,
-      prRepo ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async setRepoPRAutoMerge(
-    repoSelector: string,
-    prNumber: number,
-    enabled: boolean,
-    method?: 'merge' | 'squash' | 'rebase',
-    prRepo?: GitHubOwnerRepo | null
-  ): Promise<Awaited<ReturnType<typeof setPRAutoMerge>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return setPRAutoMerge(
-      repo.path,
-      prNumber,
-      enabled,
-      method,
-      repo.connectionId ?? null,
-      prRepo ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async updateRepoPRState(
-    repoSelector: string,
-    prNumber: number,
-    updates: GitHubPullRequestStateUpdate
-  ): Promise<Awaited<ReturnType<typeof updatePRState>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return updatePRState(
-      repo.path,
-      prNumber,
-      updates,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async requestRepoPRReviewers(
-    repoSelector: string,
-    prNumber: number,
-    reviewers: string[]
-  ): Promise<Awaited<ReturnType<typeof requestPRReviewers>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return requestPRReviewers(
-      repo.path,
-      prNumber,
-      reviewers,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async removeRepoPRReviewers(
-    repoSelector: string,
-    prNumber: number,
-    reviewers: string[]
-  ): Promise<Awaited<ReturnType<typeof removePRReviewers>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return removePRReviewers(
-      repo.path,
-      prNumber,
-      reviewers,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async createRepoIssue(
-    repoSelector: string,
-    title: string,
-    body: string,
-    fields?: GitHubCreateIssueFields
-  ): Promise<Awaited<ReturnType<typeof createIssue>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return createIssue(
-      repo.path,
-      title,
-      body,
-      repo.issueSourcePreference,
-      repo.connectionId ?? null,
-      fields,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async updateRepoIssue(
-    repoSelector: string,
-    number: number,
-    updates: GitHubIssueUpdate
-  ): Promise<Awaited<ReturnType<typeof updateIssue>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return updateIssue(
-      repo.path,
-      number,
-      updates,
-      repo.connectionId ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async addRepoIssueComment(
-    repoSelector: string,
-    number: number,
-    body: string,
-    prRepo?: GitHubOwnerRepo | null
-  ): Promise<Awaited<ReturnType<typeof addIssueComment>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return addIssueComment(
-      repo.path,
-      number,
-      body,
-      repo.connectionId ?? null,
-      prRepo ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async addRepoPRReviewComment(
-    repoSelector: string,
-    args: Omit<GitHubPRReviewCommentInput, 'repoPath'>
-  ): Promise<Awaited<ReturnType<typeof addPRReviewComment>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return addPRReviewComment({
-      repoPath: repo.path,
-      connectionId: repo.connectionId ?? null,
-      localGitOptions: this.getLocalGitExecutionOptionArgs(repo)[0],
-      ...args
-    })
-  }
-
-  async addRepoPRReviewCommentReply(
-    repoSelector: string,
-    args: {
-      prNumber: number
-      commentId: number
-      body: string
-      threadId?: string
-      path?: string
-      line?: number
-      prRepo?: GitHubOwnerRepo | null
-    }
-  ): Promise<Awaited<ReturnType<typeof addPRReviewCommentReply>>> {
-    const repo = await this.resolveRepoSelector(repoSelector)
-    return addPRReviewCommentReply(
-      repo.path,
-      args.prNumber,
-      args.commentId,
-      args.body,
-      args.threadId,
-      args.path,
-      args.line,
-      repo.connectionId ?? null,
-      args.prRepo ?? null,
-      ...this.getLocalGitExecutionOptionArgs(repo)
-    )
-  }
-
-  async listGitHubProjects(): Promise<Awaited<ReturnType<typeof listAccessibleProjects>>> {
-    return listAccessibleProjects()
-  }
-
-  async listGitHubLabelsBySlug(
-    args: ListLabelsBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof listLabelsBySlug>>> {
-    return listLabelsBySlug(args)
-  }
-
-  async listGitHubAssignableUsersBySlug(
-    args: ListAssignableUsersBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof listAssignableUsersBySlug>>> {
-    return listAssignableUsersBySlug(args)
-  }
-
-  async listGitHubIssueTypesBySlug(
-    args: ListIssueTypesBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof listIssueTypesBySlug>>> {
-    return listIssueTypesBySlug(args)
-  }
-
-  async resolveGitHubProjectRef(
-    args: ResolveProjectRefArgs
-  ): Promise<Awaited<ReturnType<typeof resolveProjectRef>>> {
-    return resolveProjectRef(args)
-  }
-
-  async listGitHubProjectViews(
-    args: ListProjectViewsArgs
-  ): Promise<Awaited<ReturnType<typeof listProjectViews>>> {
-    return listProjectViews(args)
-  }
-
-  async getGitHubProjectViewTable(
-    args: GetProjectViewTableArgs
-  ): Promise<Awaited<ReturnType<typeof getProjectViewTable>>> {
-    return getProjectViewTable(args)
-  }
-
-  async getGitHubProjectWorkItemDetailsBySlug(
-    args: ProjectWorkItemDetailsBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof getWorkItemDetailsBySlug>>> {
-    return getWorkItemDetailsBySlug(args)
-  }
-
-  async updateGitHubProjectItemField(
-    args: UpdateProjectItemFieldArgs
-  ): Promise<Awaited<ReturnType<typeof updateProjectItemFieldValue>>> {
-    return updateProjectItemFieldValue(args)
-  }
-
-  async clearGitHubProjectItemField(
-    args: ClearProjectItemFieldArgs
-  ): Promise<Awaited<ReturnType<typeof clearProjectItemFieldValue>>> {
-    return clearProjectItemFieldValue(args)
-  }
-
-  async updateGitHubIssueBySlug(
-    args: UpdateIssueBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof updateIssueBySlug>>> {
-    return updateIssueBySlug(args)
-  }
-
-  async updateGitHubPullRequestBySlug(
-    args: UpdatePullRequestBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof updatePullRequestBySlug>>> {
-    return updatePullRequestBySlug(args)
-  }
-
-  async updateGitHubIssueTypeBySlug(
-    args: UpdateIssueTypeBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof updateIssueTypeBySlug>>> {
-    return updateIssueTypeBySlug(args)
-  }
-
-  async addGitHubIssueCommentBySlug(
-    args: AddIssueCommentBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof addIssueCommentBySlug>>> {
-    return addIssueCommentBySlug(args)
-  }
-
-  async updateGitHubIssueCommentBySlug(
-    args: UpdateIssueCommentBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof updateIssueCommentBySlug>>> {
-    return updateIssueCommentBySlug(args)
-  }
-
-  async deleteGitHubIssueCommentBySlug(
-    args: DeleteIssueCommentBySlugArgs
-  ): Promise<Awaited<ReturnType<typeof deleteIssueCommentBySlug>>> {
-    return deleteIssueCommentBySlug(args)
   }
 
   private getSetupHookTrustPayload(
@@ -11449,7 +10663,6 @@ export class OrcaRuntimeService {
       }
       return { ...options, ...localWorktreeGitOptions }
     }
-    const hostedReviewExecutionContext = this.getHostedReviewExecutionOptions(repo)
     let effectiveRequestedName = args.name
     const requestedDisplayName = args.displayName?.trim() || undefined
     const sanitizedName = sanitizeWorktreeName(args.name)
@@ -11494,59 +10707,16 @@ export class OrcaRuntimeService {
           baseBranch,
           ...localWorktreeGitOptionArgs
         )
+    // Why: a remote branch collision is acceptable only when the user explicitly
+    // requested this branch for the selected review (branch override matches the
+    // push target). In-app PR lookups were removed, so we trust that explicit
+    // selection rather than confirming the review number over the network.
     const allowedPushTargetRemoteConflict =
       branchConflictKind && isAllowedPushTargetRemoteConflict(branchConflictKind, branchName, args)
     if (branchConflictKind && !allowedPushTargetRemoteConflict) {
       throw new Error(
         `Branch "${branchName}" already exists ${branchConflictKind === 'local' ? 'locally' : 'on a remote'}.`
       )
-    }
-
-    if (!checkoutExistingBranch) {
-      let existingPR: Awaited<ReturnType<typeof getPRForBranch>> | null = null
-      const selectedReview = getSelectedReviewBranch(args)
-      if (selectedReview?.provider === 'github' || !allowedPushTargetRemoteConflict) {
-        try {
-          existingPR = await getLocalGitHubPrForBranch(
-            repo.path,
-            branchName,
-            localWorktreeGitOptions
-          )
-        } catch {
-          if (allowedPushTargetRemoteConflict) {
-            throw new Error(`Could not verify selected PR branch "${branchName}". Try again.`)
-          }
-          // Why: worktree creation should not hard-fail on transient GitHub reachability
-          // issues because git state is still the source of truth for whether the
-          // worktree can be created locally.
-        }
-      }
-      if (allowedPushTargetRemoteConflict) {
-        if (selectedReview?.provider === 'github') {
-          if (!isMatchingSelectedGitHubPr(existingPR, args, branchName)) {
-            if (existingPR) {
-              throw new Error(`Branch "${branchName}" already has PR #${existingPR.number}.`)
-            }
-            throw new Error(`Branch "${branchName}" already exists on a remote.`)
-          }
-        } else if (selectedReview) {
-          const hostedReview = await getSelectedHostedReviewForBranch(
-            repo,
-            branchName,
-            args,
-            hostedReviewExecutionContext
-          ).catch(() => null)
-          if (!hostedReview?.matchesSelected) {
-            if (hostedReview) {
-              throw new Error(`Branch "${branchName}" already has PR #${hostedReview.number}.`)
-            }
-            throw new Error(`Branch "${branchName}" already exists on a remote.`)
-          }
-        }
-      }
-      if (existingPR && !isMatchingSelectedGitHubPr(existingPR, args, branchName)) {
-        throw new Error(`Branch "${branchName}" already has PR #${existingPR.number}.`)
-      }
     }
 
     const workspaceRoot = computeWorkspaceRoot(repo.path, worktreePathSettings)
@@ -12894,82 +12064,6 @@ export class OrcaRuntimeService {
     this.invalidateResolvedWorktreeCache()
     this.notifyReposChanged()
     return { updated }
-  }
-
-  async resolveManagedPrBase(args: {
-    repoSelector: string
-    prNumber: number
-    headRefName?: string
-    baseRefName?: string
-    isCrossRepository?: boolean
-  }): Promise<GitHubPrStartPoint | { error: string }> {
-    if (!this.store) {
-      throw new Error('runtime_unavailable')
-    }
-    let repo: Repo
-    try {
-      repo = await this.resolveRepoSelector(args.repoSelector)
-    } catch {
-      return { error: 'Repo not found' }
-    }
-    if (isFolderRepo(repo)) {
-      return { error: 'Folder mode does not support creating worktrees.' }
-    }
-    const sshGitProvider = repo.connectionId ? requireSshGitProvider(repo.connectionId) : null
-    const localGitExecOptions = sshGitProvider
-      ? undefined
-      : getLocalProjectGitExecOptions(this.requireStore(), repo)
-    const localWorktreeGitOptions = sshGitProvider
-      ? {}
-      : getLocalProjectWorktreeGitOptions(this.requireStore(), repo)
-    const gitExec = sshGitProvider
-      ? (gitArgs: string[]) => sshGitProvider.exec(gitArgs, repo.path)
-      : (gitArgs: string[]) => gitExecFileAsync(gitArgs, localGitExecOptions ?? { cwd: repo.path })
-    const resolveRemote = sshGitProvider
-      ? async () => {
-          const { stdout } = await sshGitProvider.exec(['remote'], repo.path)
-          const remotes = stdout
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean)
-          if (remotes.includes('origin')) {
-            return 'origin'
-          }
-          if (remotes.length === 1) {
-            return remotes[0]!
-          }
-          if (remotes.length === 0) {
-            throw new Error('Repo has no configured git remotes.')
-          }
-          throw new Error(
-            `Repo has multiple remotes (${remotes.join(', ')}) and no default is configured.`
-          )
-        }
-      : () => getDefaultRemote(repo.path, localWorktreeGitOptions)
-
-    // Why: SSH repos can't fetch over the relay's read-only git.exec channel, so
-    // route the PR head fetch through the write-capable helper instead of gitExec.
-    const fetchRemoteTrackingRef = (remote: string, branch: string): Promise<void> =>
-      fetchPrHeadTrackingRef(
-        repo,
-        sshGitProvider,
-        remote,
-        branch,
-        localGitExecOptions ? { localGitExecOptions } : {}
-      )
-
-    return resolveGitHubPrStartPoint({
-      repoPath: repo.path,
-      prNumber: args.prNumber,
-      headRefName: args.headRefName,
-      baseRefName: args.baseRefName,
-      isCrossRepository: args.isCrossRepository,
-      connectionId: repo.connectionId ?? null,
-      localGitOptions: localWorktreeGitOptions,
-      gitExec,
-      fetchRemoteTrackingRef,
-      resolveRemote
-    })
   }
 
   private async resolveWorktreeRemovalTarget(

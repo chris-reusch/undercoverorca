@@ -5,7 +5,6 @@ import {
 } from '@/lib/agent-paste-draft'
 import { sendFollowupPromptWhenAgentReady } from '@/lib/agent-followup-delivery'
 import type { AgentStartupPlan } from '@/lib/tui-agent-startup'
-import type { LinkedWorkItemContext } from '@/lib/linked-work-item-context'
 import {
   beginAgentStartupDeliveryAttempt,
   getAgentStartupTabPtyId,
@@ -19,14 +18,6 @@ import { createBrowserUuid } from '@/lib/browser-uuid'
 export { getLinkedWorkItemSuggestedName } from '../../../shared/workspace-name'
 export { getLinkedWorkItemWorkspaceName } from '../../../shared/workspace-name'
 export { getWorkspaceIntentName } from '../../../shared/workspace-name'
-
-/**
- * Why: the TaskPage's preset buttons and the openTaskPage prefetcher both need
- * to compute the same GitHub query string for a given preset id. Keep the
- * mapping here so the prefetch warms exactly the cache key the page will look
- * up on mount.
- */
-export { PER_REPO_FETCH_LIMIT, CROSS_REPO_DISPLAY_LIMIT } from '../../../shared/work-items'
 
 export function getTaskPresetQuery(presetId: TaskViewPresetId | null): string {
   switch (presetId) {
@@ -52,7 +43,44 @@ export const CLIENT_PLATFORM: NodeJS.Platform = navigator.userAgent.includes('Wi
     ? 'darwin'
     : 'linux'
 
-export { getLinkedWorkItemProvider, isGitLabIssueUrl } from './linked-work-item-provider'
+export function isGitLabIssueUrl(url: string): boolean {
+  // Why: self-hosted GitLab issue URLs may not contain "gitlab".
+  try {
+    return new URL(url).pathname.includes('/-/issues/')
+  } catch {
+    return /\/-\/issues\//i.test(url)
+  }
+}
+
+export function getLinkedWorkItemProvider(
+  item: LinkedWorkItemSummary
+): NonNullable<LinkedWorkItemSummary['provider']> {
+  if (item.provider) {
+    return item.provider
+  }
+  if (item.linearIdentifier) {
+    return 'linear'
+  }
+  if (item.type === 'mr') {
+    return 'gitlab'
+  }
+  if (isGitLabIssueUrl(item.url)) {
+    return 'gitlab'
+  }
+  if (item.number === 0 && !item.url.includes('github.com')) {
+    return 'linear'
+  }
+  return 'github'
+}
+
+// Why: linked provider context was previously imported from the now-removed
+// linked-work-item-context module; the minimal shape is retained so persisted
+// drafts and downstream consumers still type-check.
+export type LinkedWorkItemContext = {
+  provider: FolderWorkspaceLinkedTask['provider']
+  version: 1
+  renderedText: string
+}
 
 export type LinkedWorkItemSummary = Omit<FolderWorkspaceLinkedTask, 'provider'> & {
   provider?: FolderWorkspaceLinkedTask['provider']

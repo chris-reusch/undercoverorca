@@ -1,7 +1,7 @@
 import { GitMerge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PullRequestIcon } from './WorktreeCardHelpers'
-import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
+import type { WorktreeCardPrDisplay } from './worktree-card-meta-types'
 
 export function getReviewLabel(review: WorktreeCardPrDisplay): 'MR' | 'PR' {
   return review.provider === 'gitlab' ? 'MR' : 'PR'

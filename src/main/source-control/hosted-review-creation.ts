@@ -24,7 +24,6 @@ import { resolveDefaultBaseRefViaExec } from '../git/repo'
 import { getUpstreamStatus } from '../git/upstream'
 import { getSshGitProvider } from '../providers/ssh-git-dispatch'
 import { detectHostedReviewProvider, getForgeProviderForRepository } from './forge-provider'
-import { getHostedReviewForBranch } from './hosted-review'
 import {
   getHostedReviewLocalGitOptions,
   type HostedReviewExecutionOptions
@@ -320,52 +319,19 @@ export async function getHostedReviewCreationEligibility(
   const defaultBaseRef =
     args.base?.trim() || (await getDefaultBaseRef(args.repoPath, args.connectionId, args))
   const baseBranch = defaultBaseRef ? normalizeHostedReviewBaseRef(defaultBaseRef) : null
-  let review: Awaited<ReturnType<typeof getHostedReviewForBranch>> = null
-  try {
-    review = await getHostedReviewForBranch({
-      repoPath: args.repoPath,
-      branch,
-      linkedGitHubPR: args.linkedGitHubPR ?? null,
-      fallbackGitHubPR: args.linkedGitHubPR == null ? (args.fallbackGitHubPR ?? null) : null,
-      linkedGitLabMR: args.linkedGitLabMR ?? null,
-      linkedBitbucketPR: args.linkedBitbucketPR ?? null,
-      linkedAzureDevOpsPR: args.linkedAzureDevOpsPR ?? null,
-      linkedGiteaPR: args.linkedGiteaPR ?? null,
-      connectionId: args.connectionId ?? null,
-      ...hostedReviewExecutionContext(args)
-    })
-  } catch (error) {
-    const canReturnLocalBlocker =
-      branch &&
-      branch !== 'HEAD' &&
-      supportsHostedReviewCreation(provider) &&
-      (!baseBranch || branch.toLowerCase() !== baseBranch.toLowerCase()) &&
-      (args.hasUncommittedChanges || args.hasUpstream !== true || (args.behind ?? 0) > 0)
-    if (!canReturnLocalBlocker) {
-      throw error
-    }
-    // Why: local blockers still let the UI offer Create PR preparation; a
-    // flaky existing-review lookup should not hide the affordance entirely.
-    console.warn('Hosted review lookup failed while resolving local review blocker:', error)
-  }
 
+  // Why: the in-app existing-PR lookup was part of the removed provider
+  // data-fetching surface. `gh pr create` itself rejects a duplicate PR for the
+  // branch, so eligibility now only gates on local git state.
   const baseResult = {
     provider,
-    review: review ? { number: review.number, url: review.url } : null,
+    review: null,
     defaultBaseRef,
     head: branch || null
   }
 
   if (!branch || branch === 'HEAD') {
     return { ...baseResult, canCreate: false, blockedReason: 'detached_head', nextAction: null }
-  }
-  if (review) {
-    return {
-      ...baseResult,
-      canCreate: false,
-      blockedReason: 'existing_review',
-      nextAction: 'open_existing_review'
-    }
   }
   if (!supportsHostedReviewCreation(provider)) {
     return {

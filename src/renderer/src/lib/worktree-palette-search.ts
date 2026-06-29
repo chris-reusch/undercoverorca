@@ -1,5 +1,4 @@
 import { branchName } from '@/lib/git-utils'
-import { issueCacheKey as getIssueCacheKey } from '@/store/slices/github'
 import type { Repo, Worktree } from '../../../shared/types'
 import { extractWorktreePaletteCommentSnippet } from './worktree-palette-comment-snippet'
 import { isWorktreePaletteQueryTooLarge } from './worktree-palette-query-bounds'
@@ -44,9 +43,6 @@ export function getWorktreePaletteSearchScope(args: {
   return args.allWorktrees.filter((worktree) => !worktree.isArchived)
 }
 
-type PRCacheEntry = { data?: { number: number; title: string } | null } | undefined
-type IssueCacheEntry = { data?: { number: number; title: string } | null } | undefined
-
 function makeResult(
   worktreeId: string,
   matchedField: PaletteMatchedField | null,
@@ -67,8 +63,6 @@ export function searchWorktrees(
   worktrees: Worktree[],
   query: string,
   repoMap: Map<string, Repo>,
-  prCache: Record<string, PRCacheEntry> | null,
-  issueCache: Record<string, IssueCacheEntry> | null,
   workspacePortsByWorktreeId?: Map<string, { port: number; processName?: string }[]>
 ): PaletteSearchResult[] {
   if (isWorktreePaletteQueryTooLarge(query)) {
@@ -198,43 +192,7 @@ export function searchWorktrees(
       continue
     }
 
-    const repo = repoMap.get(worktree.repoId)
-    const prKey = repo ? `${repo.path}::${branch}` : ''
-    const pr = prKey && prCache ? prCache[prKey]?.data : undefined
-
-    if (pr) {
-      const prText = `PR #${pr.number}`
-      const prNumberIndex = String(pr.number).indexOf(numericQuery)
-      if (prNumberIndex !== -1) {
-        results.push(
-          makeResult(worktree.id, 'pr', {
-            supportingText: {
-              labelKind: 'pr',
-              text: prText,
-              matchRange: {
-                start: 'PR #'.length + prNumberIndex,
-                end: 'PR #'.length + prNumberIndex + numericQuery.length
-              }
-            }
-          })
-        )
-        continue
-      }
-
-      const prTitleIndex = pr.title.toLowerCase().indexOf(q)
-      if (prTitleIndex !== -1) {
-        results.push(
-          makeResult(worktree.id, 'pr', {
-            supportingText: {
-              labelKind: 'pr',
-              text: pr.title,
-              matchRange: { start: prTitleIndex, end: prTitleIndex + q.length }
-            }
-          })
-        )
-        continue
-      }
-    } else if (worktree.linkedPR != null) {
+    if (worktree.linkedPR != null) {
       const prText = `PR #${worktree.linkedPR}`
       const prNumberIndex = String(worktree.linkedPR).indexOf(numericQuery)
       if (prNumberIndex !== -1) {
@@ -270,35 +228,6 @@ export function searchWorktrees(
               start: 'Issue #'.length + issueNumberIndex,
               end: 'Issue #'.length + issueNumberIndex + numericQuery.length
             }
-          }
-        })
-      )
-      continue
-    }
-
-    const issueKey = repo
-      ? getIssueCacheKey(
-          repo.path,
-          repo.id,
-          worktree.linkedIssue,
-          undefined,
-          repo.connectionId,
-          repo.executionHostId
-        )
-      : ''
-    const issue = issueKey && issueCache ? issueCache[issueKey]?.data : undefined
-    if (!issue?.title) {
-      continue
-    }
-
-    const issueTitleIndex = issue.title.toLowerCase().indexOf(q)
-    if (issueTitleIndex !== -1) {
-      results.push(
-        makeResult(worktree.id, 'issue', {
-          supportingText: {
-            labelKind: 'issue',
-            text: issue.title,
-            matchRange: { start: issueTitleIndex, end: issueTitleIndex + q.length }
           }
         })
       )

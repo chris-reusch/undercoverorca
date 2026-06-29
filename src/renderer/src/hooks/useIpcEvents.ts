@@ -1063,14 +1063,6 @@ export function useIpcEvents(): void {
       }) ?? (() => {})
     )
 
-    if (window.api.gh?.onPRRefreshEvent) {
-      unsubs.push(
-        window.api.gh.onPRRefreshEvent((event) => {
-          useAppStore.getState().applyGitHubPRRefreshEvent(event)
-        })
-      )
-    }
-
     unsubs.push(
       window.api.ui.onOpenSettings(() => {
         useAppStore.getState().openSettingsPage()

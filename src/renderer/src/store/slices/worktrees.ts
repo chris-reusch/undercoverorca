@@ -33,8 +33,6 @@ import {
   RuntimeRpcCallError
 } from '../../runtime/runtime-rpc-client'
 import { toRuntimeWorktreeSelector } from '../../runtime/runtime-worktree-selector'
-import { getHostedReviewCacheKey, refreshHostedReviewCard } from './hosted-review'
-import { getGitHubPRCacheKey, getLegacyGitHubPRCacheKey } from './github-cache-key'
 import { moveFocusToRendererBeforeFocusedWebviewHidden } from './browser-webview-cleanup'
 import { toast } from 'sonner'
 import { requestVirtualizedScrollAnchorRecord } from '@/hooks/requestVirtualizedScrollAnchorRecord'
@@ -1251,16 +1249,6 @@ function clearOlderHostedReviewLinksForReplacement(
   return normalized
 }
 
-function getHostedReviewLinkForMetaRefresh(
-  updates: Partial<WorktreeMeta>,
-  existingWorktree: Worktree | undefined,
-  key: HostedReviewLinkKey
-): number | null {
-  return Object.prototype.hasOwnProperty.call(updates, key)
-    ? (updates[key] ?? null)
-    : (existingWorktree?.[key] ?? null)
-}
-
 function hasExplicitPushTargetClear(updates: Partial<WorktreeMeta>): boolean {
   return (
     Object.prototype.hasOwnProperty.call(updates, 'pushTarget') && updates.pushTarget === undefined
@@ -2461,7 +2449,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
             { timeoutMs: 60_000 }
           ))
 
-
       // Why: backend delete paths now preflight and kill PTYs only after the
       // worktree is cleanly removable. Renderer state follows the successful
       // backend result so blocked dirty deletes keep their terminals intact.
@@ -2882,20 +2869,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
     if (shouldApplyUpdate && !shouldApplyUpdate(worktreeForUpdate)) {
       return
     }
-    const shouldRefreshHostedReview =
-      (normalizedUpdates.linkedPR === null && worktreeForUpdate?.linkedPR !== null) ||
-      (normalizedUpdates.linkedGitLabMR === null &&
-        (worktreeForUpdate?.linkedGitLabMR ?? null) !== null) ||
-      (normalizedUpdates.linkedBitbucketPR === null &&
-        (worktreeForUpdate?.linkedBitbucketPR ?? null) !== null) ||
-      (normalizedUpdates.linkedAzureDevOpsPR === null &&
-        (worktreeForUpdate?.linkedAzureDevOpsPR ?? null) !== null) ||
-      (normalizedUpdates.linkedGiteaPR === null &&
-        (worktreeForUpdate?.linkedGiteaPR ?? null) !== null)
-    const reviewRepo = shouldRefreshHostedReview
-      ? get().repos.find((repo) => repo.id === worktreeForUpdate?.repoId)
-      : undefined
-    const reviewBranch = worktreeForUpdate?.branch.replace(/^refs\/heads\//, '')
 
     // Why: editing a comment is meaningful interaction with the worktree.
     // Without refreshing lastActivityAt, the time-decay score has decayed
@@ -2930,66 +2903,12 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
         worktreeId,
         enriched
       )
-      const cacheKey =
-        reviewRepo && reviewBranch
-          ? getHostedReviewCacheKey(
-              reviewRepo.path,
-              reviewBranch,
-              s.settings,
-              reviewRepo.id,
-              reviewRepo.connectionId,
-              reviewRepo.executionHostId,
-              true
-            )
-          : null
-      const prCacheKey =
-        reviewRepo && reviewBranch
-          ? getGitHubPRCacheKey(
-              reviewRepo.path,
-              reviewRepo.id,
-              reviewBranch,
-              s.settings,
-              reviewRepo.connectionId,
-              reviewRepo.executionHostId,
-              true
-            )
-          : null
-      const prCacheKeys =
-        reviewRepo && reviewBranch
-          ? [
-              prCacheKey,
-              getLegacyGitHubPRCacheKey(reviewRepo.path, reviewRepo.id, reviewBranch),
-              getLegacyGitHubPRCacheKey(reviewRepo.path, undefined, reviewBranch)
-            ].filter((key): key is string => Boolean(key))
-          : []
-      const hostedReviewCache = s.hostedReviewCache ?? {}
-      const prCache = s.prCache ?? {}
       if (
         nextWorktrees === s.worktreesByRepo &&
-        nextDetectedWorktrees === s.detectedWorktreesByRepo &&
-        !cacheKey &&
-        !prCacheKey
+        nextDetectedWorktrees === s.detectedWorktreesByRepo
       ) {
         return {}
       }
-
-      const nextHostedReviewCache =
-        cacheKey && hostedReviewCache[cacheKey]
-          ? (() => {
-              const next = { ...hostedReviewCache }
-              delete next[cacheKey]
-              return next
-            })()
-          : hostedReviewCache
-      const nextPRCache = prCacheKeys.some((key) => prCache[key])
-        ? (() => {
-            const next = { ...prCache }
-            for (const key of prCacheKeys) {
-              delete next[key]
-            }
-            return next
-          })()
-        : prCache
 
       return {
         ...(nextWorktrees !== s.worktreesByRepo
@@ -2997,11 +2916,7 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
           : {}),
         ...(nextDetectedWorktrees !== s.detectedWorktreesByRepo
           ? { detectedWorktreesByRepo: nextDetectedWorktrees }
-          : {}),
-        ...(nextHostedReviewCache !== hostedReviewCache
-          ? { hostedReviewCache: nextHostedReviewCache }
-          : {}),
-        ...(nextPRCache !== prCache ? { prCache: nextPRCache } : {})
+          : {})
       }
     })
     if (shouldApplyUpdate && !didApply) {
@@ -3010,40 +2925,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
 
     try {
       await persistWorktreeMeta(settingsForWorktreeOwner(get(), worktreeId), worktreeId, enriched)
-      if (reviewRepo && reviewBranch && typeof get().fetchHostedReviewForBranch === 'function') {
-        // Why: the old cache entry may have been populated by the previous
-        // provider link. Refetch against the post-update links so stale lookups
-        // cannot keep showing the removed review.
-        void get().fetchHostedReviewForBranch(reviewRepo.path, reviewBranch, {
-          repoId: reviewRepo.id,
-          linkedGitHubPR: getHostedReviewLinkForMetaRefresh(
-            targetEnriched,
-            worktreeForUpdate,
-            'linkedPR'
-          ),
-          linkedGitLabMR: getHostedReviewLinkForMetaRefresh(
-            targetEnriched,
-            worktreeForUpdate,
-            'linkedGitLabMR'
-          ),
-          linkedBitbucketPR: getHostedReviewLinkForMetaRefresh(
-            targetEnriched,
-            worktreeForUpdate,
-            'linkedBitbucketPR'
-          ),
-          linkedAzureDevOpsPR: getHostedReviewLinkForMetaRefresh(
-            targetEnriched,
-            worktreeForUpdate,
-            'linkedAzureDevOpsPR'
-          ),
-          linkedGiteaPR: getHostedReviewLinkForMetaRefresh(
-            targetEnriched,
-            worktreeForUpdate,
-            'linkedGiteaPR'
-          ),
-          force: true
-        })
-      }
     } catch (err) {
       if (isRuntimeSelectorNotFoundError(err)) {
         void get().fetchWorktrees(getRepoIdFromWorktreeId(worktreeId))
@@ -3215,70 +3096,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
       console.error('Failed to persist unread worktree state:', err)
       void get().fetchWorktrees(getRepoIdFromWorktreeId(worktreeId))
     })
-  },
-
-  observeTerminalGitHubPullRequestLink: (worktreeId, link) => {
-    const state = get()
-    const worktree = findKnownWorktreeById(state, worktreeId)
-    if (!worktree || worktree.isBare || worktree.isArchived) {
-      return
-    }
-    const repo = state.repos.find((candidate) => candidate.id === worktree.repoId)
-    if (!repo || (repo.kind && repo.kind !== 'git')) {
-      return
-    }
-    if (typeof worktree.linkedPR === 'number' && worktree.linkedPR !== link.number) {
-      return
-    }
-
-    const branch = branchName(worktree.branch)
-    const alreadyLinked = worktree.linkedPR === link.number
-
-    const fetchPRForBranch = get().fetchPRForBranch
-    if (typeof fetchPRForBranch === 'function') {
-      void fetchPRForBranch(repo.path, branch, {
-        force: true,
-        repoId: repo.id,
-        worktreeId,
-        linkedPRNumber: alreadyLinked ? link.number : null,
-        fallbackPRNumber: null,
-        fallbackPRSource: alreadyLinked ? null : 'explicit'
-      }).then((pr) => {
-        if (!alreadyLinked && pr?.number === link.number) {
-          // Why: terminal output can include arbitrary PR URLs from docs,
-          // agents, or logs. Persist only after branch lookup confirms it and
-          // the user has not picked a different PR while lookup was in flight.
-          void get().updateWorktreeMeta(
-            worktreeId,
-            { linkedPR: link.number },
-            {
-              shouldApply: (currentWorktree) =>
-                Boolean(
-                  currentWorktree &&
-                  !currentWorktree.isBare &&
-                  !currentWorktree.isArchived &&
-                  (currentWorktree.linkedPR == null || currentWorktree.linkedPR === link.number)
-                )
-            }
-          )
-        }
-      })
-      return
-    }
-
-    const fetchHostedReviewForBranch = get().fetchHostedReviewForBranch
-    if (typeof fetchHostedReviewForBranch === 'function') {
-      // Why: full app stores always have fetchPRForBranch, which syncs the
-      // GitHub hosted-review cache. Keep this only as a slice-test fallback.
-      void refreshHostedReviewCard(fetchHostedReviewForBranch, {
-        repoPath: repo.path,
-        repoId: repo.id,
-        branch,
-        linkedGitHubPR: alreadyLinked ? link.number : null,
-        fallbackGitHubPR: null,
-        linkedGitLabMR: worktree.linkedGitLabMR ?? null
-      })
-    }
   },
 
   clearWorktreeUnread: (worktreeId) => {
@@ -3779,12 +3596,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
       } else {
         prepareTerminalTabs()
       }
-    }
-
-    // Why: activation is explicit enough to revalidate PR state immediately;
-    // the GitHub coordinator still coalesces requests and applies rate guards.
-    if (worktreeId) {
-      get().refreshGitHubForWorktreeIfStale(worktreeId)
     }
 
     if (!worktreeId || !get().getKnownWorktreeById(worktreeId)) {

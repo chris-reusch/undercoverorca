@@ -115,7 +115,6 @@ import { createTabsSlice } from './tabs'
 import { createUISlice } from './ui'
 import { createSettingsSlice } from './settings'
 import { createKeybindingsSlice } from './keybindings'
-import { createGitHubSlice } from './github'
 import { createHostedReviewSlice } from './hosted-review'
 import { createPreflightSlice } from './preflight'
 import { createEditorSlice } from './editor'
@@ -145,7 +144,6 @@ function createTestStore() {
     ...createUISlice(...a),
     ...createSettingsSlice(...a),
     ...createKeybindingsSlice(...a),
-    ...createGitHubSlice(...a),
     ...createHostedReviewSlice(...a),
     ...createPreflightSlice(...a),
     ...createEditorSlice(...a),

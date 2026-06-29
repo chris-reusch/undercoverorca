@@ -2,7 +2,6 @@
 import type { ExecutionHostId } from './execution-host'
 import type { SshRemotePtyLease, SshTarget } from './ssh-types'
 import type { WorkspaceSource } from './workspace-source'
-import type { GitHubProjectSettings } from './github-project-types'
 import type {
   AgentStatusState,
   AgentType,
@@ -445,14 +444,6 @@ export type Worktree = {
   linkedLinearIssue: string | null
   linkedLinearIssueWorkspaceId?: string | null
   linkedLinearIssueOrganizationUrlKey?: string | null
-  // Why: parallel slots for non-GitHub work-item references. Kept as separate
-  // fields (rather than reusing linkedIssue / linkedPR with a provider
-  // discriminator) so the persistence layer is unambiguous when a user
-  // has remotes from several providers on the same repo, and so the
-  // existing GitHub renderer code keeps reading linkedPR / linkedIssue
-  // unchanged. Optional on the type so existing test fixtures and
-  // persisted older worktrees that never carried these fields continue
-  // to typecheck and load without migration.
   linkedGitLabMR?: number | null
   linkedGitLabIssue?: number | null
   linkedBitbucketPR?: number | null
@@ -535,15 +526,10 @@ export type WorktreeMeta = {
   linkedLinearIssue: string | null
   linkedLinearIssueWorkspaceId?: string | null
   linkedLinearIssueOrganizationUrlKey?: string | null
-  /** Optional for backward compatibility — see Worktree.linkedGitLabMR. */
   linkedGitLabMR?: number | null
-  /** Optional for backward compatibility — see Worktree.linkedGitLabIssue. */
   linkedGitLabIssue?: number | null
-  /** Optional for backward compatibility — see Worktree.linkedBitbucketPR. */
   linkedBitbucketPR?: number | null
-  /** Optional for backward compatibility — see Worktree.linkedAzureDevOpsPR. */
   linkedAzureDevOpsPR?: number | null
-  /** Optional for backward compatibility — see Worktree.linkedGiteaPR. */
   linkedGiteaPR?: number | null
   isArchived: boolean
   isUnread: boolean
@@ -2669,11 +2655,6 @@ export type GlobalSettings = {
   /** Active non-local runtime environment for client-routed RPC. `null`
    *  preserves the current local desktop behavior. */
   activeRuntimeEnvironmentId?: string | null
-  /** GitHub Project mode state — pinned/recent/active project, last selected
-   *  view per project. Optional because profiles created before this feature
-   *  landed won't have the key; `getDefaultSettings()` hydrates the empty
-   *  default via the persistence merge. */
-  githubProjects?: GitHubProjectSettings
   /** AI-generated commit messages: agent + model + per-model thinking +
    *  user-customizable prompt suffix. Optional so existing profiles do not
    *  require a migration step before this feature lands. */

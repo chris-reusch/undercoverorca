@@ -1,29 +1,14 @@
-import {
-  CLIENT_PLATFORM,
-  ensureAgentStartupInTerminal,
-  type LinkedWorkItemSummary
-} from '@/lib/new-workspace'
-import { resolveQuickCreateLinkedWorkItemPrompt } from '@/lib/linked-work-item-context'
+import { CLIENT_PLATFORM, ensureAgentStartupInTerminal } from '@/lib/new-workspace'
 import { createBrowserUuid } from '@/lib/browser-uuid'
-import {
-  buildAgentDraftLaunchPlan,
-  buildAgentStartupPlan,
-  type AgentStartupPlan
-} from '@/lib/tui-agent-startup'
+import { buildAgentStartupPlan } from '@/lib/tui-agent-startup'
 import { tuiAgentToAgentKind } from '../../../../shared/agent-kind'
 import { activateAndRevealFolderWorkspace } from '@/lib/worktree-activation'
-import { isWorkItemLookupText } from '@/lib/work-item-lookup-text'
 import { TUI_AGENT_CONFIG } from '../../../../shared/tui-agent-config'
 import { isWindowsAbsolutePathLike } from '../../../../shared/cross-platform-path'
 import type { FolderWorkspace, ProjectGroup, TuiAgent } from '../../../../shared/types'
 import { isWslUncPath } from '../../../../shared/wsl-paths'
 import type { LaunchSource } from '../../../../shared/agent-launch-source'
 import { folderWorkspaceKey } from '../../../../shared/workspace-scope'
-import {
-  getLinkedItemDisplayName,
-  toFolderWorkspaceLinkedTask,
-  toLinkedWorkItemPromptInput
-} from './folder-workspace-composer-helpers'
 
 type FolderWorkspaceCreateInput = {
   projectGroupId: string
@@ -37,15 +22,12 @@ type FolderWorkspaceCreateInput = {
 type SubmitFolderWorkspaceCreateParams = {
   projectGroup: ProjectGroup
   name: string
-  lastAutoName: string
-  linkedWorkItem: LinkedWorkItemSummary | null
   note: string
   quickAgent: TuiAgent | null
   autoRenameBranchFromWork: boolean | undefined
   agentCmdOverrides: Record<string, string> | undefined
   agentArgs?: string | null
   agentEnv?: Record<string, string>
-  isRemote?: boolean
   launchSource?: LaunchSource
   runtimeEnvironmentId?: string | null
   createFolderWorkspace: (input: FolderWorkspaceCreateInput) => Promise<FolderWorkspace | null>
@@ -60,61 +42,6 @@ export function getFolderWorkspaceAgentLaunchPlatform(
     return isWindowsAbsolutePathLike(parentPath) ? 'win32' : 'linux'
   }
   return parentPath && isWslUncPath(parentPath) ? 'linux' : CLIENT_PLATFORM
-}
-
-function buildFolderWorkspaceLinkedStartupPlan(args: {
-  agent: TuiAgent
-  linkedWorkItem: LinkedWorkItemSummary
-  note: string
-  agentCmdOverrides: Record<string, string> | undefined
-  agentArgs?: string | null
-  agentEnv?: Record<string, string>
-  platform: NodeJS.Platform
-}): AgentStartupPlan | null {
-  const { prompt, draftPrompt } = resolveQuickCreateLinkedWorkItemPrompt(
-    toLinkedWorkItemPromptInput(args.linkedWorkItem),
-    args.note
-  )
-  const linkedDraftPrompt = (draftPrompt ?? prompt.trim()) || null
-  const draftLaunchPlan = linkedDraftPrompt
-    ? buildAgentDraftLaunchPlan({
-        agent: args.agent,
-        draft: linkedDraftPrompt,
-        cmdOverrides: args.agentCmdOverrides ?? {},
-        agentArgs: args.agentArgs,
-        agentEnv: args.agentEnv,
-        platform: args.platform
-      })
-    : null
-  if (draftLaunchPlan) {
-    return {
-      agent: draftLaunchPlan.agent,
-      launchCommand: draftLaunchPlan.launchCommand,
-      expectedProcess: draftLaunchPlan.expectedProcess,
-      followupPrompt: null,
-      launchConfig: draftLaunchPlan.launchConfig,
-      ...(draftLaunchPlan.startupCommandDelivery
-        ? { startupCommandDelivery: draftLaunchPlan.startupCommandDelivery }
-        : {}),
-      ...(draftLaunchPlan.env ? { env: draftLaunchPlan.env } : {})
-    }
-  }
-
-  const startupPlan = buildAgentStartupPlan({
-    agent: args.agent,
-    // Why: linked context must stay reviewable; launch empty, then paste the
-    // draft after the agent is ready instead of submitting it on argv/stdin.
-    prompt: '',
-    cmdOverrides: args.agentCmdOverrides ?? {},
-    agentArgs: args.agentArgs,
-    agentEnv: args.agentEnv,
-    platform: args.platform,
-    allowEmptyPromptLaunch: true
-  })
-  if (startupPlan && linkedDraftPrompt) {
-    startupPlan.draftPrompt = linkedDraftPrompt
-  }
-  return startupPlan
 }
 
 async function preflightFolderWorkspaceAgentTrust(args: {
@@ -143,8 +70,6 @@ async function preflightFolderWorkspaceAgentTrust(args: {
 export async function submitFolderWorkspaceCreate({
   projectGroup,
   name,
-  lastAutoName,
-  linkedWorkItem,
   note,
   quickAgent,
   autoRenameBranchFromWork,
@@ -156,41 +81,24 @@ export async function submitFolderWorkspaceCreate({
   createFolderWorkspace,
   onOpenChange
 }: SubmitFolderWorkspaceCreateParams): Promise<boolean> {
-  const linkedName = linkedWorkItem ? getLinkedItemDisplayName(linkedWorkItem) : null
-  const nameIsAutoManaged = !name.trim() || name === lastAutoName || isWorkItemLookupText(name)
-  const workspaceName =
-    nameIsAutoManaged && linkedName
-      ? linkedName
-      : name.trim() || linkedName || `${projectGroup.name} workspace`
+  const workspaceName = name.trim() || `${projectGroup.name} workspace`
   const launchPlatform = getFolderWorkspaceAgentLaunchPlatform(projectGroup)
-  const startupPlan =
-    quickAgent && linkedWorkItem
-      ? buildFolderWorkspaceLinkedStartupPlan({
-          agent: quickAgent,
-          linkedWorkItem,
-          note,
-          agentCmdOverrides,
-          agentArgs,
-          agentEnv,
-          platform: launchPlatform
-        })
-      : quickAgent
-        ? buildAgentStartupPlan({
-            agent: quickAgent,
-            prompt: note,
-            cmdOverrides: agentCmdOverrides ?? {},
-            agentArgs,
-            agentEnv,
-            platform: launchPlatform,
-            allowEmptyPromptLaunch: true
-          })
-        : null
+  const startupPlan = quickAgent
+    ? buildAgentStartupPlan({
+        agent: quickAgent,
+        prompt: note,
+        cmdOverrides: agentCmdOverrides ?? {},
+        agentArgs,
+        agentEnv,
+        platform: launchPlatform,
+        allowEmptyPromptLaunch: true
+      })
+    : null
   // Why: the pending badge should only appear when the submitted prompt can
   // actually produce the first agent message that names the workspace.
   const pendingFirstAgentMessageRename =
     autoRenameBranchFromWork === true &&
     !name.trim() &&
-    !linkedWorkItem &&
     Boolean(quickAgent) &&
     note.trim().length > 0
 
@@ -200,7 +108,7 @@ export async function submitFolderWorkspaceCreate({
     // Why: SSH folder groups must keep their target provenance even when the
     // focused runtime is local or another host.
     connectionId: projectGroup.connectionId ?? null,
-    linkedTask: toFolderWorkspaceLinkedTask(linkedWorkItem),
+    linkedTask: null,
     ...(quickAgent ? { createdWithAgent: quickAgent } : {}),
     ...(pendingFirstAgentMessageRename ? { pendingFirstAgentMessageRename: true } : {})
   })

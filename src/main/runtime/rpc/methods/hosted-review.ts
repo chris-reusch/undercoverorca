@@ -2,17 +2,6 @@ import { z } from 'zod'
 import { defineMethod, type RpcMethod } from '../core'
 import { requiredString } from '../schemas'
 
-const HostedReviewForBranch = z.object({
-  repo: requiredString('Missing repo selector'),
-  branch: requiredString('Missing branch'),
-  linkedGitHubPR: z.number().int().positive().nullable().optional(),
-  fallbackGitHubPR: z.number().int().positive().nullable().optional(),
-  linkedGitLabMR: z.number().int().positive().nullable().optional(),
-  linkedBitbucketPR: z.number().int().positive().nullable().optional(),
-  linkedAzureDevOpsPR: z.number().int().positive().nullable().optional(),
-  linkedGiteaPR: z.number().int().positive().nullable().optional()
-})
-
 const HostedReviewCreationEligibility = z.object({
   repo: requiredString('Missing repo selector'),
   worktree: z.string().min(1, 'Missing worktree selector').optional(),
@@ -43,24 +32,6 @@ const HostedReviewCreate = z.object({
 })
 
 export const HOSTED_REVIEW_METHODS: RpcMethod[] = [
-  defineMethod({
-    name: 'hostedReview.forBranch',
-    params: HostedReviewForBranch,
-    handler: async (params, { runtime }) => {
-      const fallbackGitHubPR =
-        params.linkedGitHubPR == null ? (params.fallbackGitHubPR ?? null) : null
-      return runtime.getHostedReviewForBranch({
-        repoSelector: params.repo,
-        branch: params.branch,
-        linkedGitHubPR: params.linkedGitHubPR ?? null,
-        ...(fallbackGitHubPR !== null ? { fallbackGitHubPR } : {}),
-        linkedGitLabMR: params.linkedGitLabMR ?? null,
-        linkedBitbucketPR: params.linkedBitbucketPR ?? null,
-        linkedAzureDevOpsPR: params.linkedAzureDevOpsPR ?? null,
-        linkedGiteaPR: params.linkedGiteaPR ?? null
-      })
-    }
-  }),
   defineMethod({
     name: 'hostedReview.getCreationEligibility',
     params: HostedReviewCreationEligibility,

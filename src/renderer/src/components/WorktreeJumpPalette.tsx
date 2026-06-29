@@ -13,7 +13,7 @@ import {
   SquareTerminal
 } from 'lucide-react'
 import { useAppStore } from '@/store'
-import { getRepoMapFromState, useAllWorktrees } from '@/store/selectors'
+import { useAllWorktrees } from '@/store/selectors'
 import {
   CommandDialog,
   CommandInput,
@@ -22,9 +22,6 @@ import {
   CommandItem
 } from '@/components/ui/command'
 import { branchName } from '@/lib/git-utils'
-import { parseGitHubIssueOrPRNumber, parseGitHubIssueOrPRLink } from '@/lib/github-links'
-import { getLinkedWorkItemSuggestedName, getLinkedWorkItemWorkspaceName } from '@/lib/new-workspace'
-import type { LinkedWorkItemSummary } from '@/lib/new-workspace'
 import { sortWorktreesSmart } from '@/components/sidebar/smart-sort'
 import { isDefaultBranchWorkspace } from '@/components/sidebar/visible-worktrees'
 import { isInactiveWorkspace } from '@/lib/worktree-activity-state'
@@ -103,15 +100,9 @@ import {
   getComposerEligibleRepos,
   resolveComposerGitRepoId
 } from '@/lib/new-workspace-composer-repo'
-import {
-  lookupGitHubWorkItemByOwnerRepoForSource,
-  lookupGitHubWorkItemForSource
-} from '@/lib/github-work-item-source-lookup'
 import type { SettingsNavTarget } from '@/lib/settings-navigation-types'
 import { getHostDisplayLabelOverrides } from '../../../shared/host-setting-overrides'
 import type { BrowserPage, BrowserWorkspace, Worktree } from '../../../shared/types'
-import { isGitRepoKind } from '../../../shared/repo-kind'
-import { buildTaskSourceContextFromRepo } from '../../../shared/task-source-context'
 import { translate } from '@/i18n/i18n'
 
 type WorktreePaletteItem = {
@@ -345,8 +336,6 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
   // palette dot would lie green even though the sidebar dot is correctly grey.
   const ptyIdsByTabId = useAppStore((s) => s.ptyIdsByTabId)
   const terminalLayoutsByTabId = useAppStore((s) => s.terminalLayoutsByTabId)
-  const prCache = useAppStore((s) => s.prCache)
-  const issueCache = useAppStore((s) => s.issueCache)
   const agentStatusByPaneKey = useAppStore((s) => s.agentStatusByPaneKey)
   const migrationUnsupportedByPtyId = useAppStore((s) => s.migrationUnsupportedByPtyId)
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
@@ -567,11 +556,9 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
         sortedWorktrees,
         deferredQuery.trim(),
         repoMap,
-        prCache,
-        issueCache,
         getWorkspacePortsByWorktreeId(workspacePortScan)
       ),
-    [sortedWorktrees, deferredQuery, repoMap, prCache, issueCache, workspacePortScan]
+    [sortedWorktrees, deferredQuery, repoMap, workspacePortScan]
   )
 
   const browserPageEntries = useMemo<SearchableBrowserPage[]>(() => {
@@ -1427,199 +1414,23 @@ export default function WorktreeJumpPalette(): React.JSX.Element | null {
   const handleCreateWorktree = useCallback(() => {
     skipRestoreFocusRef.current = true
     const trimmed = createWorktreeName.trim()
-    const ghLink = parseGitHubIssueOrPRLink(trimmed)
-    const ghNumber = parseGitHubIssueOrPRNumber(trimmed)
-
-    const openComposer = (data: Record<string, unknown>): void => {
-      prefetchCreateWorkspaceBaseForComposer(
-        typeof data.initialRepoId === 'string' ? data.initialRepoId : undefined
-      )
-      closeModal()
-      recordFeatureInteraction('cmd-j-create-workspace')
-      // Why: defer opening so Radix fully unmounts the palette's dialog before
-      // the composer modal mounts, avoiding focus churn between the two.
-      queueMicrotask(() =>
-        openModal('new-workspace-composer', { ...data, telemetrySource: 'command_palette' })
-      )
-    }
-
-    // Case 1: user pasted a GH issue/PR URL.
-    if (ghLink) {
-      const { slug, number } = ghLink
-      const state = useAppStore.getState()
-
-      // Why: the existing-worktree check only needs the issue/PR number, which
-      // is repo-agnostic on the worktree meta side. We don't currently cache a
-      // repo-slug map, so slug-matching against a specific repo happens
-      // implicitly when we pick a repo for the `gh workItem` lookup below.
-      const matches = allWorktrees.filter(
-        (w) => !w.isArchived && (w.linkedIssue === number || w.linkedPR === number)
-      )
-      const activeMatch = matches.find((w) => w.repoId === state.activeRepoId) ?? matches[0]
-      if (activeMatch) {
-        closeModal()
-        activateAndRevealWorktree(activeMatch.id)
-        recordFeatureInteraction('cmd-j-workspace-open')
-        return
-      }
-
-      // Resolve via gh.workItem: prefer the active repo, else the first eligible.
-      const eligibleRepos = state.repos.filter((r) => isGitRepoKind(r))
-      const repoForLookup =
-        (state.activeRepoId && eligibleRepos.find((r) => r.id === state.activeRepoId)) ||
-        eligibleRepos[0]
-      if (!repoForLookup) {
-        openComposer({ prefilledName: trimmed })
-        return
-      }
-
-      prefetchCreateWorkspaceBaseForComposer(repoForLookup.id)
-      const sourceContext = buildTaskSourceContextFromRepo({
-        provider: 'github',
-        projectId: repoForLookup.id,
-        repo: repoForLookup
+    prefetchCreateWorkspaceBaseForComposer()
+    closeModal()
+    recordFeatureInteraction('cmd-j-create-workspace')
+    // Why: defer opening so Radix fully unmounts the palette's dialog before
+    // the composer modal mounts, avoiding focus churn between the two.
+    queueMicrotask(() =>
+      openModal('new-workspace-composer', {
+        ...(trimmed ? { prefilledName: trimmed } : {}),
+        telemetrySource: 'command_palette'
       })
-      // Why: awaiting inside the user gesture would leave the palette open
-      // indefinitely on slow networks. Close immediately and populate the
-      // composer once the lookup returns.
-      const lookupToken = createLookupGuard.start()
-      preserveCreateLookupOnCloseRef.current = true
-      recordFeatureInteraction('cmd-j-create-workspace')
-      closeModal()
-      void lookupGitHubWorkItemByOwnerRepoForSource({
-        repoPath: repoForLookup.path,
-        repoId: repoForLookup.id,
-        sourceContext,
-        owner: slug.owner,
-        repo: slug.repo,
-        number,
-        type: ghLink.type
-      })
-        .then((item) => {
-          if (!createLookupGuard.isCurrent(lookupToken)) {
-            return
-          }
-          const data: Record<string, unknown> = { initialRepoId: repoForLookup.id }
-          if (item) {
-            const linkedWorkItem: LinkedWorkItemSummary = {
-              type: item.type,
-              number: item.number,
-              title: item.title,
-              url: item.url
-            }
-            data.linkedWorkItem = linkedWorkItem
-            data.prefilledName =
-              getLinkedWorkItemWorkspaceName(linkedWorkItem)?.seedName ??
-              getLinkedWorkItemSuggestedName({ title: item.title })
-          } else {
-            // Fallback: we couldn't resolve the URL, just seed the name.
-            data.prefilledName = `${slug.owner}-${slug.repo}-${number}`
-          }
-          queueMicrotask(() =>
-            openModal('new-workspace-composer', { ...data, telemetrySource: 'command_palette' })
-          )
-        })
-        .catch(() => {
-          if (!createLookupGuard.isCurrent(lookupToken)) {
-            return
-          }
-          queueMicrotask(() =>
-            openModal('new-workspace-composer', {
-              initialRepoId: repoForLookup.id,
-              telemetrySource: 'command_palette'
-            })
-          )
-        })
-      return
-    }
-
-    // Case 2: user typed a raw issue number. Resolve against the active repo.
-    if (ghNumber !== null) {
-      const state = useAppStore.getState()
-      const matches = allWorktrees.filter(
-        (w) => !w.isArchived && (w.linkedIssue === ghNumber || w.linkedPR === ghNumber)
-      )
-      const activeMatch = matches.find((w) => w.repoId === state.activeRepoId) ?? matches[0]
-      if (activeMatch) {
-        closeModal()
-        activateAndRevealWorktree(activeMatch.id)
-        recordFeatureInteraction('cmd-j-workspace-open')
-        return
-      }
-
-      const repoForLookup =
-        (state.activeRepoId ? (repoMap.get(state.activeRepoId) ?? null) : null) ||
-        [...getRepoMapFromState(state).values()].find((repo) => isGitRepoKind(repo))
-      if (!repoForLookup || !isGitRepoKind(repoForLookup)) {
-        openComposer({ prefilledName: trimmed })
-        return
-      }
-
-      prefetchCreateWorkspaceBaseForComposer(repoForLookup.id)
-      const sourceContext = buildTaskSourceContextFromRepo({
-        provider: 'github',
-        projectId: repoForLookup.id,
-        repo: repoForLookup
-      })
-      const lookupToken = createLookupGuard.start()
-      preserveCreateLookupOnCloseRef.current = true
-      recordFeatureInteraction('cmd-j-create-workspace')
-      closeModal()
-      void lookupGitHubWorkItemForSource({
-        repoPath: repoForLookup.path,
-        repoId: repoForLookup.id,
-        sourceContext,
-        number: ghNumber
-      })
-        .then((item) => {
-          if (!createLookupGuard.isCurrent(lookupToken)) {
-            return
-          }
-          const data: Record<string, unknown> = { initialRepoId: repoForLookup.id }
-          if (item) {
-            const linkedWorkItem: LinkedWorkItemSummary = {
-              type: item.type,
-              number: item.number,
-              title: item.title,
-              url: item.url
-            }
-            data.linkedWorkItem = linkedWorkItem
-            data.prefilledName =
-              getLinkedWorkItemWorkspaceName(linkedWorkItem)?.seedName ??
-              getLinkedWorkItemSuggestedName({ title: item.title })
-          } else {
-            data.prefilledName = trimmed
-          }
-          queueMicrotask(() =>
-            openModal('new-workspace-composer', { ...data, telemetrySource: 'command_palette' })
-          )
-        })
-        .catch(() => {
-          if (!createLookupGuard.isCurrent(lookupToken)) {
-            return
-          }
-          queueMicrotask(() =>
-            openModal('new-workspace-composer', {
-              initialRepoId: repoForLookup.id,
-              prefilledName: trimmed,
-              telemetrySource: 'command_palette'
-            })
-          )
-        })
-      return
-    }
-
-    // Case 3: plain name — open composer prefilled.
-    openComposer(trimmed ? { prefilledName: trimmed } : {})
+    )
   }, [
-    allWorktrees,
     closeModal,
-    createLookupGuard,
     createWorktreeName,
     openModal,
     prefetchCreateWorkspaceBaseForComposer,
-    recordFeatureInteraction,
-    repoMap
+    recordFeatureInteraction
   ])
 
   const handleCloseAutoFocus = useCallback((e: Event) => {

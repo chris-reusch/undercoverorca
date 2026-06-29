@@ -14,14 +14,12 @@ const {
   handleMock,
   createHostedReviewMock,
   getHostedReviewCreationEligibilityMock,
-  getHostedReviewForBranchMock,
   resolveRegisteredWorktreePathMock,
   listRepoWorktreesMock
 } = vi.hoisted(() => ({
   handleMock: vi.fn(),
   createHostedReviewMock: vi.fn(),
   getHostedReviewCreationEligibilityMock: vi.fn(),
-  getHostedReviewForBranchMock: vi.fn(),
   resolveRegisteredWorktreePathMock: vi.fn(),
   listRepoWorktreesMock: vi.fn()
 }))
@@ -35,10 +33,6 @@ vi.mock('electron', () => ({
 vi.mock('../source-control/hosted-review-creation', () => ({
   createHostedReview: createHostedReviewMock,
   getHostedReviewCreationEligibility: getHostedReviewCreationEligibilityMock
-}))
-
-vi.mock('../source-control/hosted-review', () => ({
-  getHostedReviewForBranch: getHostedReviewForBranchMock
 }))
 
 vi.mock('./filesystem-auth', () => ({
@@ -88,7 +82,6 @@ describe('registerHostedReviewHandlers', () => {
     handleMock.mockReset()
     createHostedReviewMock.mockReset()
     getHostedReviewCreationEligibilityMock.mockReset()
-    getHostedReviewForBranchMock.mockReset()
     resolveRegisteredWorktreePathMock.mockReset()
     listRepoWorktreesMock.mockReset()
     store.getRepo.mockReset()
@@ -165,61 +158,6 @@ describe('registerHostedReviewHandlers', () => {
       }),
       null,
       { localGitExecOptions: { wslDistro: 'Ubuntu' } }
-    )
-  })
-
-  it('routes local WSL project review status through main-process runtime options', async () => {
-    setPlatform('win32')
-    const localRepo = {
-      id: 'repo-local',
-      path: '/workspace/repo',
-      displayName: 'local',
-      badgeColor: '#000',
-      addedAt: 0
-    }
-    store.getRepo.mockImplementation((repoId: string) =>
-      repoId === localRepo.id ? localRepo : null
-    )
-    store.getRepos.mockReturnValue([localRepo])
-    store.getProjects.mockReturnValue([
-      {
-        id: 'project-1',
-        displayName: 'local',
-        badgeColor: '#000',
-        sourceRepoIds: [localRepo.id],
-        localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' },
-        createdAt: 0,
-        updatedAt: 0
-      }
-    ])
-    getHostedReviewForBranchMock.mockResolvedValueOnce({
-      provider: 'github',
-      number: 42,
-      title: 'Feature PR',
-      state: 'open',
-      url: 'https://github.com/acme/orca/pull/42',
-      status: 'success',
-      updatedAt: '2026-06-16T00:00:00.000Z',
-      mergeable: 'MERGEABLE'
-    })
-
-    registerHostedReviewHandlers(store as never, stats as never)
-
-    await handlers['hostedReview:forBranch'](null, {
-      repoPath: localRepo.path,
-      repoId: localRepo.id,
-      branch: 'feature/wsl',
-      linkedGitHubPR: 42
-    })
-
-    expect(getHostedReviewForBranchMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        repoPath: localRepo.path,
-        connectionId: undefined,
-        branch: 'feature/wsl',
-        linkedGitHubPR: 42,
-        localGitExecOptions: { wslDistro: 'Ubuntu' }
-      })
     )
   })
 

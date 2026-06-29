@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { ReviewIcon } from './worktree-review-helpers'
-import type { WorktreeCardPrDisplay } from './worktree-card-pr-display'
+import type { WorktreeCardPrDisplay } from './worktree-card-meta-types'
 
 const gitlabReview: WorktreeCardPrDisplay = {
   provider: 'gitlab',
