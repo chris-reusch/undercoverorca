@@ -1,11 +1,4 @@
 /* eslint-disable max-lines -- Why: the preload contract is intentionally centralized in one declaration file so renderer and preload stay in lockstep when IPC surfaces change. */
-import type {
-  CreateHostedReviewArgs,
-  CreateHostedReviewResult,
-  HostedReviewCreationEligibility,
-  HostedReviewCreationEligibilityArgs,
-  HostedReviewProvider
-} from '../shared/hosted-review'
 import type { NativeFileDropPayload } from '../shared/native-file-drop'
 import type { ReadClipboardTextOptions } from '../shared/clipboard-text'
 import type { AppIdentity } from '../shared/app-identity'
@@ -872,12 +865,6 @@ export type PreloadApi = {
      */
     diagnoseAuth: () => Promise<GhAuthDiagnostic>
   }
-  hostedReview: {
-    getCreationEligibility: (
-      args: HostedReviewCreationEligibilityArgs
-    ) => Promise<HostedReviewCreationEligibility>
-    create: (args: CreateHostedReviewArgs) => Promise<CreateHostedReviewResult>
-  }
   /** Diagnostic file controls. Surface for telemetry-error-tracking.md
    *  §User controls. The renderer triggers flows; main does the filesystem /
    *  network work and returns serializable metadata. Main retains collected
@@ -1346,32 +1333,6 @@ export type PreloadApi = {
       | { success: false; error: string }
     >
     cancelGenerateCommitMessage: (args: {
-      worktreePath: string
-      connectionId?: string
-    }) => Promise<void>
-    generatePullRequestFields: (args: {
-      worktreePath: string
-      repoId?: string
-      base: string
-      title: string
-      body: string
-      draft: boolean
-      provider?: HostedReviewProvider
-      useTemplate?: boolean
-      connectionId?: string
-      sourceControlAiResolvedParams?: ResolvedSourceControlAiGenerationParams
-      sourceControlAi?: SourceControlAiSettings
-      agentCmdOverrides?: Partial<Record<TuiAgent, string>>
-    }) => Promise<
-      | {
-          success: true
-          fields: { base: string; title: string; body: string; draft: boolean }
-          agentLabel?: string
-          branchChangedByPreparation?: boolean
-        }
-      | { success: false; error: string; canceled?: boolean; branchChangedByPreparation?: boolean }
-    >
-    cancelGeneratePullRequestFields: (args: {
       worktreePath: string
       connectionId?: string
     }) => Promise<void>

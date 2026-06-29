@@ -2721,7 +2721,6 @@ export const createWorktreeSlice: StateCreator<AppState, [], [], WorktreeSlice> 
       )
       // Optional-chained like removeWorkspaceSpaceWorktrees above: minimal store
       // assemblies (some unit tests) omit the generation slices.
-      get().prunePullRequestGenerationRecords?.(liveWorktreeKeys)
       get().pruneCommitMessageGenerationRecords?.(liveWorktreeKeys)
       // Why: Source Control may be unmounted during deletion, so its local
       // prune effect cannot be the only stale-draft cleanup path.

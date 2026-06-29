@@ -4,11 +4,9 @@ import { useAppStore } from '@/store'
 import { getRuntimeGitScope } from '@/runtime/runtime-git-client'
 import { getCommitMessageModelDiscoveryHostKeyForScope } from '../../../../shared/commit-message-host-key'
 import {
-  DEFAULT_SOURCE_CONTROL_AI_PR_CREATION_DEFAULTS,
   resolveSourceControlActionRecipe,
   resolveSourceControlAiEnabled,
   resolveSourceControlAiForOperation,
-  resolveSourceControlAiPrCreationDefaults,
   type ResolvedSourceControlAiGenerationParams
 } from '../../../../shared/source-control-ai'
 import type {
@@ -61,7 +59,6 @@ export function useSourceControlAi({
 }: SourceControlAiControllerParams) {
   const [resolveConflictsComposerOpen, setResolveConflictsComposerOpen] = useState(false)
   const [commitGenerationDialogOpen, setCommitGenerationDialogOpen] = useState(false)
-  const [pullRequestGenerationDialogOpen, setPullRequestGenerationDialogOpen] = useState(false)
   const [isLaunchingCommitFailureAgent, setIsLaunchingCommitFailureAgent] = useState(false)
 
   const sourceControlAiDiscoveryHostKey = useMemo(
@@ -84,26 +81,6 @@ export function useSourceControlAi({
         : null,
     [activeRepo, settings, sourceControlAiDiscoveryHostKey]
   )
-  const resolvedPrCreationDefaults = useMemo(() => {
-    if (!settings) {
-      return DEFAULT_SOURCE_CONTROL_AI_PR_CREATION_DEFAULTS
-    }
-    const resolved = resolveSourceControlAiForOperation({
-      settings,
-      repo: activeRepo,
-      operation: 'pullRequest',
-      discoveryHostKey: sourceControlAiDiscoveryHostKey,
-      prCreationProductDefaults: DEFAULT_SOURCE_CONTROL_AI_PR_CREATION_DEFAULTS
-    })
-    return resolved.ok
-      ? resolved.value.prCreationDefaults
-      : resolveSourceControlAiPrCreationDefaults({
-          settings,
-          repo: activeRepo,
-          prCreationProductDefaults: DEFAULT_SOURCE_CONTROL_AI_PR_CREATION_DEFAULTS
-        })
-  }, [activeRepo, settings, sourceControlAiDiscoveryHostKey])
-
   const getLaunchActionRecipe = useCallback(
     (actionId: SourceControlLaunchActionId): SourceControlActionRecipe =>
       resolveSourceControlActionRecipe({
@@ -240,41 +217,19 @@ export function useSourceControlAi({
     [saveActionRecipeForTarget]
   )
 
-  const handleSavePullRequestGenerationDefaults = useCallback(
-    async (
-      target: SourceControlAiWriteTarget,
-      params: ResolvedSourceControlAiGenerationParams
-    ): Promise<void> => {
-      await saveSourceControlTextGenerationDefaults({
-        saveActionRecipeForTarget,
-        target,
-        actionId: 'pullRequest',
-        params
-      })
-    },
-    [saveActionRecipeForTarget]
-  )
-
   const openCommitGenerationDialog = useCallback((): void => {
     setCommitGenerationDialogOpen(true)
-  }, [])
-  const openPullRequestGenerationDialog = useCallback((): void => {
-    setPullRequestGenerationDialogOpen(true)
   }, [])
 
   return {
     sourceControlAiDiscoveryHostKey,
     sourceControlAiActionsVisible,
     resolvedCommitMessageAi,
-    resolvedPrCreationDefaults,
     resolveConflictsComposerOpen,
     setResolveConflictsComposerOpen,
     commitGenerationDialogOpen,
     setCommitGenerationDialogOpen,
-    pullRequestGenerationDialogOpen,
-    setPullRequestGenerationDialogOpen,
     openCommitGenerationDialog,
-    openPullRequestGenerationDialog,
     isLaunchingCommitFailureAgent,
     resolveConflictsPrompt,
     commitFailureRecoveryPrompt,
@@ -283,7 +238,6 @@ export function useSourceControlAi({
     handleResolveConflictsWithAI,
     handleFixCommitFailureWithAI,
     handleSaveCommitMessageGenerationDefaults,
-    handleSavePullRequestGenerationDefaults,
     openSourceControlAiSettings
   }
 }

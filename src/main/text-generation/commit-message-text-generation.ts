@@ -10,12 +10,6 @@ import {
   type GeneratedCommitMessage
 } from '../../shared/commit-message-generation'
 import {
-  buildPullRequestFieldsPrompt,
-  parseGeneratedPullRequestFields,
-  type GeneratedPullRequestFields,
-  type PullRequestDraftContext
-} from '../../shared/pull-request-generation'
-import {
   cleanGeneratedCommitMessage,
   extractAgentErrorMessage
 } from '../../shared/commit-message-prompt'
@@ -67,15 +61,6 @@ export type DiscoverCommitMessageModelsResult =
       defaultModelId: string
     }
   | { success: false; error: string }
-
-export type GeneratePullRequestFieldsResult =
-  | {
-      success: true
-      fields: GeneratedPullRequestFields
-      agentLabel?: string
-      branchChangedByPreparation?: boolean
-    }
-  | { success: false; error: string; canceled?: boolean; branchChangedByPreparation?: boolean }
 
 export type RemoteCommitMessageExecResult = {
   stdout: string
@@ -842,78 +827,6 @@ export async function generateCommitMessageFromContext(
           target.wslDistro
         )
   return formatCommitMessageGenerationResult(internalResult)
-}
-
-export function cancelGeneratePullRequestFieldsLocal(cwd: string): void {
-  cancelTokensByLane.get(localLaneKey('pull-request-fields', cwd))?.()
-}
-
-function formatPullRequestFieldsGenerationResult(
-  result: InternalTextGenerationResult,
-  context: PullRequestDraftContext
-): GeneratePullRequestFieldsResult {
-  if (!result.success) {
-    return {
-      ...result,
-      branchChangedByPreparation: context.branchChangedByPreparation
-    }
-  }
-  try {
-    return {
-      success: true,
-      fields: parseGeneratedPullRequestFields(result.rawOutput, context),
-      agentLabel: result.agentLabel,
-      branchChangedByPreparation: context.branchChangedByPreparation
-    }
-  } catch {
-    return {
-      success: false,
-      error: 'Generated pull request details could not be parsed.',
-      branchChangedByPreparation: context.branchChangedByPreparation
-    }
-  }
-}
-
-export async function generatePullRequestFieldsFromContext(
-  context: PullRequestDraftContext,
-  params: GenerateCommitMessageParams,
-  target: CommitMessageGenerationTarget
-): Promise<GeneratePullRequestFieldsResult> {
-  const basePrompt = buildPullRequestFieldsPrompt(context, '')
-  const prompt =
-    params.commandInputTemplate !== undefined
-      ? renderSourceControlActionCommandTemplate(params.commandInputTemplate, {
-          basePrompt,
-          branch: context.branch ?? '(detached)',
-          baseBranch: context.base,
-          currentTitle: context.currentTitle,
-          currentBody: context.currentBody,
-          commitSummary: context.commitSummary,
-          changedFiles: context.changeSummary,
-          patch: context.patch
-        })
-      : buildPullRequestFieldsPrompt(context, params.customPrompt ?? '')
-  const planned = planCommitMessageGeneration(params, prompt)
-  if (!planned.ok) {
-    return {
-      success: false,
-      error: planned.error,
-      branchChangedByPreparation: context.branchChangedByPreparation
-    }
-  }
-
-  const internalResult =
-    target.kind === 'remote'
-      ? await runRemotePlan(planned.plan, target, 'details', 'pull-request-fields')
-      : await runLocalPlan(
-          planned.plan,
-          target.cwd,
-          target.env,
-          'details',
-          'pull-request-fields',
-          target.wslDistro
-        )
-  return formatPullRequestFieldsGenerationResult(internalResult, context)
 }
 
 export type GenerateBranchNameResult =

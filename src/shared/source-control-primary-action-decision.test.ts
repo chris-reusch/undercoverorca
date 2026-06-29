@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   resolveSourceControlCommitAreaPrimaryActionDecision,
-  resolveSourceControlPrimaryActionDecision,
   type SourceControlPrimaryActionDecisionInputs
 } from './source-control-primary-action-decision'
 
@@ -140,42 +139,6 @@ describe('source-control primary action decision', () => {
       requiresForceWithLease: true,
       count: 4,
       upstreamName: 'origin/feature'
-    })
-  })
-
-  it('keeps review creation out of commit-area decisions', () => {
-    const input = inputs({
-      upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 },
-      hostedReviewCreation: {
-        provider: 'gitlab',
-        review: null,
-        canCreate: true,
-        blockedReason: null,
-        nextAction: null
-      }
-    })
-    expect(resolveSourceControlPrimaryActionDecision(input).kind).toBe('create_pr')
-    expect(resolveSourceControlCommitAreaPrimaryActionDecision(input).kind).toBe('commit')
-  })
-
-  it('returns disabled create review while hosted-review creation eligibility is loading', () => {
-    const result = resolveSourceControlPrimaryActionDecision(
-      inputs({
-        upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 },
-        hostedReviewCreation: {
-          provider: 'gitlab',
-          review: null,
-          canCreate: false,
-          blockedReason: null,
-          nextAction: null
-        },
-        isHostedReviewCreationLoading: true
-      })
-    )
-    expect(result).toMatchObject({
-      kind: 'create_pr',
-      titleIntent: 'checking_review_creation',
-      disabled: true
     })
   })
 })

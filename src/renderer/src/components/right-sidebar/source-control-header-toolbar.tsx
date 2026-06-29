@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react'
-import { GitPullRequestArrow, Loader2, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import type {
   GitBranchCompareSummary,
   GitUpstreamStatus,
   SourceControlViewMode
 } from '../../../../shared/types'
-import type { PrimaryAction } from './source-control-primary-action'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
 import {
@@ -21,10 +19,6 @@ type SourceControlHeaderToolbarProps = {
   filterExpanded: boolean
   onFilterQueryChange: (value: string) => void
   onFilterExpandedChange: (expanded: boolean) => void
-  visibleCreatePrHeaderAction: PrimaryAction | null
-  isCreatePrIntentInFlight: boolean
-  isCreatingPr: boolean
-  onCreatePrHeaderClick: () => void
   sourceControlViewMode: SourceControlViewMode
   viewModeToggleDisabled: boolean
   onToggleViewMode: () => void
@@ -36,45 +30,6 @@ type SourceControlHeaderToolbarProps = {
   branchSummary: GitBranchCompareSummary | null
   compareBaseRef: string | null
   upstreamStatus?: GitUpstreamStatus
-}
-
-function CreatePrHeaderButton({
-  action,
-  isCreatePrIntentInFlight,
-  isCreatingPr,
-  onClick
-}: {
-  action: PrimaryAction
-  isCreatePrIntentInFlight: boolean
-  isCreatingPr: boolean
-  onClick: () => void
-}): React.JSX.Element {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex shrink-0">
-          <Button
-            type="button"
-            size="xs"
-            disabled={action.disabled}
-            onClick={onClick}
-            className="h-6 shrink-0 px-2 text-[11px]"
-            title={action.title}
-          >
-            {isCreatePrIntentInFlight || isCreatingPr ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <GitPullRequestArrow className="size-3.5" aria-hidden="true" />
-            )}
-            {action.label}
-          </Button>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" sideOffset={6} className="max-w-72">
-        {action.title}
-      </TooltipContent>
-    </Tooltip>
-  )
 }
 
 function renderOverflowMenu(
@@ -98,10 +53,6 @@ export function SourceControlHeaderToolbar({
   filterExpanded,
   onFilterQueryChange,
   onFilterExpandedChange,
-  visibleCreatePrHeaderAction,
-  isCreatePrIntentInFlight,
-  isCreatingPr,
-  onCreatePrHeaderClick,
   sourceControlViewMode,
   viewModeToggleDisabled,
   onToggleViewMode,
@@ -163,20 +114,7 @@ export function SourceControlHeaderToolbar({
       >
         {showCollapsedToolbar ? (
           <>
-            {visibleCreatePrHeaderAction ? (
-              <CreatePrHeaderButton
-                action={visibleCreatePrHeaderAction}
-                isCreatePrIntentInFlight={isCreatePrIntentInFlight}
-                isCreatingPr={isCreatingPr}
-                onClick={onCreatePrHeaderClick}
-              />
-            ) : (
-              <span className="min-w-0 flex-1" aria-hidden="true" />
-            )}
-            {visibleCreatePrHeaderAction ? (
-              // Why: keep filter/overflow pinned right without stretching Create PR.
-              <span className="min-w-0 flex-1" aria-hidden="true" />
-            ) : null}
+            <span className="min-w-0 flex-1" aria-hidden="true" />
             <button
               type="button"
               data-testid="source-control-filter-toggle"

@@ -388,14 +388,7 @@ describe('CommitArea', () => {
       hasStageableChanges: true,
       hasPartiallyStagedChanges: false,
       hasMessage: false,
-      upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 },
-      hostedReviewCreation: {
-        provider: 'github',
-        review: null,
-        canCreate: false,
-        blockedReason: 'dirty',
-        nextAction: 'commit'
-      }
+      upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 }
     })
     const markup = renderCommitArea(baseProps(input))
 
@@ -421,14 +414,7 @@ describe('CommitArea', () => {
       hasStageableChanges: false,
       hasPartiallyStagedChanges: false,
       hasMessage: false,
-      upstreamStatus: { hasUpstream: true, ahead: 2, behind: 0 },
-      hostedReviewCreation: {
-        provider: 'github',
-        review: null,
-        canCreate: false,
-        blockedReason: 'needs_push',
-        nextAction: 'push'
-      }
+      upstreamStatus: { hasUpstream: true, ahead: 2, behind: 0 }
     })
     const markup = renderCommitArea(baseProps(input))
 
@@ -439,41 +425,6 @@ describe('CommitArea', () => {
     expect(pushButton).toContain('lucide-arrow-up')
     expect(pushButton).toContain('rounded-r-none')
     expect(markup).toContain('aria-label="More commit and remote actions"')
-  })
-
-  it('hides the composer generate affordance while Create PR intent is in flight', () => {
-    const markup = renderCommitArea({
-      ...baseProps(),
-      aiEnabled: true,
-      aiAgentConfigured: true,
-      isGenerating: true,
-      isCreatePrIntentInFlight: true,
-      createPrIntentNotice: {
-        tone: 'muted',
-        message: 'Generating commit message…'
-      }
-    })
-
-    expect(markup).not.toContain('lucide-sparkles')
-    expect(markup).not.toContain('animate-spin')
-    expect(markup).toContain('Generating commit message…')
-  })
-
-  it('renders Create PR failures in the visible inline notice', () => {
-    const markup = renderCommitArea({
-      ...baseProps(),
-      createPrIntentNotice: {
-        tone: 'destructive',
-        message: 'Create PR failed: push this branch first.'
-      }
-    })
-
-    expect(markup).toContain('id="commit-area-create-pr-intent"')
-    expect(markup).toContain('role="alert"')
-    expect(markup).toContain('Create PR failed: push this branch first.')
-    const notice = markup.match(/id="commit-area-create-pr-intent"[\s\S]*?<\/div>/)?.[0] ?? ''
-    expect(notice).toContain('break-words')
-    expect(notice).not.toContain('truncate')
   })
 })
 

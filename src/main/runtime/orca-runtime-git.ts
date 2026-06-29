@@ -57,28 +57,21 @@ import {
 import { checkIgnoredPaths } from '../git/check-ignored-paths'
 import {
   cancelGenerateCommitMessageLocal,
-  cancelGeneratePullRequestFieldsLocal,
   discoverCommitMessageModelsLocal,
   discoverCommitMessageModelsRemote,
   generateCommitMessageFromContext,
-  generatePullRequestFieldsFromContext,
   resolveCommitMessageSettings,
   type CommitMessageGenerationTarget,
   type DiscoverCommitMessageModelsResult,
-  type GenerateCommitMessageResult,
-  type GeneratePullRequestFieldsResult
+  type GenerateCommitMessageResult
 } from '../text-generation/commit-message-text-generation'
 import type {
   CommitMessageAgentEnvironmentResolvers,
   CommitMessageAgentRuntimeTarget
 } from '../text-generation/commit-message-agent-environment'
 import { prepareLocalCommitMessageAgentEnv } from '../text-generation/commit-message-agent-environment'
-import { getPullRequestDraftContext } from '../text-generation/pull-request-context'
 import { normalizeRuntimeRelativePath } from './runtime-relative-paths'
-import { gitExecFileAsync } from '../git/runner'
 import type { GitRuntimeOptions } from '../git/git-runtime-options'
-import { resolveHostedReviewBodyForGeneration } from '../source-control/pull-request-template'
-import type { HostedReviewProvider } from '../../shared/hosted-review'
 
 export type ResolvedRuntimeGitWorktree = Worktree & { git: GitWorktreeInfo }
 type RuntimeCommitMessageSettingsOverride = Partial<
@@ -636,121 +629,6 @@ export class RuntimeGitCommands {
       return { ok: true }
     }
     cancelGenerateCommitMessageLocal(target.worktree.path)
-    return { ok: true }
-  }
-
-  async generateRuntimePullRequestFields(
-    worktreeSelector: string,
-    input: {
-      base: string
-      title: string
-      body: string
-      draft: boolean
-      provider?: HostedReviewProvider
-      useTemplate?: boolean
-    },
-    settingsOverride?: RuntimeCommitMessageSettingsOverride
-  ): Promise<GeneratePullRequestFieldsResult> {
-    const target = await this.host.resolveRuntimeGitTarget(worktreeSelector)
-    const discoveryHostKey =
-      settingsOverride?.commitMessageDiscoveryHostKey ??
-      getCommitMessageModelDiscoveryHostKey(target.connectionId ?? null)
-    const resolvedSettings = settingsOverride?.sourceControlAiResolvedParams
-      ? { ok: true as const, params: settingsOverride.sourceControlAiResolvedParams }
-      : resolveCommitMessageSettings(
-          getRuntimeGitGenerationSettings(
-            this.host.getRuntimeSettings(),
-            settingsOverride,
-            'pullRequest'
-          ),
-          discoveryHostKey,
-          'pullRequest',
-          target.repo ?? null
-        )
-    if (!resolvedSettings.ok) {
-      return { success: false, error: resolvedSettings.error }
-    }
-
-    const provider = target.connectionId ? getSshGitProvider(target.connectionId) : null
-    if (target.connectionId && !provider) {
-      return {
-        success: false,
-        error: SSH_GIT_PROVIDER_UNAVAILABLE_MESSAGE
-      }
-    }
-    let context: Awaited<ReturnType<typeof getPullRequestDraftContext>>
-    try {
-      const currentBody = await resolveHostedReviewBodyForGeneration({
-        body: input.body,
-        repoPath: target.worktree.path,
-        connectionId: target.connectionId,
-        provider: input.provider,
-        useTemplate: input.useTemplate
-      })
-      context = target.connectionId
-        ? await getPullRequestDraftContext((argv) => provider!.exec(argv, target.worktree.path), {
-            base: input.base,
-            currentTitle: input.title,
-            currentBody,
-            currentDraft: input.draft
-          })
-        : await getPullRequestDraftContext(
-            (argv, options) =>
-              gitExecFileAsync(argv, {
-                cwd: target.worktree.path,
-                ...localGitOptionsForTarget(target),
-                ...options
-              }),
-            {
-              base: input.base,
-              currentTitle: input.title,
-              currentBody,
-              currentDraft: input.draft
-            }
-          )
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to prepare branch for PR details.'
-      }
-    }
-    if (!context) {
-      return { success: false, error: 'No branch changes to summarize.' }
-    }
-
-    if (target.connectionId) {
-      return generatePullRequestFieldsFromContext(context, resolvedSettings.params, {
-        kind: 'remote',
-        cwd: target.worktree.path,
-        execute: (plan, cwd, timeoutMs, operation) =>
-          provider!.executeCommitMessagePlan(plan, cwd, timeoutMs, operation),
-        missingBinaryLocation: 'remote PATH'
-      })
-    }
-
-    const localEnv = await prepareLocalCommitMessageAgentEnv(
-      resolvedSettings.params.agentId,
-      this.host.getCommitMessageAgentEnvironment?.(),
-      localAgentRuntimeTargetForTarget(target)
-    )
-    if (!localEnv.ok) {
-      return { success: false, error: localEnv.error }
-    }
-    return generatePullRequestFieldsFromContext(
-      context,
-      resolvedSettings.params,
-      localTextGenerationTargetForTarget(target, localEnv.env)
-    )
-  }
-
-  async cancelRuntimeGeneratePullRequestFields(worktreeSelector: string): Promise<{ ok: true }> {
-    const target = await this.host.resolveRuntimeGitTarget(worktreeSelector)
-    const provider = target.connectionId ? getSshGitProvider(target.connectionId) : null
-    if (target.connectionId) {
-      await provider?.cancelGenerateCommitMessage(target.worktree.path, 'pull-request-fields')
-      return { ok: true }
-    }
-    cancelGeneratePullRequestFieldsLocal(target.worktree.path)
     return { ok: true }
   }
 

@@ -115,7 +115,6 @@ import { createTabsSlice } from './tabs'
 import { createUISlice } from './ui'
 import { createSettingsSlice } from './settings'
 import { createKeybindingsSlice } from './keybindings'
-import { createHostedReviewSlice } from './hosted-review'
 import { createPreflightSlice } from './preflight'
 import { createEditorSlice } from './editor'
 import { createStatsSlice } from './stats'
@@ -130,7 +129,6 @@ import { createWorktreeNavHistorySlice } from './worktree-nav-history'
 import { createDictationSlice } from './dictation'
 import { createWorkspaceCleanupSlice } from './workspace-cleanup'
 import { createRuntimeStatusSlice } from './runtime-status'
-import { createPullRequestGenerationSlice } from './pull-request-generation'
 import { createCommitMessageGenerationSlice } from './commit-message-generation'
 import { createPinnedTabCloseConfirmSlice } from './pinned-tab-close-confirm'
 
@@ -144,7 +142,6 @@ function createTestStore() {
     ...createUISlice(...a),
     ...createSettingsSlice(...a),
     ...createKeybindingsSlice(...a),
-    ...createHostedReviewSlice(...a),
     ...createPreflightSlice(...a),
     ...createEditorSlice(...a),
     ...createStatsSlice(...a),
@@ -159,7 +156,6 @@ function createTestStore() {
     ...createDictationSlice(...a),
     ...createWorkspaceCleanupSlice(...a),
     ...createRuntimeStatusSlice(...a),
-    ...createPullRequestGenerationSlice(...a),
     ...createCommitMessageGenerationSlice(...a),
     ...createPinnedTabCloseConfirmSlice(...a)
   }))

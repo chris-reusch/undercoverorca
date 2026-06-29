@@ -416,24 +416,16 @@ describe('resolvePrimaryAction', () => {
     expect(result.disabled).toBe(false)
   })
 
-  it('keeps Stage All available in the commit area when Create PR intent is additive', () => {
+  it('keeps Stage All in the commit area when unstaged stageable changes exist', () => {
     const input = inputs({
       stagedCount: 0,
       hasUnstagedChanges: true,
       hasStageableChanges: true,
       hasPartiallyStagedChanges: false,
       hasMessage: false,
-      upstreamStatus: upstreamInSync,
-      hostedReviewCreation: {
-        provider: 'github',
-        review: null,
-        canCreate: false,
-        blockedReason: 'dirty',
-        nextAction: 'commit'
-      }
+      upstreamStatus: upstreamInSync
     })
 
-    expect(resolvePrimaryAction(input).kind).toBe('create_pr_intent')
     expect(resolveCommitAreaPrimaryAction(input)).toEqual({
       kind: 'stage',
       label: 'Stage All',
@@ -442,24 +434,16 @@ describe('resolvePrimaryAction', () => {
     })
   })
 
-  it('keeps the additive commit-area action on Commit for partially staged files', () => {
+  it('keeps the commit-area action on Commit for partially staged files', () => {
     const input = inputs({
       stagedCount: 1,
       hasUnstagedChanges: true,
       hasStageableChanges: true,
       hasPartiallyStagedChanges: true,
       hasMessage: true,
-      upstreamStatus: upstreamInSync,
-      hostedReviewCreation: {
-        provider: 'github',
-        review: null,
-        canCreate: false,
-        blockedReason: 'dirty',
-        nextAction: 'commit'
-      }
+      upstreamStatus: upstreamInSync
     })
 
-    expect(resolvePrimaryAction(input).kind).toBe('create_pr_intent')
     expect(resolveCommitAreaPrimaryAction(input)).toEqual({
       kind: 'commit',
       label: 'Commit',
@@ -532,70 +516,4 @@ describe('resolvePrimaryAction', () => {
       disabled: true
     })
   })
-
-  it('returns Create PR when a clean tracked branch is eligible for review creation', () => {
-    const result = resolvePrimaryAction(
-      inputs({
-        upstreamStatus: upstreamInSync,
-        hostedReviewCreation: {
-          provider: 'github',
-          review: null,
-          canCreate: true,
-          blockedReason: null,
-          nextAction: null
-        }
-      })
-    )
-    expect(result).toEqual({
-      kind: 'create_pr',
-      label: 'Create PR',
-      title: 'Create a pull request for this branch',
-      disabled: false
-    })
-  })
-
-  it('returns Create MR when a clean tracked GitLab branch is eligible for review creation', () => {
-    const result = resolvePrimaryAction(
-      inputs({
-        upstreamStatus: upstreamInSync,
-        hostedReviewCreation: {
-          provider: 'gitlab',
-          review: null,
-          canCreate: true,
-          blockedReason: null,
-          nextAction: null
-        }
-      })
-    )
-    expect(result).toEqual({
-      kind: 'create_pr',
-      label: 'Create MR',
-      title: 'Create a merge request for this branch',
-      disabled: false
-    })
-  })
-
-  it.each(['azure-devops', 'gitea'] as const)(
-    'returns Create PR when a clean tracked %s branch is eligible for review creation',
-    (provider) => {
-      const result = resolvePrimaryAction(
-        inputs({
-          upstreamStatus: upstreamInSync,
-          hostedReviewCreation: {
-            provider,
-            review: null,
-            canCreate: true,
-            blockedReason: null,
-            nextAction: null
-          }
-        })
-      )
-      expect(result).toEqual({
-        kind: 'create_pr',
-        label: 'Create PR',
-        title: 'Create a pull request for this branch',
-        disabled: false
-      })
-    }
-  )
 })

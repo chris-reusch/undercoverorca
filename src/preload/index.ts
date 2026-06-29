@@ -859,12 +859,6 @@ const api = {
     diagnoseAuth: (): Promise<GhAuthDiagnostic> => ipcRenderer.invoke('gh:diagnoseAuth')
   },
 
-  hostedReview: {
-    getCreationEligibility: (args: unknown): Promise<unknown> =>
-      ipcRenderer.invoke('hostedReview:getCreationEligibility', args),
-    create: (args: unknown): Promise<unknown> => ipcRenderer.invoke('hostedReview:create', args)
-  },
-
   // Why: diagnostics is the renderer-facing surface for the error-tracking
   // lane (telemetry-error-tracking.md §User controls). Handlers type-narrow
   // their inputs in main (renderer is untrusted by design); the bridges here
@@ -1915,24 +1909,6 @@ const api = {
       worktreePath: string
       connectionId?: string
     }): Promise<void> => ipcRenderer.invoke('git:cancelGenerateCommitMessage', args),
-    generatePullRequestFields: (args: {
-      worktreePath: string
-      repoId?: string
-      base: string
-      title: string
-      body: string
-      draft: boolean
-      provider?: unknown
-      useTemplate?: boolean
-      connectionId?: string
-      sourceControlAiResolvedParams?: unknown
-      sourceControlAi?: unknown
-      agentCmdOverrides?: Record<string, string>
-    }): Promise<unknown> => ipcRenderer.invoke('git:generatePullRequestFields', args),
-    cancelGeneratePullRequestFields: (args: {
-      worktreePath: string
-      connectionId?: string
-    }): Promise<void> => ipcRenderer.invoke('git:cancelGeneratePullRequestFields', args),
     stage: (args: {
       worktreePath: string
       filePath: string

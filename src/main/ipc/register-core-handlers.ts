@@ -8,7 +8,6 @@ import { registerFilesystemHandlers } from './filesystem'
 import type { CommitMessageAgentEnvironmentResolvers } from '../text-generation/commit-message-agent-environment'
 import { registerFilesystemWatcherHandlers } from './filesystem-watcher'
 import { registerGitHubHandlers } from './github'
-import { registerHostedReviewHandlers } from './hosted-review'
 import { registerCrashReportingHandlers } from './crash-reporting'
 import { registerExportHandlers } from './export'
 import { registerStatsHandlers } from './stats'
@@ -90,7 +89,6 @@ export function registerCoreHandlers(
   registerAgentTrustHandlers()
   registerClaudeAccountHandlers(claudeAccounts)
   registerGitHubHandlers(store, stats)
-  registerHostedReviewHandlers(store, stats)
   if (crashReports) {
     registerCrashReportingHandlers(crashReports)
   }

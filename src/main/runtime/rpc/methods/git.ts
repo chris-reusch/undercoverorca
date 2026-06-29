@@ -16,7 +16,6 @@ import {
   GitFilePath,
   GitForkSync,
   GitGenerateCommitMessage,
-  GitGeneratePullRequestFields,
   GitHistory,
   GitPush,
   GitRebaseFromBase,
@@ -36,8 +35,8 @@ type CommitMessageGenerationOverride = {
   commitMessageDiscoveryHostKey?: string
 }
 
-// Why: generateCommitMessage and generatePullRequestFields share the same optional
-// override fields; returning undefined when none are set keeps the no-override call path.
+// Why: commit-message generation accepts optional override fields; returning
+// undefined when none are set keeps the no-override call path.
 function buildCommitMessageGenerationOverride(params: {
   commitMessageAi?: unknown
   sourceControlAi?: unknown
@@ -282,31 +281,6 @@ export const GIT_METHODS: RpcMethod[] = [
     params: WorktreeSelector,
     handler: async (params, { runtime }) =>
       runtime.cancelRuntimeGenerateCommitMessage(params.worktree)
-  }),
-  defineMethod({
-    name: 'git.generatePullRequestFields',
-    params: GitGeneratePullRequestFields,
-    handler: async (params, { runtime }) => {
-      const input = {
-        base: params.base,
-        title: params.title,
-        body: params.body,
-        draft: params.draft,
-        provider: params.provider,
-        useTemplate: params.useTemplate
-      }
-      const override = buildCommitMessageGenerationOverride(params)
-      if (override === undefined) {
-        return runtime.generateRuntimePullRequestFields(params.worktree, input)
-      }
-      return runtime.generateRuntimePullRequestFields(params.worktree, input, override)
-    }
-  }),
-  defineMethod({
-    name: 'git.cancelGeneratePullRequestFields',
-    params: WorktreeSelector,
-    handler: async (params, { runtime }) =>
-      runtime.cancelRuntimeGeneratePullRequestFields(params.worktree)
   }),
   defineMethod({
     name: 'git.stage',

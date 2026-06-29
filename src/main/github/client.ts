@@ -234,7 +234,3 @@ function isNotFoundGhError(err: unknown): boolean {
   const stderr = err instanceof Error ? err.message : String(err)
   return classifyGhError(stderr).type === 'not_found'
 }
-
-// Why: create-PR shells out to `gh pr create` and must stay decoupled from the
-// GraphQL fetchers in this file so it can survive their later removal.
-export { createGitHubPullRequest } from './create-pr'

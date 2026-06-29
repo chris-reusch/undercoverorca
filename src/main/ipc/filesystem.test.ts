@@ -35,11 +35,9 @@ const {
   listWorktreesMock,
   resolveCommitMessageSettingsMock,
   generateCommitMessageFromContextMock,
-  generatePullRequestFieldsFromContextMock,
   discoverCommitMessageModelsLocalMock,
   discoverCommitMessageModelsRemoteMock,
   cancelGenerateCommitMessageLocalMock,
-  cancelGeneratePullRequestFieldsLocalMock,
   getSshFilesystemProviderMock,
   getSshGitProviderMock
 } = vi.hoisted(() => ({
@@ -74,11 +72,9 @@ const {
   listWorktreesMock: vi.fn(),
   resolveCommitMessageSettingsMock: vi.fn(),
   generateCommitMessageFromContextMock: vi.fn(),
-  generatePullRequestFieldsFromContextMock: vi.fn(),
   discoverCommitMessageModelsLocalMock: vi.fn(),
   discoverCommitMessageModelsRemoteMock: vi.fn(),
   cancelGenerateCommitMessageLocalMock: vi.fn(),
-  cancelGeneratePullRequestFieldsLocalMock: vi.fn(),
   getSshFilesystemProviderMock: vi.fn(),
   getSshGitProviderMock: vi.fn()
 }))
@@ -160,11 +156,9 @@ vi.mock('../providers/ssh-git-dispatch', () => ({
 vi.mock('../text-generation/commit-message-text-generation', () => ({
   resolveCommitMessageSettings: resolveCommitMessageSettingsMock,
   generateCommitMessageFromContext: generateCommitMessageFromContextMock,
-  generatePullRequestFieldsFromContext: generatePullRequestFieldsFromContextMock,
   discoverCommitMessageModelsLocal: discoverCommitMessageModelsLocalMock,
   discoverCommitMessageModelsRemote: discoverCommitMessageModelsRemoteMock,
-  cancelGenerateCommitMessageLocal: cancelGenerateCommitMessageLocalMock,
-  cancelGeneratePullRequestFieldsLocal: cancelGeneratePullRequestFieldsLocalMock
+  cancelGenerateCommitMessageLocal: cancelGenerateCommitMessageLocalMock
 }))
 
 import { registerFilesystemHandlers } from './filesystem'
@@ -258,11 +252,9 @@ describe('registerFilesystemHandlers', () => {
       listWorktreesMock,
       resolveCommitMessageSettingsMock,
       generateCommitMessageFromContextMock,
-      generatePullRequestFieldsFromContextMock,
       discoverCommitMessageModelsLocalMock,
       discoverCommitMessageModelsRemoteMock,
       cancelGenerateCommitMessageLocalMock,
-      cancelGeneratePullRequestFieldsLocalMock,
       getSshFilesystemProviderMock,
       getSshGitProviderMock
     ]) {
@@ -1798,7 +1790,7 @@ describe('registerFilesystemHandlers', () => {
     expect(prepareForClaudeLaunch).not.toHaveBeenCalled()
   })
 
-  it('routes SSH generation cancellations to separate provider operations', async () => {
+  it('routes SSH commit-message cancellation to the provider operation', async () => {
     const cancelGenerateCommitMessage = vi.fn().mockResolvedValue(undefined)
     getSshGitProviderMock.mockReturnValue({ cancelGenerateCommitMessage })
 
@@ -1808,19 +1800,9 @@ describe('registerFilesystemHandlers', () => {
       worktreePath: '/remote/repo',
       connectionId: 'conn-1'
     })
-    await handlers.get('git:cancelGeneratePullRequestFields')!(null, {
-      worktreePath: '/remote/repo',
-      connectionId: 'conn-1'
-    })
 
-    expect(cancelGenerateCommitMessage).toHaveBeenNthCalledWith(1, '/remote/repo', 'commit-message')
-    expect(cancelGenerateCommitMessage).toHaveBeenNthCalledWith(
-      2,
-      '/remote/repo',
-      'pull-request-fields'
-    )
+    expect(cancelGenerateCommitMessage).toHaveBeenCalledWith('/remote/repo', 'commit-message')
     expect(cancelGenerateCommitMessageLocalMock).not.toHaveBeenCalled()
-    expect(cancelGeneratePullRequestFieldsLocalMock).not.toHaveBeenCalled()
   })
 
   it('does not call the generator when no staged changes exist', async () => {

@@ -87,8 +87,20 @@ function mobileLiteralRpcMethods(): string[] {
   return [...methods].sort()
 }
 
+// Why: hosted-review creation and PR-field generation were removed from the
+// backend; their mobile callers are dead pending the mobile client's removal, so
+// exclude them from the allowlist/registration checks.
+const REMOVED_RPC_METHODS = new Set([
+  'hostedReview.create',
+  'hostedReview.getCreationEligibility',
+  'git.generatePullRequestFields',
+  'git.cancelGeneratePullRequestFields'
+])
+
 function mobileRpcMethods(): string[] {
-  return [...new Set([...mobileLiteralRpcMethods(), ...MOBILE_DYNAMIC_RPC_METHODS])].sort()
+  return [...new Set([...mobileLiteralRpcMethods(), ...MOBILE_DYNAMIC_RPC_METHODS])]
+    .filter((method) => !REMOVED_RPC_METHODS.has(method))
+    .sort()
 }
 
 function mobileRpcAllowlist(): Set<string> {

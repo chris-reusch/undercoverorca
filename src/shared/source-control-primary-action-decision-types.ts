@@ -1,4 +1,3 @@
-import type { HostedReviewCreationEligibility } from './hosted-review'
 import type { GitUpstreamStatus } from './git-status-types'
 import type { PRState } from './types'
 
@@ -9,8 +8,6 @@ export type SourceControlPrimaryActionKind =
   | 'pull'
   | 'sync'
   | 'publish'
-  | 'create_pr_intent'
-  | 'create_pr'
 
 export type SourceControlRemoteOpKind =
   | 'push'
@@ -29,7 +26,6 @@ export type SourceControlPrimaryActionTitleIntent =
   | 'remote_operation_in_progress'
   | 'remote_operation_blocks_commit'
   | 'resolve_conflicts_before_commit'
-  | 'prepare_review'
   | 'commit_staged_changes'
   | 'enter_commit_message'
   | 'stage_all_changes'
@@ -44,9 +40,7 @@ export type SourceControlPrimaryActionTitleIntent =
   | 'sync_counts'
   | 'pull_count'
   | 'push_count'
-  | 'create_review'
   | 'nothing_to_commit_up_to_date'
-  | 'checking_review_creation'
 
 export type SourceControlPrimaryActionDecision = {
   kind: SourceControlPrimaryActionKind
@@ -73,10 +67,7 @@ export type SourceControlPrimaryActionDecisionInputs = {
   prState?: PRState | null
   isPRStateLoading?: boolean
   inFlightRemoteOpKind?: SourceControlRemoteOpKind | null
-  hostedReviewCreation?: HostedReviewCreationEligibility | null
   branchCommitsAhead?: number
   hasCurrentBranch?: boolean
   canPushLinkedReviewWithoutUpstream?: boolean
-  isPrIntentInFlight?: boolean
-  isHostedReviewCreationLoading?: boolean
 }

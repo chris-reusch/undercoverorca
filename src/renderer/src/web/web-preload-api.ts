@@ -365,7 +365,6 @@ function createWebPreloadApi(): Partial<PreloadApi> {
     browser: createBrowserApi(),
     emulator: createEmulatorApi(),
     gh: createGitHubApi(),
-    hostedReview: createRuntimeNamespaceApi('hostedReview'),
     hooks: createHooksApi(),
     stats: {
       getSummary: async () =>
@@ -1319,14 +1318,6 @@ function createGitApi(): NonNullable<Partial<PreloadApi>['git']> {
       )
     }),
     cancelGenerateCommitMessage: () => Promise.resolve(),
-    generatePullRequestFields: async () => ({
-      success: false,
-      error: translate(
-        'auto.web.web.preload.api.b8a1618172',
-        'Pull request detail generation is unavailable in the web client.'
-      )
-    }),
-    cancelGeneratePullRequestFields: () => Promise.resolve(),
     stage: async ({ worktreePath, filePath }) => mutateGitPath('git.stage', worktreePath, filePath),
     bulkStage: async ({ worktreePath, filePaths }) =>
       mutateGitPaths('git.bulkStage', worktreePath, filePaths),
@@ -1468,13 +1459,6 @@ function createGitHubApi(): WebGitHubApi {
   } satisfies WebGitHubApi
 
   return githubApi
-}
-
-function createRuntimeNamespaceApi(prefix: string): never {
-  return createFallbackProxy([prefix], (path, args) => {
-    const method = `${prefix}.${path.at(-1) ?? ''}`
-    return callRuntimeResult(method, mapRuntimeNamespaceArg(prefix, args[0]))
-  }) as never
 }
 
 function createHooksApi(): NonNullable<Partial<PreloadApi>['hooks']> {
@@ -2589,13 +2573,6 @@ function mapRepoPathArg(args: unknown): unknown {
     // Orca's repo id on task calls, so prefer the explicit selector.
     repo: repoId ? `id:${repoId}` : record.repoPath
   }
-}
-
-function mapRuntimeNamespaceArg(prefix: string, args: unknown): unknown {
-  if (prefix !== 'hostedReview') {
-    return args
-  }
-  return mapRepoPathArg(args)
 }
 
 function createEmptyMemorySnapshot(): MemorySnapshot {

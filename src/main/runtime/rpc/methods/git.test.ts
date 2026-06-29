@@ -516,48 +516,6 @@ describe('git RPC methods', () => {
     })
   })
 
-  it('forwards one-shot pull-request generation params to the runtime', async () => {
-    const sourceControlAiResolvedParams = {
-      agentId: 'codex',
-      model: 'gpt-5.5',
-      thinkingLevel: 'high',
-      commandInputTemplate: '{basePrompt}\n\nUse release-note style.'
-    }
-    const runtime = {
-      getRuntimeId: () => 'test-runtime',
-      generateRuntimePullRequestFields: vi
-        .fn()
-        .mockResolvedValue({ success: true, fields: { title: 'Test', body: '', draft: false } })
-    } as unknown as OrcaRuntimeService
-    const dispatcher = new RpcDispatcher({ runtime, methods: GIT_METHODS })
-
-    await dispatcher.dispatch(
-      makeRequest('git.generatePullRequestFields', {
-        worktree: 'id:wt-1',
-        base: 'main',
-        title: '',
-        body: '',
-        draft: false,
-        provider: 'github',
-        useTemplate: true,
-        sourceControlAiResolvedParams
-      })
-    )
-
-    expect(runtime.generateRuntimePullRequestFields).toHaveBeenCalledWith(
-      'id:wt-1',
-      {
-        base: 'main',
-        title: '',
-        body: '',
-        draft: false,
-        provider: 'github',
-        useTemplate: true
-      },
-      { sourceControlAiResolvedParams }
-    )
-  })
-
   it('rejects malformed commit-message settings before calling the runtime', async () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',

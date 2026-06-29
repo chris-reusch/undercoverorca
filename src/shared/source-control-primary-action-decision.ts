@@ -1,6 +1,4 @@
 import { shouldForcePushWithLeaseForUpstream } from './git-upstream-status'
-import { supportsHostedReviewCreation } from './hosted-review-creation-providers'
-import { resolveCreateReviewIntentEligibility } from './source-control-create-review-intent'
 import { resolveSourceControlPrimaryActionDuringRemoteOp } from './source-control-primary-action-in-flight'
 import type {
   SourceControlPrimaryActionDecision,
@@ -29,22 +27,10 @@ export function resolveSourceControlPrimaryActionDecision(
     upstreamStatus,
     prState,
     isPRStateLoading,
-    hostedReviewCreation,
     branchCommitsAhead,
     hasCurrentBranch = true,
-    canPushLinkedReviewWithoutUpstream = false,
-    isPrIntentInFlight = false,
-    isHostedReviewCreationLoading = false
+    canPushLinkedReviewWithoutUpstream = false
   } = inputs
-
-  if (isPrIntentInFlight) {
-    return {
-      kind: 'create_pr_intent',
-      labelIntent: 'create_pr',
-      titleIntent: 'prepare_review',
-      disabled: true
-    }
-  }
 
   if (isCommitting) {
     return {
@@ -69,24 +55,6 @@ export function resolveSourceControlPrimaryActionDecision(
       titleIntent: 'resolve_conflicts_before_commit',
       disabled: true
     }
-  }
-
-  if (
-    isHostedReviewCreationLoading &&
-    hostedReviewCreation &&
-    shouldOfferCreateReviewLoadingAction(hostedReviewCreation)
-  ) {
-    return {
-      kind: 'create_pr',
-      labelIntent: 'create_pr',
-      titleIntent: 'checking_review_creation',
-      disabled: true
-    }
-  }
-
-  const createPrIntent = resolveCreatePrIntentDecision(inputs)
-  if (createPrIntent) {
-    return createPrIntent
   }
 
   const hasStaged = stagedCount > 0
@@ -190,15 +158,6 @@ export function resolveSourceControlPrimaryActionDecision(
     }
   }
 
-  if (hostedReviewCreation?.canCreate) {
-    return {
-      kind: 'create_pr',
-      labelIntent: 'create_pr',
-      titleIntent: 'create_review',
-      disabled: false
-    }
-  }
-
   return {
     kind: 'commit',
     labelIntent: 'commit',
@@ -207,52 +166,10 @@ export function resolveSourceControlPrimaryActionDecision(
   }
 }
 
-function shouldOfferCreateReviewLoadingAction(
-  hostedReviewCreation: SourceControlPrimaryActionDecisionInputs['hostedReviewCreation']
-): boolean {
-  if (!supportsHostedReviewCreation(hostedReviewCreation?.provider)) {
-    return false
-  }
-  return (
-    hostedReviewCreation.blockedReason !== 'existing_review' &&
-    hostedReviewCreation.blockedReason !== 'unsupported_provider'
-  )
-}
-
 export function resolveSourceControlCommitAreaPrimaryActionDecision(
   inputs: SourceControlPrimaryActionDecisionInputs
 ): SourceControlPrimaryActionDecision {
-  // Why: review creation is additive chrome. Commit/mobile bottom areas keep
-  // the local/remote action they would have without review eligibility.
-  return resolveSourceControlPrimaryActionDecision({
-    ...inputs,
-    hostedReviewCreation: null,
-    isPrIntentInFlight: false
-  })
-}
-
-function resolveCreatePrIntentDecision(
-  inputs: SourceControlPrimaryActionDecisionInputs
-): SourceControlPrimaryActionDecision | null {
-  const createPrIntent = resolveCreateReviewIntentEligibility({
-    stagedCount: inputs.stagedCount,
-    hasStageableChanges: inputs.hasStageableChanges,
-    hasMessage: inputs.hasMessage,
-    hasUnresolvedConflicts: inputs.hasUnresolvedConflicts,
-    upstreamStatus: inputs.upstreamStatus,
-    hostedReviewCreation: inputs.hostedReviewCreation,
-    branchCommitsAhead: inputs.branchCommitsAhead,
-    hasCurrentBranch: inputs.hasCurrentBranch
-  })
-  if (!createPrIntent.eligible) {
-    return null
-  }
-  return {
-    kind: 'create_pr_intent',
-    labelIntent: 'create_pr',
-    titleIntent: 'prepare_review',
-    disabled: false
-  }
+  return resolveSourceControlPrimaryActionDecision(inputs)
 }
 
 function resolveLinkedReviewSourceControlPrimaryAction(args: {

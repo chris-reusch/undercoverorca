@@ -1,4 +1,3 @@
-import type { HostedReviewCreationEligibility } from '../../../../shared/hosted-review'
 import type { GitUpstreamStatus, PRState } from '../../../../shared/types'
 import type {
   SourceControlPrimaryActionKind,
@@ -46,9 +45,8 @@ export type PrimaryActionInputs = {
   // the user-triggered action on the primary button instead of leaving a
   // stale label that no longer matches what the slice is doing.
   inFlightRemoteOpKind?: RemoteOpKind | null
-  hostedReviewCreation?: HostedReviewCreationEligibility | null
-  // Why: branch-compare counts feed Create Review intent eligibility and
-  // force-push labels; publishing itself can push the current HEAD even at 0.
+  // Why: branch-compare counts feed force-push labels; publishing itself can
+  // push the current HEAD even at 0.
   branchCommitsAhead?: number
   // Why: detached HEAD can look like an unpublished branch from upstream
   // status alone, but it has no branch ref that Publish Branch can push.
@@ -57,10 +55,6 @@ export type PrimaryActionInputs = {
   // Orca has a persisted or Git-configured target. Otherwise Push could fall
   // through to the default publish-to-origin behavior.
   canPushLinkedReviewWithoutUpstream?: boolean
-  isPrIntentInFlight?: boolean
-  // Why: eligibility is fetched asynchronously; keep the header anchor visible
-  // while the request is in flight instead of flashing it in after ~1s.
-  isHostedReviewCreationLoading?: boolean
 }
 
 export const PRIMARY_LABEL_BY_KIND: Record<Exclude<PrimaryActionKind, 'commit'>, string> = {
@@ -68,7 +62,5 @@ export const PRIMARY_LABEL_BY_KIND: Record<Exclude<PrimaryActionKind, 'commit'>,
   push: 'Push',
   pull: 'Pull',
   sync: 'Sync',
-  publish: 'Publish Branch',
-  create_pr_intent: 'Create PR',
-  create_pr: 'Create PR'
+  publish: 'Publish Branch'
 }

@@ -262,17 +262,6 @@ import type { BrowserBackend } from '../browser/browser-backend'
 import { BrowserError } from '../browser/cdp-bridge'
 import { getRepoSlug, getRepoUpstream } from '../github/client'
 import { inspectSetupScriptImportCandidates } from '../../shared/setup-script-imports'
-import type {
-  CreateHostedReviewInput,
-  CreateHostedReviewResult,
-  HostedReviewCreationEligibility,
-  HostedReviewCreationEligibilityArgs
-} from '../../shared/hosted-review'
-import type { ForgeProviderId } from '../source-control/forge-provider'
-import {
-  createHostedReview as createHostedReviewFromRepo,
-  getHostedReviewCreationEligibility as getHostedReviewCreationEligibilityFromRepo
-} from '../source-control/hosted-review-creation'
 import {
   getLocalProjectGitExecOptions,
   getLocalProjectWorktreeGitOptions,
@@ -1148,8 +1137,10 @@ type SelectedReviewBranchInput = {
   pushTarget?: GitPushTarget
 }
 
+type LinkedReviewProviderId = 'github' | 'gitlab' | 'bitbucket' | 'azure-devops' | 'gitea'
+
 type SelectedReviewBranch = {
-  provider: ForgeProviderId
+  provider: LinkedReviewProviderId
   number: number
 }
 
@@ -4193,10 +4184,6 @@ export class OrcaRuntimeService {
     this.gitCommands.discoverRuntimeCommitMessageModels.bind(this.gitCommands)
   cancelRuntimeGenerateCommitMessage: RuntimeGitCommands['cancelRuntimeGenerateCommitMessage'] =
     this.gitCommands.cancelRuntimeGenerateCommitMessage.bind(this.gitCommands)
-  generateRuntimePullRequestFields: RuntimeGitCommands['generateRuntimePullRequestFields'] =
-    this.gitCommands.generateRuntimePullRequestFields.bind(this.gitCommands)
-  cancelRuntimeGeneratePullRequestFields: RuntimeGitCommands['cancelRuntimeGeneratePullRequestFields'] =
-    this.gitCommands.cancelRuntimeGeneratePullRequestFields.bind(this.gitCommands)
   stageRuntimeGitPath: RuntimeGitCommands['stageRuntimeGitPath'] =
     this.gitCommands.stageRuntimeGitPath.bind(this.gitCommands)
   unstageRuntimeGitPath: RuntimeGitCommands['unstageRuntimeGitPath'] =
@@ -9404,22 +9391,6 @@ export class OrcaRuntimeService {
     }
   }
 
-  private async resolveHostedReviewTarget(args: {
-    repoSelector: string
-    worktreeSelector?: string
-  }): Promise<{ repo: Repo; repoPath: string }> {
-    const repo = await this.resolveRepoSelector(args.repoSelector)
-    if (!args.worktreeSelector) {
-      return { repo, repoPath: repo.path }
-    }
-
-    const worktree = await this.resolveWorktreeSelector(args.worktreeSelector)
-    if (worktree.repoId !== repo.id) {
-      throw new Error('Access denied: worktree does not belong to repository')
-    }
-    return { repo, repoPath: worktree.path }
-  }
-
   private getHostedReviewExecutionOptions(
     repo: Repo
   ): { localGitExecOptions: { wslDistro?: string } } | undefined {
@@ -9495,66 +9466,6 @@ export class OrcaRuntimeService {
     } catch {
       // Best-effort startup backfill; never disrupt launch.
     }
-  }
-
-  async getHostedReviewCreationEligibility(
-    args: Omit<HostedReviewCreationEligibilityArgs, 'repoPath'> & {
-      repoSelector: string
-      worktreeSelector?: string
-    }
-  ): Promise<HostedReviewCreationEligibility> {
-    const { repo, repoPath } = await this.resolveHostedReviewTarget(args)
-    const executionOptions = this.getHostedReviewExecutionOptions(repo)
-    return getHostedReviewCreationEligibilityFromRepo({
-      repoPath,
-      connectionId: repo.connectionId ?? null,
-      branch: args.branch,
-      base: args.base ?? null,
-      hasUncommittedChanges: args.hasUncommittedChanges,
-      hasUpstream: args.hasUpstream,
-      ahead: args.ahead,
-      behind: args.behind,
-      linkedGitHubPR: args.linkedGitHubPR ?? null,
-      fallbackGitHubPR: args.linkedGitHubPR == null ? (args.fallbackGitHubPR ?? null) : null,
-      linkedGitLabMR: args.linkedGitLabMR ?? null,
-      linkedBitbucketPR: args.linkedBitbucketPR ?? null,
-      linkedAzureDevOpsPR: args.linkedAzureDevOpsPR ?? null,
-      linkedGiteaPR: args.linkedGiteaPR ?? null,
-      ...executionOptions
-    })
-  }
-
-  async createHostedReview(
-    args: CreateHostedReviewInput & { repoSelector: string; worktreeSelector?: string }
-  ): Promise<CreateHostedReviewResult> {
-    const { repo, repoPath } = await this.resolveHostedReviewTarget(args)
-    const executionOptions = this.getHostedReviewExecutionOptions(repo)
-    const input = {
-      provider: args.provider,
-      base: args.base,
-      head: args.head,
-      title: args.title,
-      body: args.body,
-      draft: args.draft,
-      ...(args.useTemplate !== undefined ? { useTemplate: args.useTemplate } : {})
-    }
-    const result = executionOptions
-      ? await createHostedReviewFromRepo(
-          repoPath,
-          input,
-          repo.connectionId ?? null,
-          executionOptions
-        )
-      : await createHostedReviewFromRepo(repoPath, input, repo.connectionId ?? null)
-    if (result.ok && this.stats && !this.stats.hasCountedPR(result.url)) {
-      this.stats.record({
-        type: 'pr_created',
-        at: Date.now(),
-        repoId: repo.id,
-        meta: { prNumber: result.number, prUrl: result.url }
-      })
-    }
-    return result
   }
 
   private getSetupHookTrustPayload(

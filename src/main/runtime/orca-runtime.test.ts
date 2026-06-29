@@ -132,8 +132,6 @@ const {
   muxRequestMock,
   invalidateAuthorizedRootsCacheMock,
   prepareLocalWorktreeRootForRepoMock,
-  createHostedReviewMock,
-  getHostedReviewCreationEligibilityMock,
   getHostedReviewForBranchMock,
   getPRForBranchMock,
   getRepoSlugMock,
@@ -201,8 +199,6 @@ const {
     muxRequestMock: vi.fn(),
     invalidateAuthorizedRootsCacheMock: vi.fn(),
     prepareLocalWorktreeRootForRepoMock: vi.fn(),
-    createHostedReviewMock: vi.fn(),
-    getHostedReviewCreationEligibilityMock: vi.fn(),
     getHostedReviewForBranchMock: vi.fn(),
     getPRForBranchMock: vi.fn().mockResolvedValue(null),
     getRepoSlugMock: vi.fn().mockResolvedValue(null),
@@ -321,11 +317,6 @@ vi.mock('../ipc/filesystem-auth', () => ({
 
 vi.mock('../worktree-root-preparation', () => ({
   prepareLocalWorktreeRootForRepo: prepareLocalWorktreeRootForRepoMock
-}))
-
-vi.mock('../source-control/hosted-review-creation', () => ({
-  createHostedReview: createHostedReviewMock,
-  getHostedReviewCreationEligibility: getHostedReviewCreationEligibilityMock
 }))
 
 vi.mock('../source-control/hosted-review', () => ({
@@ -453,25 +444,6 @@ function resetRuntimeTestMocks(): void {
   ensurePathWithinWorkspaceMock.mockReset()
   invalidateAuthorizedRootsCacheMock.mockReset()
   prepareLocalWorktreeRootForRepoMock.mockReset().mockResolvedValue(undefined)
-  createHostedReviewMock.mockReset()
-  createHostedReviewMock.mockResolvedValue({
-    ok: true,
-    provider: 'github',
-    number: 1,
-    url: 'https://example.com/pull/1'
-  })
-  getHostedReviewCreationEligibilityMock.mockReset()
-  getHostedReviewCreationEligibilityMock.mockResolvedValue({
-    provider: 'github',
-    review: null,
-    canCreate: true,
-    blockedReason: null,
-    nextAction: null,
-    defaultBaseRef: 'main',
-    head: 'feature/foo',
-    title: null,
-    body: null
-  })
   getHostedReviewForBranchMock.mockReset()
   getHostedReviewForBranchMock.mockResolvedValue(null)
   getPRForBranchMock.mockReset()
@@ -3412,192 +3384,6 @@ describe('OrcaRuntimeService', () => {
     const runtimeOptions = { localGitExecOptions: { wslDistro: 'Ubuntu' } }
     expect(getRepoSlugMock).toHaveBeenCalledWith(TEST_REPO_PATH, null, runtimeOptions)
     expect(getRepoUpstreamMock).toHaveBeenCalledWith(TEST_REPO_PATH, null, runtimeOptions)
-  })
-
-  it('rejects hosted review worktree selectors outside the selected repo', async () => {
-    vi.mocked(listWorktrees).mockImplementation(async (repoPath: string) => {
-      if (repoPath === '/tmp/repo-b') {
-        return [
-          {
-            path: '/tmp/worktree-b',
-            head: 'def',
-            branch: 'feature/bar',
-            isBare: false,
-            isMainWorktree: false
-          }
-        ]
-      }
-      return MOCK_GIT_WORKTREES
-    })
-    const repos = [
-      {
-        id: TEST_REPO_ID,
-        path: TEST_REPO_PATH,
-        displayName: 'repo',
-        badgeColor: 'blue',
-        addedAt: 1
-      },
-      {
-        id: 'repo-2',
-        path: '/tmp/repo-b',
-        displayName: 'repo-b',
-        badgeColor: 'green',
-        addedAt: 2
-      }
-    ]
-    const multiRepoStore = {
-      ...store,
-      getRepos: () => repos,
-      getRepo: (id: string) => repos.find((repo) => repo.id === id)
-    }
-    const runtime = new OrcaRuntimeService(multiRepoStore as never)
-
-    await expect(
-      runtime.getHostedReviewCreationEligibility({
-        repoSelector: 'id:repo-1',
-        worktreeSelector: 'id:repo-2::/tmp/worktree-b',
-        branch: 'feature/bar',
-        base: 'main',
-        hasUncommittedChanges: false,
-        hasUpstream: true,
-        ahead: 1,
-        behind: 0
-      })
-    ).rejects.toThrow('Access denied: worktree does not belong to repository')
-    await expect(
-      runtime.createHostedReview({
-        repoSelector: 'id:repo-1',
-        worktreeSelector: 'id:repo-2::/tmp/worktree-b',
-        provider: 'github',
-        base: 'main',
-        head: 'feature/bar',
-        title: 'Create PR',
-        body: '',
-        draft: false
-      })
-    ).rejects.toThrow('Access denied: worktree does not belong to repository')
-
-    expect(getHostedReviewCreationEligibilityMock).not.toHaveBeenCalled()
-    expect(createHostedReviewMock).not.toHaveBeenCalled()
-  })
-
-  it('passes SSH connection context through hosted review creation flows', async () => {
-    const remoteRepo = {
-      id: TEST_REPO_ID,
-      path: '/remote/repo',
-      displayName: 'repo',
-      badgeColor: 'blue',
-      addedAt: 1,
-      connectionId: 'ssh-1'
-    }
-    const remoteStore = {
-      ...store,
-      getRepos: () => [remoteRepo],
-      getRepo: (id: string) => (id === TEST_REPO_ID ? remoteRepo : undefined)
-    }
-    const runtime = new OrcaRuntimeService(remoteStore as never)
-
-    await runtime.getHostedReviewCreationEligibility({
-      repoSelector: `id:${TEST_REPO_ID}`,
-      branch: 'feature/ssh',
-      base: 'main',
-      hasUncommittedChanges: false,
-      hasUpstream: true,
-      ahead: 0,
-      behind: 0
-    })
-    await runtime.createHostedReview({
-      repoSelector: `id:${TEST_REPO_ID}`,
-      provider: 'github',
-      base: 'main',
-      head: 'feature/ssh',
-      title: 'Feature SSH',
-      body: '',
-      draft: false
-    })
-
-    expect(getHostedReviewCreationEligibilityMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        repoPath: '/remote/repo',
-        connectionId: 'ssh-1',
-        branch: 'feature/ssh'
-      })
-    )
-    expect(createHostedReviewMock).toHaveBeenCalledWith(
-      '/remote/repo',
-      expect.objectContaining({
-        provider: 'github',
-        head: 'feature/ssh',
-        title: 'Feature SSH'
-      }),
-      'ssh-1'
-    )
-  })
-
-  it('routes local WSL project hosted review flows through runtime git options', async () => {
-    setPlatform('win32')
-    const wslStore = {
-      ...store,
-      getProjects: () => [
-        {
-          id: 'project-1',
-          displayName: 'repo',
-          badgeColor: 'blue',
-          sourceRepoIds: [TEST_REPO_ID],
-          localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' },
-          createdAt: 0,
-          updatedAt: 0
-        }
-      ],
-      getSettings: () => ({
-        ...store.getSettings(),
-        localWindowsRuntimeDefault: { kind: 'windows-host' }
-      })
-    }
-    const runtime = new OrcaRuntimeService(wslStore as never)
-    createHostedReviewMock.mockResolvedValueOnce({
-      ok: true,
-      number: 77,
-      url: 'https://github.com/acme/orca/pull/77'
-    })
-
-    await runtime.getHostedReviewCreationEligibility({
-      repoSelector: `id:${TEST_REPO_ID}`,
-      branch: 'feature/wsl',
-      base: 'main',
-      hasUncommittedChanges: false,
-      hasUpstream: true,
-      ahead: 0,
-      behind: 0
-    })
-    await runtime.createHostedReview({
-      repoSelector: `id:${TEST_REPO_ID}`,
-      provider: 'github',
-      base: 'main',
-      head: 'feature/wsl',
-      title: 'Feature WSL',
-      body: '',
-      draft: false
-    })
-
-    expect(getHostedReviewCreationEligibilityMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        repoPath: TEST_REPO_PATH,
-        connectionId: null,
-        branch: 'feature/wsl',
-        localGitExecOptions: { wslDistro: 'Ubuntu' }
-      })
-    )
-    expect(createHostedReviewMock).toHaveBeenCalledWith(
-      TEST_REPO_PATH,
-      expect.objectContaining({
-        provider: 'github',
-        head: 'feature/wsl',
-        title: 'Feature WSL'
-      }),
-      null,
-      { localGitExecOptions: { wslDistro: 'Ubuntu' } }
-    )
   })
 
   it('treats SSH worktree drift as unknown without local git probes', async () => {

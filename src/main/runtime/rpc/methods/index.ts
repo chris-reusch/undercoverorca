@@ -17,7 +17,6 @@ import { SESSION_TAB_METHODS } from './session-tabs'
 import { FILE_METHODS } from './files'
 import { GIT_METHODS } from './git'
 import { GITHUB_METHODS } from './github'
-import { HOSTED_REVIEW_METHODS } from './hosted-review'
 import { SSH_METHODS } from './ssh'
 import { SPEECH_METHODS } from './speech'
 import { CLIENT_UI_METHODS } from './client-ui'
@@ -50,7 +49,6 @@ export const ALL_RPC_METHODS: readonly RpcAnyMethod[] = [
   ...FILE_METHODS,
   ...GIT_METHODS,
   ...GITHUB_METHODS,
-  ...HOSTED_REVIEW_METHODS,
   ...SSH_METHODS,
   ...SPEECH_METHODS,
   ...WORKSPACE_PORT_METHODS,

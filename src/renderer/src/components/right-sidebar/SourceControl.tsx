@@ -105,10 +105,7 @@ import {
   SourceControlDiscardDialog,
   type PendingDiscardConfirmation
 } from './source-control-discard-dialog'
-import {
-  refreshGitStatusForWorktree,
-  refreshGitStatusForWorktreeStrict
-} from './git-status-refresh'
+import { refreshGitStatusForWorktree } from './git-status-refresh'
 import { describeForkPushTarget } from './fork-push-target-label'
 import { toast } from 'sonner'
 import { SourceControlEntryContextMenu } from './source-control-entry-context-menu'
@@ -150,26 +147,20 @@ import {
   bulkStageRuntimeGitPaths,
   bulkUnstageRuntimeGitPaths,
   cancelRuntimeGenerateCommitMessage,
-  cancelRuntimeGeneratePullRequestFields,
   commitRuntimeGit,
   discardRuntimeGitPath,
   generateRuntimeCommitMessage,
-  generateRuntimePullRequestFields,
   getRuntimeGitBranchCompare,
   getRuntimeGitHistory,
   stageRuntimeGitPath,
   unstageRuntimeGitPath,
   type RuntimeGitContext,
-  type RuntimeGenerateCommitMessageOverrides,
-  type RuntimeGeneratePullRequestFieldsOverrides
+  type RuntimeGenerateCommitMessageOverrides
 } from '@/runtime/runtime-git-client'
 import { getRuntimeRepoBaseRefDefault } from '@/runtime/runtime-repo-client'
 
-import { stripBaseRef, useCreatePullRequestDialogFields } from './useCreatePullRequestDialogFields'
-import { resolveCreateReviewDraftTitle } from './create-review-draft-title'
 import { GitHistoryPanel, type GitHistoryPanelState } from './GitHistoryPanel'
 import { useGitHistoryCommitActions } from './useGitHistoryCommitActions'
-import { normalizeHostedReviewHeadRef } from '../../../../shared/hosted-review-refs'
 import { shouldForcePushWithLeaseForUpstream } from '../../../../shared/git-upstream-status'
 import type {
   DiffComment,
@@ -182,12 +173,7 @@ import type {
   SourceControlViewMode,
   TuiAgent
 } from '../../../../shared/types'
-import type {
-  HostedReviewCreationEligibility,
-  HostedReviewInfo,
-  HostedReviewProvider
-} from '../../../../shared/hosted-review'
-import { resolveHostedReviewCreationProvider } from '../../../../shared/hosted-review-creation-providers'
+import type { HostedReviewInfo } from '../../../../shared/hosted-review'
 import { STATUS_COLORS, STATUS_LABELS } from './status-display'
 import { isCustomAgentId } from '../../../../shared/commit-message-agent-spec'
 import {
@@ -221,31 +207,9 @@ import {
   PullPolicyRemoteActionNotice
 } from './source-control-pull-policy-error-notice'
 import { SourceControlTextGenerationDialog } from './SourceControlTextGenerationDialog'
-import { CreateHostedReviewComposer } from './CreateHostedReviewComposer'
-import {
-  hasConfiguredCommitMessageGenerationDefaults,
-  hasConfiguredSourceControlTextGenerationDefaults
-} from './source-control-text-generation-defaults'
+import { hasConfiguredCommitMessageGenerationDefaults } from './source-control-text-generation-defaults'
 import { useSourceControlAi } from './use-source-control-ai'
 import { translate } from '@/i18n/i18n'
-import { localizedHostedReviewCopy } from '@/i18n/hosted-review-localized-copy'
-import {
-  createCreatePrIntentRunToken,
-  createPrIntentCurrentTargetConflictsWithToken,
-  createPrIntentGitStatusMatchesToken,
-  createPrIntentRunTokenMatches,
-  getCreatePrIntentStagePaths,
-  resolveCreatePrIntentReviewBase,
-  resolveCreatePrIntentRemoteStep,
-  type CreatePrIntentRunToken
-} from './source-control-create-pr-intent-flow'
-import { resolveVisibleCreatePrHeaderAction } from './source-control-create-pr-intent-state'
-import { resolveBlockedCreateReviewNoticeMessage } from './source-control-create-review-blocked-action'
-import {
-  buildLoadingHostedReviewCreationEligibility,
-  resolveCreatePrHeaderAction,
-  resolveProvisionalHostedReviewProvider
-} from './source-control-primary-create-pr-intent-action'
 import {
   getNextSourceControlViewMode,
   shouldShowSourceControlCompareUnavailableCard,
@@ -260,19 +224,6 @@ import {
   resolveCommitMessageGenerationSuccess,
   type CommitMessageGenerationRecord
 } from '@/store/slices/commit-message-generation'
-import {
-  createRunningPullRequestGenerationRecord,
-  getPullRequestGenerationRecordKey,
-  getPullRequestGenerationSeedRestoreKey,
-  markPullRequestGenerationTerminalSeedRestored,
-  resolvePullRequestGenerationCancel,
-  resolvePullRequestGenerationFailure,
-  resolvePullRequestGenerationSuccess,
-  shouldHydratePullRequestGenerationResult,
-  type PullRequestFieldRevisions,
-  type PullRequestGenerationContext,
-  type PullRequestGenerationFields
-} from '@/store/slices/pull-request-generation'
 
 export {
   appendCommitFailureCustomInstruction,
@@ -295,19 +246,6 @@ export type SourceControlActionError = {
 type SourceControlOperationTarget = RuntimeGitContext & {
   worktreeId: string
   pushTarget?: GitPushTarget
-}
-type HostedReviewCreatedContext = {
-  repoPath: string
-  repoId: string
-  branch: string
-  worktreeId: string | null
-  openChecks: boolean
-}
-type CreatePrIntentTone = 'muted' | 'destructive'
-type CreatePrIntentNotice = {
-  message: string
-  tone: CreatePrIntentTone
-  action?: 'settings'
 }
 
 export function resolveSourceControlBaseRef(input: {
@@ -433,9 +371,7 @@ const PRIMARY_ICONS: Partial<
   stage: Plus,
   push: ArrowUp,
   sync: ArrowDownUp,
-  publish: CloudUpload,
-  create_pr_intent: GitPullRequestArrow,
-  create_pr: GitPullRequestArrow
+  publish: CloudUpload
 }
 
 const SECTION_LABELS: Record<SourceControlSectionArea, { key: string; fallback: string }> = {
@@ -583,33 +519,6 @@ function getSourceControlDirectoryActionPaths(
         ? getDiscardAllPaths(entries, node.area)
         : []
   }
-}
-
-type HostedReviewCreationState = {
-  repoId: string
-  worktreeId: string
-  branch: string
-  data: HostedReviewCreationEligibility
-}
-
-type HostedReviewCreationRequestState = {
-  repoId: string
-  worktreeId: string
-  branch: string
-  status: 'loading' | 'failed'
-}
-
-type HostedReviewCreationProviderHint = {
-  repoId: string | null
-  worktreeId: string | null
-  branch: string
-  provider: HostedReviewProvider
-}
-
-type CreatedHostedReview = {
-  provider: HostedReviewProvider
-  number: number
-  url: string
 }
 
 export function readCommitDraftForWorktree(
@@ -777,10 +686,6 @@ function SourceControlInner(): React.JSX.Element {
   const updateSettings = useAppStore((s) => s.updateSettings)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
-  const getHostedReviewCreationEligibility = useAppStore(
-    (s) => s.getHostedReviewCreationEligibility
-  )
-  const createHostedReview = useAppStore((s) => s.createHostedReview)
   const updateWorktreeMeta = useAppStore((s) => s.updateWorktreeMeta)
   const updateRepo = useAppStore((s) => s.updateRepo)
   const setGitStatus = useAppStore((s) => s.setGitStatus)
@@ -972,72 +877,6 @@ function SourceControlInner(): React.JSX.Element {
     Record<string, boolean>
   >({})
   const [generateErrors, setGenerateErrors] = useState<Record<string, string | null>>({})
-  const [hostedReviewCreationState, setHostedReviewCreationState] =
-    useState<HostedReviewCreationState | null>(null)
-  const [hostedReviewCreationRequestState, setHostedReviewCreationRequestState] =
-    useState<HostedReviewCreationRequestState | null>(null)
-  const hostedReviewCreationProviderHintRef = useRef<HostedReviewCreationProviderHint>({
-    repoId: null,
-    worktreeId: null,
-    branch: '',
-    provider: 'github'
-  })
-  const createPrInFlightRef = useRef<Record<string, boolean>>({})
-  const [createPrInFlightByWorktree, setCreatePrInFlightByWorktree] = useState<
-    Record<string, boolean>
-  >({})
-  const isCreatingPr = createPrInFlightByWorktree[activeWorktreeId ?? ''] ?? false
-  const createPrIntentInFlightRef = useRef<Record<string, boolean>>({})
-  const createPrIntentRunTokenRef = useRef<Record<string, CreatePrIntentRunToken | null>>({})
-  const createPrIntentCurrentTargetRef = useRef({
-    repoId: null as string | null,
-    worktreeId: null as string | null,
-    worktreePath: null as string | null,
-    branch: null as string | null,
-    baseRef: null as string | null
-  })
-  const [createPrIntentInFlightByWorktree, setCreatePrIntentInFlightByWorktree] = useState<
-    Record<string, boolean>
-  >({})
-  const [createPrIntentNotices, setCreatePrIntentNotices] = useState<
-    Record<string, CreatePrIntentNotice | null>
-  >({})
-  const isCreatePrIntentInFlight = createPrIntentInFlightByWorktree[activeWorktreeId ?? ''] ?? false
-  const createPrIntentNotice = createPrIntentNotices[activeWorktreeId ?? ''] ?? null
-  const setCreatePrIntentNoticeForWorktree = useCallback(
-    (worktreeId: string, notice: CreatePrIntentNotice | null): void => {
-      setCreatePrIntentNotices((prev) => ({ ...prev, [worktreeId]: notice }))
-    },
-    []
-  )
-  const createPrIntentRunStillOwnsWorktree = useCallback(
-    (token: CreatePrIntentRunToken): boolean =>
-      createPrIntentRunTokenRef.current[token.worktreeId] === token,
-    []
-  )
-  const createPrIntentActiveTargetConflicts = useCallback(
-    (token: CreatePrIntentRunToken): boolean =>
-      createPrIntentCurrentTargetConflictsWithToken(token, createPrIntentCurrentTargetRef.current),
-    []
-  )
-  const getCreatePrIntentOperationTarget = useCallback(
-    (token: CreatePrIntentRunToken): SourceControlOperationTarget => ({
-      // Why: Create PR intent continues after navigation; keep git commands
-      // pinned to the worktree and runtime host that started the sequence.
-      settings: activeRepoSettings,
-      worktreeId: token.worktreeId,
-      worktreePath: token.worktreePath,
-      connectionId: getConnectionId(token.worktreeId) ?? undefined,
-      pushTarget: worktreeMap.get(token.worktreeId)?.pushTarget
-    }),
-    [activeRepoSettings, worktreeMap]
-  )
-  const prGenerationRecords = useAppStore((s) => s.pullRequestGenerationRecords)
-  const allocatePullRequestGenerationRequestId = useAppStore(
-    (s) => s.allocatePullRequestGenerationRequestId
-  )
-  const setPullRequestGenerationRecord = useAppStore((s) => s.setPullRequestGenerationRecord)
-  const updatePullRequestGenerationRecord = useAppStore((s) => s.updatePullRequestGenerationRecord)
 
   const commitMessageGenerationRecords = useAppStore((s) => s.commitMessageGenerationRecords)
   const allocateCommitMessageGenerationRequestId = useAppStore(
@@ -1104,25 +943,6 @@ function SourceControlInner(): React.JSX.Element {
   const gitIdentityDisplay = activeWorktree ? getWorktreeGitIdentityDisplay(activeWorktree) : null
   const detachedHeadDisplay = gitIdentityDisplay?.kind === 'detached' ? gitIdentityDisplay : null
   const branchName = gitIdentityDisplay?.kind === 'branch' ? gitIdentityDisplay.branchName : ''
-  const activePullRequestGenerationKey = getPullRequestGenerationRecordKey({
-    worktreeId: activeWorktreeId,
-    worktreePath,
-    repoId: activeRepo?.id,
-    branch: branchName
-  })
-  const activePullRequestGenerationRecordCandidate = activePullRequestGenerationKey
-    ? (prGenerationRecords[activePullRequestGenerationKey] ?? null)
-    : null
-  const activePullRequestGenerationRecord =
-    activePullRequestGenerationRecordCandidate &&
-    activePullRequestGenerationRecordCandidate.context.repoId === activeRepo?.id &&
-    activePullRequestGenerationRecordCandidate.context.branch === branchName
-      ? activePullRequestGenerationRecordCandidate
-      : null
-  const activePullRequestGenerationSeedRestoreKey = getPullRequestGenerationSeedRestoreKey({
-    recordKey: activePullRequestGenerationKey,
-    record: activePullRequestGenerationRecord
-  })
   const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen)
   // Why: gate polling on both the active tab AND the sidebar being open.
   // The sidebar now stays mounted when closed (for performance), so without
@@ -1219,41 +1039,6 @@ function SourceControlInner(): React.JSX.Element {
     }
   }, [repositoryHuge, activeWorktreeId, worktreePath, activeConnectionId, refreshActiveGitStatus])
 
-  const refreshGitStatusAfterPullRequestGeneration = useCallback(
-    async (context: PullRequestGenerationContext): Promise<void> => {
-      if (!context.worktreeId || isFolder) {
-        return
-      }
-      try {
-        await refreshGitStatusForWorktree({
-          // Why: generation can finish after the user switches hosts; refresh
-          // the same host that owned the generation request.
-          settings: context.runtimeTargetSettings,
-          worktreeId: context.worktreeId,
-          worktreePath: context.worktreePath,
-          connectionId: context.connectionId,
-          pushTarget: worktreeMap.get(context.worktreeId)?.pushTarget,
-          deps: {
-            setGitStatus,
-            updateWorktreeGitIdentity,
-            setUpstreamStatus,
-            fetchUpstreamStatus
-          }
-        })
-      } catch (error) {
-        console.warn('[SourceControl] post-generation git status refresh failed', error)
-      }
-    },
-    [
-      fetchUpstreamStatus,
-      isFolder,
-      setGitStatus,
-      setUpstreamStatus,
-      updateWorktreeGitIdentity,
-      worktreeMap
-    ]
-  )
-
   useEffect(() => {
     if (!isBranchVisible || !activeRepo || isFolder) {
       return
@@ -1297,19 +1082,8 @@ function SourceControlInner(): React.JSX.Element {
   const pinnedBaseRef = normalizedWorktreeBaseRef ?? normalizedRepoBaseRef
   const hasUncommittedEntries = entries.length > 0
 
-  const hostedReviewCreation =
-    hostedReviewCreationState &&
-    activeRepo?.id === hostedReviewCreationState.repoId &&
-    activeWorktreeId === hostedReviewCreationState.worktreeId &&
-    branchName === hostedReviewCreationState.branch
-      ? hostedReviewCreationState.data
-      : null
-  const hostedReviewCreateProvider = resolveHostedReviewCreationProvider(
-    hostedReviewCreation?.provider
-  )
-  const hostedReviewCreateCopy = localizedHostedReviewCopy(hostedReviewCreateProvider)
-  // Why: hosted-review status fetching/browsing was removed; only the create-PR
-  // flow remains, so there is never a fetched review for the current branch.
+  // Why: hosted-review status fetching/browsing and the create-PR flow were
+  // removed; there is never a fetched review for the current branch.
   const hostedReview = null as HostedReviewInfo | null
   const effectiveBaseRef = resolveSourceControlBaseRef({
     worktreeBaseRef: normalizedWorktreeBaseRef,
@@ -1321,138 +1095,12 @@ function SourceControlInner(): React.JSX.Element {
     pinnedBaseRef,
     effectiveBaseRef
   })
-  useEffect(() => {
-    createPrIntentCurrentTargetRef.current = {
-      repoId: activeRepo?.id ?? null,
-      worktreeId: activeWorktreeId ?? null,
-      worktreePath,
-      branch: branchName,
-      baseRef: effectiveBaseRef ?? null
-    }
-  }, [activeRepo?.id, activeWorktreeId, branchName, effectiveBaseRef, worktreePath])
-
-  const linkedGitHubPR = activeWorktree?.linkedPR ?? null
-  const fallbackGitHubPRNumber: number | null = null
-  const linkedGitLabMR = activeWorktree?.linkedGitLabMR ?? null
-  const linkedBitbucketPR = activeWorktree?.linkedBitbucketPR ?? null
-  const linkedAzureDevOpsPR = activeWorktree?.linkedAzureDevOpsPR ?? null
-  const linkedGiteaPR = activeWorktree?.linkedGiteaPR ?? null
-  const shouldResolveHostedReviewCreation =
-    isBranchVisible &&
-    Boolean(activeRepo) &&
-    !isFolder &&
-    Boolean(branchName) &&
-    branchName !== 'HEAD' &&
-    Boolean(activeWorktreeId)
-  const hostedReviewCreationRequestMatchesCurrent =
-    hostedReviewCreationRequestState !== null &&
-    activeRepo?.id === hostedReviewCreationRequestState.repoId &&
-    activeWorktreeId === hostedReviewCreationRequestState.worktreeId &&
-    branchName === hostedReviewCreationRequestState.branch
-  const isHostedReviewCreationLoading =
-    shouldResolveHostedReviewCreation &&
-    hostedReviewCreationRequestMatchesCurrent &&
-    hostedReviewCreationRequestState.status === 'loading' &&
-    hostedReview === null
-  const provisionalHostedReviewProvider = useMemo(
-    () =>
-      resolveProvisionalHostedReviewProvider({
-        hostedReview,
-        hostedReviewCreationState: hostedReviewCreation
-          ? {
-              repoId: activeRepo?.id ?? '',
-              data: hostedReviewCreation
-            }
-          : null,
-        activeRepoId: activeRepo?.id ?? null,
-        linkedGitHubPR,
-        fallbackGitHubPR: fallbackGitHubPRNumber,
-        linkedGitLabMR,
-        linkedBitbucketPR,
-        linkedAzureDevOpsPR,
-        linkedGiteaPR
-      }),
-    [
-      activeRepo?.id,
-      fallbackGitHubPRNumber,
-      hostedReview,
-      hostedReviewCreation,
-      linkedAzureDevOpsPR,
-      linkedBitbucketPR,
-      linkedGitHubPR,
-      linkedGitLabMR,
-      linkedGiteaPR
-    ]
-  )
-  useEffect(() => {
-    const hasConcreteProviderHint =
-      hostedReview !== null ||
-      hostedReviewCreation !== null ||
-      linkedGitHubPR !== null ||
-      fallbackGitHubPRNumber !== null ||
-      linkedGitLabMR !== null ||
-      linkedAzureDevOpsPR !== null ||
-      linkedGiteaPR !== null
-
-    if (!hasConcreteProviderHint) {
-      return
-    }
-
-    hostedReviewCreationProviderHintRef.current = {
-      repoId: activeRepo?.id ?? null,
-      worktreeId: activeWorktreeId ?? null,
-      branch: branchName,
-      provider: provisionalHostedReviewProvider
-    }
-  }, [
-    activeRepo?.id,
-    activeWorktreeId,
-    branchName,
-    fallbackGitHubPRNumber,
-    hostedReview,
-    hostedReviewCreation,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR,
-    linkedGitHubPR,
-    linkedGitLabMR,
-    provisionalHostedReviewProvider
-  ])
-  const hostedReviewCreationForHeader = useMemo(() => {
-    // Why: a fresh preflight must disable stale Create PR eligibility while
-    // upstream/dirty/base state is reconciling after commit or push, while
-    // preserving provider copy from the previous safe snapshot.
-    if (isHostedReviewCreationLoading) {
-      const providerHint = hostedReviewCreationProviderHintRef.current
-      const provider =
-        providerHint.repoId === (activeRepo?.id ?? null) &&
-        providerHint.worktreeId === (activeWorktreeId ?? null) &&
-        providerHint.branch === branchName
-          ? providerHint.provider
-          : provisionalHostedReviewProvider
-      return buildLoadingHostedReviewCreationEligibility(provider)
-    }
-    return hostedReviewCreation
-  }, [
-    activeRepo?.id,
-    activeWorktreeId,
-    branchName,
-    hostedReviewCreation,
-    isHostedReviewCreationLoading,
-    provisionalHostedReviewProvider
-  ])
   // Why: hosted-review status fetching/push-target resolution was removed, so
   // the primary-action publish gate no longer factors in a fetched review.
   const isHostedReviewStateLoading = false
   const canUseHostedReviewPushTarget = false
   const hostedReviewStateForActions = null as HostedReviewInfo['state'] | null
   const remoteStatusForActions = remoteStatus
-
-  // Why: eligibility is recomputed below, after prGenerating / isCreatingPr are
-  // available, so the effect can pause refetches while a user-initiated PR flow
-  // is in flight. AI generation runs `git fetch` + `git rebase`, which mutates
-  // ahead/behind counts; without this guard the next refetch would return
-  // canCreate:false (typically needs_push), flip primaryAction.kind off
-  // create_pr, unmount the composer, and cancel the in-flight generation.
 
   const grouped = useMemo(() => {
     const groups: SourceControlEntryGroups = { staged: [], unstaged: [], untracked: [] }
@@ -1589,15 +1237,11 @@ function SourceControlInner(): React.JSX.Element {
     sourceControlAiDiscoveryHostKey,
     sourceControlAiActionsVisible,
     resolvedCommitMessageAi,
-    resolvedPrCreationDefaults,
     resolveConflictsComposerOpen,
     setResolveConflictsComposerOpen,
     commitGenerationDialogOpen,
     setCommitGenerationDialogOpen,
-    pullRequestGenerationDialogOpen,
-    setPullRequestGenerationDialogOpen,
     openCommitGenerationDialog,
-    openPullRequestGenerationDialog,
     isLaunchingCommitFailureAgent,
     resolveConflictsPrompt,
     commitFailureRecoveryPrompt,
@@ -1606,7 +1250,6 @@ function SourceControlInner(): React.JSX.Element {
     handleResolveConflictsWithAI,
     handleFixCommitFailureWithAI,
     handleSaveCommitMessageGenerationDefaults,
-    handleSavePullRequestGenerationDefaults,
     openSourceControlAiSettings
   } = useSourceControlAi({
     settings: activeRepoSettings,
@@ -1633,10 +1276,8 @@ function SourceControlInner(): React.JSX.Element {
     }
     setResolveConflictsComposerOpen(false)
     setCommitGenerationDialogOpen(false)
-    setPullRequestGenerationDialogOpen(false)
   }, [
     setCommitGenerationDialogOpen,
-    setPullRequestGenerationDialogOpen,
     setResolveConflictsComposerOpen,
     sourceControlAiActionsVisible
   ])
@@ -1666,8 +1307,6 @@ function SourceControlInner(): React.JSX.Element {
     setAbortOperationInFlightByWorktree((prev) => pruneRecord(prev))
     setGenerateInFlightByWorktree((prev) => pruneRecord(prev))
     setGenerateErrors((prev) => pruneRecord(prev))
-    setCreatePrIntentInFlightByWorktree((prev) => pruneRecord(prev))
-    setCreatePrIntentNotices((prev) => pruneRecord(prev))
     setGitHistoryByWorktree((prev) => pruneRecord(prev))
     // Refs don't need setState — mutate in place to drop stale keys.
     for (const key of Object.keys(commitInFlightRef.current)) {
@@ -1678,12 +1317,6 @@ function SourceControlInner(): React.JSX.Element {
     for (const key of Object.keys(generateInFlightRef.current)) {
       if (!worktreeMap.has(key)) {
         delete generateInFlightRef.current[key]
-      }
-    }
-    for (const key of Object.keys(createPrIntentInFlightRef.current)) {
-      if (!worktreeMap.has(key)) {
-        delete createPrIntentInFlightRef.current[key]
-        delete createPrIntentRunTokenRef.current[key]
       }
     }
     for (const key of Object.keys(gitHistoryRequestByWorktreeRef.current)) {
@@ -2026,62 +1659,6 @@ function SourceControlInner(): React.JSX.Element {
     sourceControlAiActionsVisible
   ])
 
-  const generateCommitMessageForCreatePrIntent = useCallback(
-    async (
-      token: CreatePrIntentRunToken
-    ): Promise<{
-      ok: boolean
-      message?: string
-      reason?: 'settings' | 'failed' | 'canceled'
-    }> => {
-      if (
-        !hasConfiguredCommitMessageGenerationDefaults({ settings, repo: activeRepo ?? null }) ||
-        resolvedCommitMessageAi?.ok !== true
-      ) {
-        return { ok: false, reason: 'settings' }
-      }
-      if (isCustomAgentId(resolvedCommitMessageAi.value.params.agentId)) {
-        const command = resolvedCommitMessageAi.value.params.customAgentCommand?.trim() ?? ''
-        if (!command) {
-          return { ok: false, reason: 'settings' }
-        }
-      }
-      const target = getCreatePrIntentOperationTarget(token)
-      if (generateInFlightRef.current[target.worktreeId]) {
-        return { ok: false, reason: 'failed' }
-      }
-
-      generateInFlightRef.current[target.worktreeId] = true
-      setGenerateInFlightByWorktree((prev) => ({ ...prev, [target.worktreeId]: true }))
-      setGenerateErrors((prev) => ({ ...prev, [target.worktreeId]: null }))
-      try {
-        const result = await generateRuntimeCommitMessage(target, {
-          sourceControlAiResolvedParams: resolvedCommitMessageAi.value.params
-        })
-        if (!result.success) {
-          if (!result.canceled) {
-            setGenerateErrors((prev) => ({ ...prev, [target.worktreeId]: result.error }))
-          }
-          return { ok: false, reason: result.canceled ? 'canceled' : 'failed' }
-        }
-        useAppStore.getState().recordFeatureInteraction('ai-commit-generation')
-        setGenerateErrors((prev) => ({ ...prev, [target.worktreeId]: null }))
-        return { ok: true, message: result.message }
-      } catch (error) {
-        setGenerateErrors((prev) => ({
-          ...prev,
-          [target.worktreeId]:
-            error instanceof Error ? error.message : 'Failed to generate commit message'
-        }))
-        return { ok: false, reason: 'failed' }
-      } finally {
-        setGenerateInFlightByWorktree((prev) => ({ ...prev, [target.worktreeId]: false }))
-        generateInFlightRef.current[target.worktreeId] = false
-      }
-    },
-    [activeRepo, getCreatePrIntentOperationTarget, resolvedCommitMessageAi, settings]
-  )
-
   const handleCancelGenerate = useCallback((): void => {
     if (!activeWorktreeId || !worktreePath || !activeCommitMessageGenerationKey) {
       return
@@ -2399,310 +1976,6 @@ function SourceControlInner(): React.JSX.Element {
     [handleCommit, runRemoteAction]
   )
 
-  const handlePullRequestCreated = useCallback(
-    async (result: CreatedHostedReview, context?: HostedReviewCreatedContext): Promise<void> => {
-      const worktreeId = context?.worktreeId ?? activeWorktreeId ?? null
-      if (!worktreeId) {
-        return
-      }
-      // Why: review status browsing was removed, but the inert linked-review
-      // metadata fields are still persisted on the worktree for later use.
-      if (result.provider === 'github') {
-        await updateWorktreeMeta(worktreeId, { linkedPR: result.number })
-      } else if (result.provider === 'gitlab') {
-        await updateWorktreeMeta(worktreeId, { linkedGitLabMR: result.number })
-      } else if (result.provider === 'azure-devops') {
-        await updateWorktreeMeta(worktreeId, { linkedAzureDevOpsPR: result.number })
-      } else if (result.provider === 'gitea') {
-        await updateWorktreeMeta(worktreeId, { linkedGiteaPR: result.number })
-      }
-    },
-    [activeWorktreeId, updateWorktreeMeta]
-  )
-
-  const handleBranchChangedByPullRequestGeneration = useCallback(async (): Promise<void> => {
-    // Why: AI PR detail generation may rebase before summarizing; if HEAD moved,
-    // refresh status before letting the user submit the generated draft.
-    await refreshActiveGitStatusAfterMutation()
-  }, [refreshActiveGitStatusAfterMutation])
-
-  const handleGeneratePullRequestFieldsForActive = useCallback(
-    async (
-      fields: PullRequestGenerationFields,
-      fieldRevisions: PullRequestFieldRevisions,
-      overrides?: RuntimeGeneratePullRequestFieldsOverrides
-    ): Promise<void> => {
-      if (!activeRepo || !activePullRequestGenerationKey || !worktreePath || !branchName) {
-        return
-      }
-      const generationKey = activePullRequestGenerationKey
-      if (
-        useAppStore.getState().pullRequestGenerationRecords[generationKey]?.status === 'running'
-      ) {
-        return
-      }
-      const requestId = allocatePullRequestGenerationRequestId()
-      const context: PullRequestGenerationContext = {
-        worktreeId: activeWorktreeId,
-        worktreePath,
-        connectionId: getConnectionId(activeWorktreeId) ?? undefined,
-        requestId,
-        repoId: activeRepo.id,
-        branch: branchName,
-        runtimeTargetSettings: activeRepoSettings
-      }
-      const seed = { ...fields }
-      // Why: SourceControl can unmount on tab switches; persisting the running
-      // record lets the embedded PR composer resume when the user returns.
-      setPullRequestGenerationRecord(
-        generationKey,
-        createRunningPullRequestGenerationRecord(context, seed, fieldRevisions)
-      )
-
-      try {
-        const result = await generateRuntimePullRequestFields(
-          {
-            // Why: route generation by the repo OWNER host, not the focused runtime.
-            settings: context.runtimeTargetSettings,
-            worktreeId: context.worktreeId,
-            worktreePath: context.worktreePath,
-            connectionId: context.connectionId
-          },
-          {
-            base: stripBaseRef(seed.base.trim()),
-            title: seed.title,
-            body: seed.body,
-            draft: seed.draft,
-            provider: hostedReviewCreateProvider,
-            useTemplate: resolvedPrCreationDefaults.useTemplate
-          },
-          overrides
-        )
-        if (result.branchChangedByPreparation) {
-          await refreshGitStatusAfterPullRequestGeneration(context)
-        }
-        if (result.success) {
-          useAppStore.getState().recordFeatureInteraction('ai-pr-generation')
-        }
-        updatePullRequestGenerationRecord(generationKey, (record) => {
-          if (!result.success) {
-            return resolvePullRequestGenerationFailure({
-              record,
-              requestId,
-              canceled: result.canceled,
-              error: result.canceled ? null : result.error
-            })
-          }
-          if (!record) {
-            return null
-          }
-          return resolvePullRequestGenerationSuccess({
-            record,
-            requestId,
-            result: {
-              base: stripBaseRef(result.fields.base),
-              title: result.fields.title,
-              body: result.fields.body,
-              draft: result.fields.draft
-            }
-          })
-        })
-      } catch (error) {
-        updatePullRequestGenerationRecord(generationKey, (record) =>
-          resolvePullRequestGenerationFailure({
-            record,
-            requestId,
-            error:
-              error instanceof Error ? error.message : 'Failed to generate pull request details'
-          })
-        )
-      }
-    },
-    [
-      activePullRequestGenerationKey,
-      activeRepo,
-      activeRepoSettings,
-      activeWorktreeId,
-      allocatePullRequestGenerationRequestId,
-      branchName,
-      hostedReviewCreateProvider,
-      refreshGitStatusAfterPullRequestGeneration,
-      resolvedPrCreationDefaults.useTemplate,
-      setPullRequestGenerationRecord,
-      updatePullRequestGenerationRecord,
-      worktreePath
-    ]
-  )
-
-  const handleCancelGeneratePullRequestFieldsForActive = useCallback((): void => {
-    if (!activePullRequestGenerationKey) {
-      return
-    }
-    const record = prGenerationRecords[activePullRequestGenerationKey]
-    if (!record || record.status !== 'running') {
-      return
-    }
-    const generationKey = activePullRequestGenerationKey
-    updatePullRequestGenerationRecord(generationKey, (current) => {
-      if (!current || current.context.requestId !== record.context.requestId) {
-        return null
-      }
-      return resolvePullRequestGenerationCancel(current)
-    })
-    void cancelRuntimeGeneratePullRequestFields({
-      // Why: the user can switch hosts while generation runs; cancel the
-      // original request owner instead of the current focused host.
-      settings: record.context.runtimeTargetSettings,
-      worktreeId: record.context.worktreeId,
-      worktreePath: record.context.worktreePath,
-      connectionId: record.context.connectionId
-    }).catch((error) => {
-      updatePullRequestGenerationRecord(generationKey, (current) => {
-        if (!current || current.context.requestId !== record.context.requestId) {
-          return null
-        }
-        return {
-          ...current,
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Failed to stop pull request generation',
-          hydrated: false
-        }
-      })
-    })
-  }, [activePullRequestGenerationKey, prGenerationRecords, updatePullRequestGenerationRecord])
-  const handlePullRequestGenerationSeedRestored = useCallback((): void => {
-    if (!activePullRequestGenerationKey || !activePullRequestGenerationRecord) {
-      return
-    }
-    const requestId = activePullRequestGenerationRecord.context.requestId
-    updatePullRequestGenerationRecord(activePullRequestGenerationKey, (record) =>
-      markPullRequestGenerationTerminalSeedRestored({
-        record,
-        requestId
-      })
-    )
-  }, [
-    activePullRequestGenerationKey,
-    activePullRequestGenerationRecord,
-    updatePullRequestGenerationRecord
-  ])
-
-  const {
-    aiGenerationEnabled: prAiGenerationEnabled,
-    base: prBase,
-    setBase: setPrBase,
-    title: prTitle,
-    setTitle: setPrTitle,
-    body: prBody,
-    setBody: setPrBody,
-    draft: prDraft,
-    setDraft: setPrDraft,
-    baseQuery: prBaseQuery,
-    setBaseQuery: setPrBaseQuery,
-    baseResults: prBaseResults,
-    setBaseResults: setPrBaseResults,
-    baseSearchError: prBaseSearchError,
-    generating: prGenerating,
-    generateError: prGenerateError,
-    generateDisabled: prGenerateDisabled,
-    generateDisabledReason: prGenerateDisabledReason,
-    handleGenerate: handleGeneratePullRequestFields,
-    handleCancelGenerate: handleCancelGeneratePullRequestFields,
-    applyGeneratedFields: applyGeneratedPullRequestFields,
-    initializedFromEligibility: pullRequestFieldsInitialized
-  } = useCreatePullRequestDialogFields({
-    open: hostedReviewCreation?.canCreate === true,
-    repoId: activeRepo?.id ?? '',
-    worktreeId: activeWorktreeId,
-    worktreePath: worktreePath ?? '',
-    branch: branchName,
-    eligibility: hostedReviewCreation,
-    currentBaseRef: effectiveBaseRef,
-    repo: activeRepo ?? null,
-    settings: activeRepoSettings,
-    submitting: isCreatingPr,
-    prCreationDefaults: resolvedPrCreationDefaults,
-    sourceControlAiActionsVisible,
-    onBranchChangedByGeneration: handleBranchChangedByPullRequestGeneration,
-    generation: {
-      generating: activePullRequestGenerationRecord?.status === 'running',
-      generateError: activePullRequestGenerationRecord?.error ?? null,
-      seedRestoreKey: activePullRequestGenerationSeedRestoreKey,
-      seed: activePullRequestGenerationRecord?.seed ?? null,
-      seedFieldRevisions: activePullRequestGenerationRecord?.seedFieldRevisions ?? null,
-      onSeedRestored: handlePullRequestGenerationSeedRestored,
-      onGenerate: (fields, fieldRevisions, overrides) => {
-        void handleGeneratePullRequestFieldsForActive(fields, fieldRevisions, overrides)
-      },
-      onCancelGenerate: handleCancelGeneratePullRequestFieldsForActive
-    }
-  })
-
-  const handleGeneratePullRequestFieldsClick = useCallback((): void => {
-    if (!sourceControlAiActionsVisible) {
-      return
-    }
-    if (
-      hasConfiguredSourceControlTextGenerationDefaults({
-        actionId: 'pullRequest',
-        settings,
-        repo: activeRepo ?? null
-      })
-    ) {
-      void handleGeneratePullRequestFields()
-      return
-    }
-    openPullRequestGenerationDialog()
-  }, [
-    activeRepo,
-    handleGeneratePullRequestFields,
-    openPullRequestGenerationDialog,
-    settings,
-    sourceControlAiActionsVisible
-  ])
-
-  useEffect(() => {
-    // Why: on Source Control remount, the PR fields hook seeds eligibility
-    // defaults in an effect; hydrating before that effect runs gets overwritten.
-    if (
-      !activePullRequestGenerationKey ||
-      !activePullRequestGenerationRecord ||
-      activePullRequestGenerationRecord.status !== 'succeeded' ||
-      !activePullRequestGenerationRecord.result ||
-      activePullRequestGenerationRecord.hydrated ||
-      !pullRequestFieldsInitialized
-    ) {
-      return
-    }
-    if (
-      !shouldHydratePullRequestGenerationResult({
-        record: activePullRequestGenerationRecord
-      })
-    ) {
-      return
-    }
-    const result = activePullRequestGenerationRecord.result
-    applyGeneratedPullRequestFields(result, activePullRequestGenerationRecord.seedFieldRevisions)
-    updatePullRequestGenerationRecord(activePullRequestGenerationKey, (record) => {
-      if (
-        !record ||
-        record.context.requestId !== activePullRequestGenerationRecord.context.requestId
-      ) {
-        return null
-      }
-      return {
-        ...record,
-        hydrated: true
-      }
-    })
-  }, [
-    activePullRequestGenerationKey,
-    activePullRequestGenerationRecord,
-    applyGeneratedPullRequestFields,
-    pullRequestFieldsInitialized,
-    updatePullRequestGenerationRecord
-  ])
-
   useEffect(() => {
     // Why: direct commit-message generation can finish after Source Control
     // unmounts; the store record lets the remounted textarea consume it once.
@@ -2737,917 +2010,6 @@ function SourceControlInner(): React.JSX.Element {
     updateCommitMessageGenerationRecord
   ])
 
-  useEffect(() => {
-    if (!isBranchVisible || !activeRepo || isFolder || !branchName || !activeWorktreeId) {
-      setHostedReviewCreationState(null)
-      setHostedReviewCreationRequestState(null)
-      return
-    }
-    // Why: skip refetches while the user's PR flow is mid-flight. AI generation,
-    // Create PR intent, and submission can all perturb ahead/behind or dirty
-    // state temporarily. Recomputing eligibility mid-flow can tear down the
-    // composer or rotate dropdown hints before the final refresh restores truth.
-    if (prGenerating || isCreatingPr || isCreatePrIntentInFlight) {
-      setHostedReviewCreationRequestState(null)
-      return
-    }
-    let stale = false
-    setHostedReviewCreationRequestState({
-      repoId: activeRepo.id,
-      worktreeId: activeWorktreeId,
-      branch: branchName,
-      status: 'loading'
-    })
-    // Why: upstream/status changes can make the previous eligibility unsafe
-    // to click while the new preflight is still resolving.
-    setHostedReviewCreationState(null)
-    void getHostedReviewCreationEligibility({
-      repoPath: activeRepo.path,
-      repoId: activeRepo.id,
-      ...(worktreePath ? { worktreePath } : {}),
-      branch: branchName,
-      base: effectiveBaseRef ?? null,
-      hasUncommittedChanges: hasUncommittedEntries,
-      hasUpstream: remoteStatus?.hasUpstream,
-      ahead: remoteStatus?.ahead,
-      behind: remoteStatus?.behind,
-      linkedGitHubPR,
-      fallbackGitHubPR: fallbackGitHubPRNumber,
-      linkedGitLabMR,
-      linkedBitbucketPR,
-      linkedAzureDevOpsPR,
-      linkedGiteaPR
-    })
-      .then((result) => {
-        if (!stale) {
-          setHostedReviewCreationState({
-            repoId: activeRepo.id,
-            worktreeId: activeWorktreeId,
-            branch: branchName,
-            data: result
-          })
-          setHostedReviewCreationRequestState(null)
-        }
-      })
-      .catch((error) => {
-        console.warn('[SourceControl] hosted review creation eligibility failed', error)
-        if (!stale) {
-          setHostedReviewCreationState(null)
-          setHostedReviewCreationRequestState({
-            repoId: activeRepo.id,
-            worktreeId: activeWorktreeId,
-            branch: branchName,
-            status: 'failed'
-          })
-        }
-      })
-    return () => {
-      stale = true
-    }
-  }, [
-    activeRepo,
-    branchName,
-    effectiveBaseRef,
-    getHostedReviewCreationEligibility,
-    hasUncommittedEntries,
-    setHostedReviewCreationRequestState,
-    isBranchVisible,
-    isCreatingPr,
-    isCreatePrIntentInFlight,
-    isFolder,
-    linkedGitHubPR,
-    fallbackGitHubPRNumber,
-    linkedGitLabMR,
-    linkedBitbucketPR,
-    linkedAzureDevOpsPR,
-    linkedGiteaPR,
-    prGenerating,
-    remoteStatus?.ahead,
-    remoteStatus?.behind,
-    remoteStatus?.hasUpstream,
-    activeWorktreeId,
-    worktreePath
-  ])
-
-  const handleCreatePullRequest = useCallback(async (): Promise<void> => {
-    if (
-      !activeRepo ||
-      !activeWorktreeId ||
-      !worktreePath ||
-      !hostedReviewCreation ||
-      prGenerating ||
-      createPrInFlightRef.current[activeWorktreeId]
-    ) {
-      return
-    }
-
-    if (!hostedReviewCreation.canCreate) {
-      // Why: blocked Create Review clicks are intentional for actionable states;
-      // the inline notice tells users which prerequisite to clear next.
-      const message = resolveBlockedCreateReviewNoticeMessage(hostedReviewCreation)
-      if (message) {
-        setCreatePrIntentNoticeForWorktree(activeWorktreeId, {
-          tone: 'destructive',
-          message
-        })
-      }
-      return
-    }
-
-    const base = stripBaseRef(prBase).trim()
-    const title = prTitle.trim()
-
-    if (!title) {
-      setCreatePrIntentNoticeForWorktree(activeWorktreeId, {
-        tone: 'destructive',
-        message: translate(
-          'auto.components.right.sidebar.SourceControl.f3a8b2c1d0e5',
-          'Enter a {{value0}} title.',
-          { value0: hostedReviewCreateCopy.reviewLabel }
-        )
-      })
-      return
-    }
-
-    if (!base || stripBaseRef(base).toLowerCase() === stripBaseRef(branchName).toLowerCase()) {
-      setCreatePrIntentNoticeForWorktree(activeWorktreeId, {
-        tone: 'destructive',
-        message: translate(
-          'auto.components.right.sidebar.SourceControl.ae743199cd',
-          'Choose a different base branch before creating a {{value0}}.',
-          { value0: hostedReviewCreateCopy.reviewLabel }
-        )
-      })
-      return
-    }
-
-    createPrInFlightRef.current[activeWorktreeId] = true
-    setCreatePrInFlightByWorktree((prev) => ({ ...prev, [activeWorktreeId]: true }))
-    setCreatePrIntentNoticeForWorktree(activeWorktreeId, null)
-    try {
-      const result = await createHostedReview(activeRepo.path, {
-        repoId: activeRepo.id,
-        provider: hostedReviewCreateProvider,
-        base,
-        head: normalizeHostedReviewHeadRef(branchName),
-        title,
-        body: prBody,
-        draft: prDraft,
-        worktreePath,
-        useTemplate: resolvedPrCreationDefaults.useTemplate
-      })
-
-      if (result.ok) {
-        setCreatePrIntentNoticeForWorktree(activeWorktreeId, null)
-        await handlePullRequestCreated({
-          provider: hostedReviewCreateProvider,
-          number: result.number,
-          url: result.url
-        })
-        if (resolvedPrCreationDefaults.openAfterCreate) {
-          window.api.shell.openUrl(result.url)
-        }
-        return
-      }
-
-      if (result.existingReview?.url) {
-        const number = result.existingReview.number
-        toast.success(
-          number
-            ? translate(
-                'auto.components.right.sidebar.SourceControl.eef5446523',
-                '{{value0}} #{{value1}} is already open',
-                { value0: hostedReviewCreateCopy.titleLabel, value1: number }
-              )
-            : translate(
-                'auto.components.right.sidebar.SourceControl.d6fb1df5fe',
-                '{{value0}} is already open',
-                { value0: hostedReviewCreateCopy.titleLabel }
-              ),
-          {
-            action: {
-              label: translate(
-                'auto.components.right.sidebar.SourceControl.812cb992ee',
-                'Open on {{value0}}',
-                { value0: hostedReviewCreateCopy.providerName }
-              ),
-              onClick: () => window.api.shell.openUrl(result.existingReview!.url)
-            }
-          }
-        )
-        if (number) {
-          setCreatePrIntentNoticeForWorktree(activeWorktreeId, null)
-          await handlePullRequestCreated({
-            provider: hostedReviewCreateProvider,
-            number,
-            url: result.existingReview.url
-          })
-          return
-        }
-      }
-
-      setCreatePrIntentNoticeForWorktree(activeWorktreeId, {
-        tone: 'destructive',
-        message: result.error
-      })
-    } catch (error) {
-      setCreatePrIntentNoticeForWorktree(activeWorktreeId, {
-        tone: 'destructive',
-        message:
-          error instanceof Error
-            ? error.message
-            : translate(
-                'auto.components.right.sidebar.SourceControl.e2b7a1c0d9f4',
-                'Failed to create {{value0}}',
-                { value0: hostedReviewCreateCopy.reviewLabel }
-              )
-      })
-    } finally {
-      createPrInFlightRef.current[activeWorktreeId] = false
-      setCreatePrInFlightByWorktree((prev) => ({ ...prev, [activeWorktreeId]: false }))
-    }
-  }, [
-    activeRepo,
-    activeWorktreeId,
-    branchName,
-    createHostedReview,
-    handlePullRequestCreated,
-    hostedReviewCreation,
-    hostedReviewCreateCopy.providerName,
-    hostedReviewCreateCopy.reviewLabel,
-    hostedReviewCreateCopy.titleLabel,
-    hostedReviewCreateProvider,
-    prBase,
-    prBody,
-    prDraft,
-    prGenerating,
-    prTitle,
-    resolvedPrCreationDefaults.openAfterCreate,
-    resolvedPrCreationDefaults.useTemplate,
-    setCreatePrIntentNoticeForWorktree,
-    worktreePath
-  ])
-
-  const createHostedReviewForCreatePrIntent = useCallback(
-    async (
-      token: CreatePrIntentRunToken,
-      eligibility: HostedReviewCreationEligibility
-    ): Promise<boolean> => {
-      if (!activeRepo || !token.branch || !eligibility.canCreate) {
-        return false
-      }
-
-      const base = resolveCreatePrIntentReviewBase({
-        currentBaseRef: token.baseRef,
-        eligibilityDefaultBaseRef: eligibility.defaultBaseRef,
-        composerBaseRef: prBase
-      }).trim()
-      if (!base || stripBaseRef(base).toLowerCase() === stripBaseRef(token.branch).toLowerCase()) {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'destructive',
-          message: translate(
-            'auto.components.right.sidebar.SourceControl.ae743199cd',
-            'Choose a different base branch before creating a {{value0}}.',
-            { value0: hostedReviewCreateCopy.reviewLabel }
-          )
-        })
-        return false
-      }
-
-      let fields = {
-        base,
-        title: resolveCreateReviewDraftTitle({
-          branch: token.branch,
-          eligibilityTitle: eligibility.title
-        }),
-        body: eligibility.body ?? prBody,
-        draft: resolvedPrCreationDefaults.draft
-      }
-
-      if (
-        hasConfiguredSourceControlTextGenerationDefaults({
-          actionId: 'pullRequest',
-          settings,
-          repo: activeRepo
-        })
-      ) {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'muted',
-          message: translate(
-            'auto.components.right.sidebar.SourceControl.createPrIntentGeneratingDetails',
-            'Generating review details…'
-          )
-        })
-        const target = getCreatePrIntentOperationTarget(token)
-        try {
-          const generated = await generateRuntimePullRequestFields(target, {
-            ...fields,
-            provider: eligibility.provider,
-            useTemplate: resolvedPrCreationDefaults.useTemplate
-          })
-          if (generated.branchChangedByPreparation) {
-            setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-              tone: 'muted',
-              message: translate(
-                'auto.components.right.sidebar.SourceControl.createPrIntentBranchChangedDuringDetails',
-                'Branch changed while generating review details. Retry Create PR.'
-              )
-            })
-            return false
-          }
-          if (generated.success) {
-            fields = {
-              // Why: Create PR intent auto-submits; generated details should
-              // not retarget the review without user confirmation.
-              base: fields.base,
-              title: generated.fields.title.trim() || fields.title,
-              body: generated.fields.body,
-              draft: generated.fields.draft
-            }
-          }
-        } catch (error) {
-          console.warn('[SourceControl] Create PR intent detail generation failed', error)
-        }
-      }
-
-      if (
-        !createPrIntentRunStillOwnsWorktree(token) ||
-        createPrIntentActiveTargetConflicts(token)
-      ) {
-        return false
-      }
-      const createPrIntentIsForeground = (): boolean =>
-        createPrIntentRunTokenMatches(token, createPrIntentCurrentTargetRef.current)
-
-      const title = fields.title.trim()
-      if (!title) {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'destructive',
-          message: translate(
-            'auto.components.right.sidebar.SourceControl.f3a8b2c1d0e5',
-            'Enter a {{value0}} title.',
-            { value0: hostedReviewCreateCopy.reviewLabel }
-          )
-        })
-        return false
-      }
-
-      setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-        tone: 'muted',
-        message: translate(
-          'auto.components.right.sidebar.SourceControl.createPrIntentCreatingReview',
-          'Creating review…'
-        )
-      })
-      createPrInFlightRef.current[token.worktreeId] = true
-      setCreatePrInFlightByWorktree((prev) => ({ ...prev, [token.worktreeId]: true }))
-      try {
-        const result = await createHostedReview(activeRepo.path, {
-          repoId: activeRepo.id,
-          provider: eligibility.provider,
-          base: fields.base,
-          head: normalizeHostedReviewHeadRef(token.branch),
-          title,
-          body: fields.body,
-          draft: fields.draft,
-          worktreePath: token.worktreePath,
-          useTemplate: resolvedPrCreationDefaults.useTemplate
-        })
-
-        if (result.ok) {
-          const openChecks = createPrIntentIsForeground()
-          await handlePullRequestCreated(
-            {
-              provider: eligibility.provider,
-              number: result.number,
-              url: result.url
-            },
-            {
-              repoPath: activeRepo.path,
-              repoId: activeRepo.id,
-              branch: token.branch,
-              worktreeId: token.worktreeId,
-              openChecks
-            }
-          )
-          if (openChecks && resolvedPrCreationDefaults.openAfterCreate) {
-            window.api.shell.openUrl(result.url)
-          }
-          setCreatePrIntentNoticeForWorktree(token.worktreeId, null)
-          return true
-        }
-
-        if (result.existingReview?.number && result.existingReview.url) {
-          const openChecks = createPrIntentIsForeground()
-          await handlePullRequestCreated(
-            {
-              provider: eligibility.provider,
-              number: result.existingReview.number,
-              url: result.existingReview.url
-            },
-            {
-              repoPath: activeRepo.path,
-              repoId: activeRepo.id,
-              branch: token.branch,
-              worktreeId: token.worktreeId,
-              openChecks
-            }
-          )
-          setCreatePrIntentNoticeForWorktree(token.worktreeId, null)
-          return true
-        }
-
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'destructive',
-          message: result.error
-        })
-        return false
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : translate(
-                'auto.components.right.sidebar.SourceControl.e2b7a1c0d9f4',
-                'Failed to create {{value0}}',
-                { value0: hostedReviewCreateCopy.reviewLabel }
-              )
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'destructive',
-          message
-        })
-        return false
-      } finally {
-        createPrInFlightRef.current[token.worktreeId] = false
-        setCreatePrInFlightByWorktree((prev) => ({ ...prev, [token.worktreeId]: false }))
-      }
-    },
-    [
-      activeRepo,
-      createHostedReview,
-      createPrIntentActiveTargetConflicts,
-      createPrIntentRunStillOwnsWorktree,
-      getCreatePrIntentOperationTarget,
-      handlePullRequestCreated,
-      hostedReviewCreateCopy.reviewLabel,
-      prBase,
-      prBody,
-      resolvedPrCreationDefaults.draft,
-      resolvedPrCreationDefaults.openAfterCreate,
-      resolvedPrCreationDefaults.useTemplate,
-      setCreatePrIntentNoticeForWorktree,
-      settings
-    ]
-  )
-
-  const refreshBranchCompareForCreatePrIntent = useCallback(
-    async (token: CreatePrIntentRunToken): Promise<number | undefined> => {
-      const baseRef = token.baseRef?.trim()
-      if (!baseRef) {
-        return undefined
-      }
-      const requestKey = `${token.worktreeId}:${baseRef}:${Date.now()}:create-pr-intent`
-      beginGitBranchCompareRequest(token.worktreeId, requestKey, baseRef)
-      const result = await getRuntimeGitBranchCompare(
-        {
-          // Why: the intent flow may continue after a worktree switch; use the
-          // token's original host target, not whatever branch is focused later.
-          settings: activeRepoSettings,
-          worktreeId: token.worktreeId,
-          worktreePath: token.worktreePath,
-          connectionId: getConnectionId(token.worktreeId) ?? undefined
-        },
-        baseRef
-      )
-      setGitBranchCompareResult(token.worktreeId, requestKey, result)
-      return result.summary.status === 'ready' ? (result.summary.commitsAhead ?? 0) : undefined
-    },
-    [activeRepoSettings, beginGitBranchCompareRequest, setGitBranchCompareResult]
-  )
-
-  const readHostedReviewCreationEligibilityForIntent = useCallback(
-    async ({
-      token,
-      hasUncommittedChanges,
-      upstreamStatus
-    }: {
-      token: CreatePrIntentRunToken
-      hasUncommittedChanges: boolean
-      upstreamStatus?: NonNullable<typeof remoteStatus>
-    }): Promise<HostedReviewCreationEligibility | null> => {
-      if (!activeRepo || !token.branch) {
-        return null
-      }
-      const result = await getHostedReviewCreationEligibility({
-        repoPath: activeRepo.path,
-        repoId: activeRepo.id,
-        worktreePath: token.worktreePath,
-        branch: token.branch,
-        base: token.baseRef ?? null,
-        hasUncommittedChanges,
-        hasUpstream: upstreamStatus?.hasUpstream,
-        ahead: upstreamStatus?.ahead,
-        behind: upstreamStatus?.behind,
-        linkedGitHubPR,
-        fallbackGitHubPR: fallbackGitHubPRNumber,
-        linkedGitLabMR,
-        linkedBitbucketPR,
-        linkedAzureDevOpsPR,
-        linkedGiteaPR
-      })
-      setHostedReviewCreationState({
-        repoId: activeRepo.id,
-        worktreeId: token.worktreeId,
-        branch: token.branch,
-        data: result
-      })
-      return result
-    },
-    [
-      activeRepo,
-      fallbackGitHubPRNumber,
-      getHostedReviewCreationEligibility,
-      linkedAzureDevOpsPR,
-      linkedBitbucketPR,
-      linkedGiteaPR,
-      linkedGitHubPR,
-      linkedGitLabMR
-    ]
-  )
-
-  const refreshGitStatusForCreatePrIntent = useCallback(
-    async (token: CreatePrIntentRunToken) => {
-      if (isFolder) {
-        return null
-      }
-      const target = getCreatePrIntentOperationTarget(token)
-      return await refreshGitStatusForWorktreeStrict({
-        // Why: Create PR intent can finish in the background after navigation,
-        // but branch-safety checks must inspect the worktree that started it.
-        settings: target.settings,
-        worktreeId: target.worktreeId,
-        worktreePath: target.worktreePath,
-        connectionId: target.connectionId,
-        pushTarget: target.pushTarget,
-        deps: {
-          setGitStatus,
-          updateWorktreeGitIdentity,
-          setUpstreamStatus
-        }
-      })
-    },
-    [
-      getCreatePrIntentOperationTarget,
-      isFolder,
-      setGitStatus,
-      setUpstreamStatus,
-      updateWorktreeGitIdentity
-    ]
-  )
-
-  const runCreatePrIntent = useCallback(async (): Promise<void> => {
-    if (
-      !activeRepo ||
-      !activeWorktreeId ||
-      !worktreePath ||
-      !branchName ||
-      isExecutingBulk ||
-      isCommitting ||
-      isGenerating ||
-      isRemoteOperationActive ||
-      prGenerating ||
-      isCreatingPr ||
-      createPrIntentInFlightRef.current[activeWorktreeId]
-    ) {
-      return
-    }
-
-    const token = createCreatePrIntentRunToken({
-      repoId: activeRepo.id,
-      worktreeId: activeWorktreeId,
-      worktreePath,
-      branch: branchName,
-      // Why: Create PR intent crosses async commit/push steps; the review
-      // target must stay tied to the base selected when the run started.
-      baseRef: effectiveBaseRef ?? null
-    })
-    const operationTarget = getCreatePrIntentOperationTarget(token)
-    const runIsCurrent = (): boolean =>
-      createPrIntentRunStillOwnsWorktree(token) && !createPrIntentActiveTargetConflicts(token)
-    let abortedByStaleTarget = false
-    const abortIfStale = (): boolean => {
-      if (runIsCurrent()) {
-        return false
-      }
-      abortedByStaleTarget = true
-      return true
-    }
-    createPrIntentRunTokenRef.current[token.worktreeId] = token
-    createPrIntentInFlightRef.current[token.worktreeId] = true
-    setCreatePrIntentInFlightByWorktree((prev) => ({ ...prev, [token.worktreeId]: true }))
-    setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-      tone: 'muted',
-      message: translate(
-        'auto.components.right.sidebar.SourceControl.d37e68f61d',
-        'Preparing branch for review…'
-      )
-    })
-
-    try {
-      let latestStatusEntries = entries
-      let latestUpstreamStatus = remoteStatus
-      const refreshIntentSnapshot = async (): Promise<boolean> => {
-        const refreshed = await refreshGitStatusForCreatePrIntent(token)
-        if (!refreshed) {
-          return false
-        }
-        // Why: terminal checkouts are observed by this strict status snapshot
-        // before React updates createPrIntentCurrentTargetRef. Stop before the
-        // intent flow stages, commits, or pushes on a different branch.
-        if (!createPrIntentGitStatusMatchesToken(token, refreshed.status)) {
-          abortedByStaleTarget = true
-          return false
-        }
-        if (abortIfStale()) {
-          return false
-        }
-        latestStatusEntries = refreshed.status.entries
-        latestUpstreamStatus = refreshed.upstreamStatus
-        return true
-      }
-      const stageLatestIntentPaths = async (): Promise<boolean> => {
-        const stagePaths = getCreatePrIntentStagePaths({
-          unstaged: latestStatusEntries.filter((entry) => entry.area === 'unstaged'),
-          untracked: latestStatusEntries.filter((entry) => entry.area === 'untracked')
-        })
-        if (stagePaths.length === 0) {
-          return true
-        }
-        setIsExecutingBulk(true)
-        try {
-          await bulkStageRuntimeGitPaths(operationTarget, stagePaths)
-        } finally {
-          setIsExecutingBulk(false)
-        }
-        if (abortIfStale()) {
-          return false
-        }
-        return refreshIntentSnapshot()
-      }
-
-      if (!(await refreshIntentSnapshot())) {
-        return
-      }
-
-      if (!(await stageLatestIntentPaths())) {
-        return
-      }
-
-      const stagedEntries = latestStatusEntries.filter((entry) => entry.area === 'staged')
-      if (stagedEntries.length > 0) {
-        let message = readCommitDraftForWorktree(commitDraftsRef.current, token.worktreeId).trim()
-        if (!message) {
-          setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-            tone: 'muted',
-            message: translate(
-              'auto.components.right.sidebar.SourceControl.8d8f5c6c94',
-              'Generating commit message…'
-            )
-          })
-          const generated = await generateCommitMessageForCreatePrIntent(token)
-          if (abortIfStale()) {
-            return
-          }
-          if (!generated.ok || !generated.message) {
-            setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-              tone: generated.reason === 'settings' ? 'muted' : 'destructive',
-              message: translate(
-                generated.reason === 'settings'
-                  ? 'auto.components.right.sidebar.SourceControl.createPrIntentConfigureAi'
-                  : 'auto.components.right.sidebar.SourceControl.createPrIntentGenerateFailed',
-                generated.reason === 'settings'
-                  ? 'Add a commit message or configure Source Control AI settings.'
-                  : 'Could not generate a commit message. Add one and retry.'
-              ),
-              action: generated.reason === 'settings' ? 'settings' : undefined
-            })
-            return
-          }
-          const draftAfterGeneration = readCommitDraftForWorktree(
-            commitDraftsRef.current,
-            token.worktreeId
-          ).trim()
-          if (draftAfterGeneration) {
-            setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-              tone: 'muted',
-              message: translate(
-                'auto.components.right.sidebar.SourceControl.fda060d6ce',
-                'Review the commit message, then retry Create PR.'
-              )
-            })
-            return
-          }
-          message = generated.message
-          updateCommitDrafts((prev) => writeCommitDraftForWorktree(prev, token.worktreeId, message))
-        }
-
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'muted',
-          message: translate(
-            'auto.components.right.sidebar.SourceControl.b75cb1fd0c',
-            'Committing changes…'
-          )
-        })
-        const committed = await handleCommit(message, {
-          skipStagedSnapshotCheck: true,
-          skipActiveConflictCheck: true,
-          target: operationTarget
-        })
-        if (abortIfStale()) {
-          return
-        }
-        if (!committed) {
-          // Why: pre-commit/lint hooks may rewrite tracked files before
-          // failing. Re-stage those safe hook outputs so retrying Create PR
-          // does not strand changes outside the intended all-in commit.
-          if (await refreshIntentSnapshot()) {
-            await stageLatestIntentPaths()
-          }
-          if (abortIfStale()) {
-            return
-          }
-          setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-            tone: 'destructive',
-            message: translate(
-              'auto.components.right.sidebar.SourceControl.createPrIntentCommitFailed',
-              'Could not commit changes. Fix the issue, then retry Create PR.'
-            )
-          })
-          return
-        }
-        if (!(await refreshIntentSnapshot())) {
-          return
-        }
-      }
-
-      const branchAhead = await refreshBranchCompareForCreatePrIntent(token)
-      if (abortIfStale()) {
-        return
-      }
-      let eligibility = await readHostedReviewCreationEligibilityForIntent({
-        token,
-        hasUncommittedChanges: latestStatusEntries.length > 0,
-        upstreamStatus: latestUpstreamStatus
-      })
-      if (abortIfStale() || !eligibility) {
-        return
-      }
-      if (eligibility.canCreate) {
-        await createHostedReviewForCreatePrIntent(token, eligibility)
-        if (abortIfStale()) {
-          return
-        }
-        return
-      }
-      if (eligibility.blockedReason === 'existing_review') {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, null)
-        return
-      }
-
-      const remoteStep = resolveCreatePrIntentRemoteStep({
-        upstreamStatus: latestUpstreamStatus,
-        hostedReviewCreation: eligibility,
-        branchCommitsAhead: branchAhead,
-        hasCurrentBranch: Boolean(token.branch)
-      })
-      if (remoteStep === 'blocked' || remoteStep === 'none') {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'muted',
-          message: translate(
-            eligibility.blockedReason === 'needs_sync'
-              ? 'auto.components.right.sidebar.SourceControl.createPrIntentNeedsSync'
-              : 'auto.components.right.sidebar.SourceControl.createPrIntentBranchNotReady',
-            eligibility.blockedReason === 'needs_sync'
-              ? 'Sync this branch before creating a review.'
-              : 'Branch is not ready to create a review yet.'
-          )
-        })
-        return
-      }
-
-      setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-        tone: 'muted',
-        message: translate(
-          remoteStep === 'publish'
-            ? 'auto.components.right.sidebar.SourceControl.createPrIntentPublishing'
-            : remoteStep === 'force_push'
-              ? 'auto.components.right.sidebar.SourceControl.createPrIntentForcePushing'
-              : 'auto.components.right.sidebar.SourceControl.createPrIntentPushing',
-          remoteStep === 'publish'
-            ? 'Publishing branch…'
-            : remoteStep === 'force_push'
-              ? 'Force pushing with lease…'
-              : 'Pushing commits…'
-        )
-      })
-      const remoteOk = await runRemoteAction(remoteStep, {
-        target: operationTarget,
-        remoteStatus: latestUpstreamStatus,
-        baseRef: token.baseRef
-      })
-      if (abortIfStale()) {
-        return
-      }
-      if (!remoteOk) {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'destructive',
-          message: translate(
-            'auto.components.right.sidebar.SourceControl.createPrIntentRemoteFailed',
-            'Could not update the remote branch. Retry Create PR.'
-          )
-        })
-        return
-      }
-      if (!(await refreshIntentSnapshot())) {
-        return
-      }
-      await refreshBranchCompareForCreatePrIntent(token)
-      if (abortIfStale()) {
-        return
-      }
-      eligibility = await readHostedReviewCreationEligibilityForIntent({
-        token,
-        hasUncommittedChanges: latestStatusEntries.length > 0,
-        upstreamStatus: latestUpstreamStatus
-      })
-      if (abortIfStale()) {
-        return
-      }
-      if (eligibility?.canCreate) {
-        await createHostedReviewForCreatePrIntent(token, eligibility)
-        if (abortIfStale()) {
-          return
-        }
-        return
-      }
-      setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-        tone: 'muted',
-        message: translate(
-          'auto.components.right.sidebar.SourceControl.995c5e67ec',
-          'Review setup needs attention.'
-        )
-      })
-    } catch (error) {
-      console.warn('[SourceControl] Create PR intent failed', error)
-      if (!abortIfStale()) {
-        setCreatePrIntentNoticeForWorktree(token.worktreeId, {
-          tone: 'destructive',
-          message: translate(
-            'auto.components.right.sidebar.SourceControl.d7492cafce',
-            'Could not refresh Source Control. Retry Create PR.'
-          )
-        })
-      }
-    } finally {
-      if (createPrIntentRunTokenRef.current[token.worktreeId] === token) {
-        createPrIntentInFlightRef.current[token.worktreeId] = false
-        createPrIntentRunTokenRef.current[token.worktreeId] = null
-        if (abortedByStaleTarget) {
-          setCreatePrIntentNoticeForWorktree(token.worktreeId, null)
-        }
-        setCreatePrIntentInFlightByWorktree((prev) => ({
-          ...prev,
-          [token.worktreeId]: false
-        }))
-      }
-    }
-  }, [
-    activeRepo,
-    activeWorktreeId,
-    branchName,
-    createPrIntentActiveTargetConflicts,
-    createPrIntentRunStillOwnsWorktree,
-    createHostedReviewForCreatePrIntent,
-    effectiveBaseRef,
-    entries,
-    generateCommitMessageForCreatePrIntent,
-    getCreatePrIntentOperationTarget,
-    handleCommit,
-    isCommitting,
-    isCreatingPr,
-    isExecutingBulk,
-    isGenerating,
-    isRemoteOperationActive,
-    prGenerating,
-    readHostedReviewCreationEligibilityForIntent,
-    refreshGitStatusForCreatePrIntent,
-    refreshBranchCompareForCreatePrIntent,
-    remoteStatus,
-    runRemoteAction,
-    setCreatePrIntentNoticeForWorktree,
-    updateCommitDrafts,
-    worktreePath
-  ])
-
   const hasUnstagedChanges = grouped.unstaged.length > 0 || grouped.untracked.length > 0
   const hasStageableChanges = hasUnstagedChanges
   const hasPartiallyStagedChanges = useMemo(() => {
@@ -3672,12 +2034,10 @@ function SourceControlInner(): React.JSX.Element {
       prState: hostedReviewStateForActions,
       isPRStateLoading: isHostedReviewStateLoading,
       inFlightRemoteOpKind,
-      hostedReviewCreation,
       branchCommitsAhead:
         branchSummary?.status === 'ready' ? (branchSummary.commitsAhead ?? 0) : undefined,
       hasCurrentBranch: Boolean(branchName),
-      canPushLinkedReviewWithoutUpstream: canUseHostedReviewPushTarget,
-      isPrIntentInFlight: isCreatePrIntentInFlight
+      canPushLinkedReviewWithoutUpstream: canUseHostedReviewPushTarget
     })
   }, [
     commitMessage,
@@ -3689,90 +2049,15 @@ function SourceControlInner(): React.JSX.Element {
     isAbortingOperation,
     isRemoteOperationActive,
     inFlightRemoteOpKind,
-    hostedReviewCreation,
     isHostedReviewStateLoading,
     hostedReviewStateForActions,
     canUseHostedReviewPushTarget,
-    isCreatePrIntentInFlight,
     branchSummary?.commitsAhead,
     branchSummary?.status,
     branchName,
     remoteStatusForActions,
     unresolvedConflicts.length
   ])
-
-  const createPrHeaderAction: PrimaryAction | null = useMemo(() => {
-    const action = resolveCreatePrHeaderAction({
-      stagedCount: grouped.staged.length,
-      hasUnstagedChanges,
-      hasStageableChanges,
-      hasPartiallyStagedChanges,
-      hasMessage: commitMessage.trim().length > 0,
-      hasUnresolvedConflicts: unresolvedConflicts.length > 0,
-      isCommitting,
-      isRemoteOperationActive: isRemoteOperationActive || isAbortingOperation,
-      upstreamStatus: remoteStatus,
-      prState: hostedReview?.state ?? null,
-      isPRStateLoading: isHostedReviewStateLoading,
-      inFlightRemoteOpKind,
-      hostedReviewCreation: hostedReviewCreationForHeader,
-      isHostedReviewCreationLoading:
-        isHostedReviewCreationLoading && hostedReviewCreationForHeader !== null,
-      branchCommitsAhead:
-        branchSummary?.status === 'ready' ? (branchSummary.commitsAhead ?? 0) : undefined,
-      hasCurrentBranch: Boolean(branchName),
-      isPrIntentInFlight: isCreatePrIntentInFlight
-    })
-    if ((prGenerating || isCreatingPr) && action?.kind === 'create_pr') {
-      return {
-        ...action,
-        title: prGenerating
-          ? translate(
-              'auto.components.right.sidebar.SourceControl.createPrIntentGeneratingDetails',
-              'Generating review details…'
-            )
-          : translate(
-              'auto.components.right.sidebar.SourceControl.fe5bd1a610',
-              'Creating {{value0}}...',
-              { value0: hostedReviewCreateCopy.reviewLabel }
-            ),
-        disabled: true
-      }
-    }
-    return action
-  }, [
-    branchName,
-    branchSummary?.commitsAhead,
-    branchSummary?.status,
-    commitMessage,
-    grouped.staged.length,
-    hasPartiallyStagedChanges,
-    hasStageableChanges,
-    hasUnstagedChanges,
-    hostedReview?.state,
-    hostedReviewCreationForHeader,
-    hostedReviewCreateCopy.reviewLabel,
-    inFlightRemoteOpKind,
-    isAbortingOperation,
-    isCommitting,
-    isCreatePrIntentInFlight,
-    isCreatingPr,
-    isHostedReviewCreationLoading,
-    isHostedReviewStateLoading,
-    isRemoteOperationActive,
-    prGenerating,
-    remoteStatus,
-    unresolvedConflicts.length
-  ])
-  const directCreatePrAction =
-    createPrHeaderAction?.kind === 'create_pr' &&
-    hostedReviewCreation?.canCreate === true &&
-    (!createPrHeaderAction.disabled || isCreatingPr || prGenerating)
-      ? createPrHeaderAction
-      : null
-  const visibleCreatePrHeaderAction = resolveVisibleCreatePrHeaderAction({
-    createPrHeaderAction
-  })
 
   const dropdownItems: DropdownEntry[] = useMemo(
     () =>
@@ -3790,8 +2075,6 @@ function SourceControlInner(): React.JSX.Element {
         prState: hostedReviewStateForActions,
         isPRStateLoading: isHostedReviewStateLoading,
         inFlightRemoteOpKind,
-        hostedReviewCreation,
-        isPullRequestOperationActive: prGenerating || isCreatingPr || isCreatePrIntentInFlight,
         branchCommitsAhead:
           branchSummary?.status === 'ready' ? (branchSummary.commitsAhead ?? 0) : undefined,
         hasCurrentBranch: Boolean(branchName),
@@ -3809,12 +2092,8 @@ function SourceControlInner(): React.JSX.Element {
       isAbortingOperation,
       isRemoteOperationActive,
       inFlightRemoteOpKind,
-      hostedReviewCreation,
-      isCreatingPr,
-      isCreatePrIntentInFlight,
       isHostedReviewStateLoading,
       hostedReviewStateForActions,
-      prGenerating,
       canUseHostedReviewPushTarget,
       branchSummary?.commitsAhead,
       branchSummary?.status,
@@ -3831,9 +2110,6 @@ function SourceControlInner(): React.JSX.Element {
   // pure remote actions go through runRemoteAction.
   const handleActionInvoke = useCallback(
     (kind: DropdownActionKind): void => {
-      if (prGenerating || isCreatingPr || isCreatePrIntentInFlight) {
-        return
-      }
       switch (kind) {
         case 'commit':
           void handleCommit()
@@ -3850,12 +2126,6 @@ function SourceControlInner(): React.JSX.Element {
         case 'abort_rebase':
           void handleAbortRebase()
           return
-        case 'create_pr':
-          void handleCreatePullRequest()
-          return
-        case 'push_create_pr':
-          void runCreatePrIntent()
-          return
         case 'push':
         case 'force_push':
         case 'pull':
@@ -3867,18 +2137,7 @@ function SourceControlInner(): React.JSX.Element {
           void runRemoteAction(kind === 'rebase_base' ? 'rebase' : kind)
       }
     },
-    [
-      handleCommit,
-      handleCreatePullRequest,
-      handleAbortMerge,
-      handleAbortRebase,
-      isCreatingPr,
-      isCreatePrIntentInFlight,
-      prGenerating,
-      runCreatePrIntent,
-      runCompoundCommitAction,
-      runRemoteAction
-    ]
+    [handleCommit, handleAbortMerge, handleAbortRebase, runCompoundCommitAction, runRemoteAction]
   )
 
   // Why: modifier-click should keep the current pane intact by opening the
@@ -4224,7 +2483,7 @@ function SourceControlInner(): React.JSX.Element {
 
   // Why: PrimaryActionKind is narrowed to the single-action kinds the
   // primary can emit ('commit' | 'stage' | 'push' | 'pull' | 'sync' |
-  // 'publish' | 'create_pr') — compound commit_* kinds are dropdown-only. An exhaustive
+  // 'publish') — compound commit_* kinds are dropdown-only. An exhaustive
   // switch keeps the mapping honest: if a new PrimaryActionKind is added,
   // TypeScript lights up the missing case instead of silently falling
   // through. 'stage' routes to a dedicated primary-only handler because
@@ -4239,26 +2498,9 @@ function SourceControlInner(): React.JSX.Element {
       case 'pull':
       case 'sync':
       case 'publish':
-      case 'create_pr':
         handleActionInvoke(primaryAction.kind)
-        return
-      case 'create_pr_intent':
-        void runCreatePrIntent()
     }
-  }, [handleActionInvoke, handleStageAllPrimary, primaryAction.kind, runCreatePrIntent])
-
-  const handleCreatePrHeaderClick = useCallback((): void => {
-    if (!createPrHeaderAction || createPrHeaderAction.disabled) {
-      return
-    }
-    if (createPrHeaderAction.kind === 'create_pr') {
-      void handleCreatePullRequest()
-      return
-    }
-    if (createPrHeaderAction.kind === 'create_pr_intent') {
-      void runCreatePrIntent()
-    }
-  }, [createPrHeaderAction, handleCreatePullRequest, runCreatePrIntent])
+  }, [handleActionInvoke, handleStageAllPrimary, primaryAction.kind])
 
   const branchCompareInFlightRef = useRef(false)
   const branchCompareRerunRef = useRef(false)
@@ -5033,10 +3275,6 @@ function SourceControlInner(): React.JSX.Element {
           filterExpanded={filterExpanded}
           onFilterQueryChange={setFilterQuery}
           onFilterExpandedChange={setFilterExpanded}
-          visibleCreatePrHeaderAction={visibleCreatePrHeaderAction}
-          isCreatePrIntentInFlight={isCreatePrIntentInFlight}
-          isCreatingPr={isCreatingPr || prGenerating}
-          onCreatePrHeaderClick={handleCreatePrHeaderClick}
           sourceControlViewMode={sourceControlViewMode}
           viewModeToggleDisabled={settings === null}
           onToggleViewMode={handleToggleSourceControlViewMode}
@@ -5300,89 +3538,50 @@ function SourceControlInner(): React.JSX.Element {
             </div>
           ) : null}
 
-          {shouldRenderCommitArea(unresolvedConflicts.length, conflictOperation) &&
-            (directCreatePrAction ? (
-              <CreateHostedReviewComposer
-                provider={hostedReviewCreateProvider}
-                branch={branchName}
-                base={prBase}
-                setBase={setPrBase}
-                title={prTitle}
-                setTitle={setPrTitle}
-                body={prBody}
-                setBody={setPrBody}
-                draft={prDraft}
-                setDraft={setPrDraft}
-                baseQuery={prBaseQuery}
-                setBaseQuery={setPrBaseQuery}
-                baseResults={prBaseResults}
-                setBaseResults={setPrBaseResults}
-                baseSearchError={prBaseSearchError}
-                aiGenerationEnabled={sourceControlAiActionsVisible && prAiGenerationEnabled}
-                generating={prGenerating}
-                generateDisabled={prGenerateDisabled}
-                generateDisabledReason={prGenerateDisabledReason}
-                generateError={prGenerateError}
-                createError={
-                  createPrIntentNotice?.tone === 'destructive' ? createPrIntentNotice.message : null
+          {shouldRenderCommitArea(unresolvedConflicts.length, conflictOperation) && (
+            <CommitArea
+              worktreeId={activeWorktreeId}
+              connectionId={activeConnectionId}
+              repoId={activeRepo?.id ?? null}
+              launchPlatform={activeSourceControlLaunchPlatform}
+              commitMessage={commitMessage}
+              commitError={commitError}
+              commitFailureRecoveryPrompt={commitFailureRecoveryPrompt}
+              remoteActionError={remoteActionError?.message ?? null}
+              isCommitting={isCommitting}
+              isFixingCommitFailureWithAI={isLaunchingCommitFailureAgent}
+              groupId={activeGroupId ?? activeWorktreeId}
+              showComposer={!showGenericEmptyState}
+              sourceControlAiActionsVisible={sourceControlAiActionsVisible}
+              aiEnabled={sourceControlAiActionsVisible && resolvedCommitMessageAi?.ok === true}
+              aiAgentConfigured={resolvedCommitMessageAi?.ok === true}
+              isGenerating={isGenerating}
+              generateError={generateError}
+              stagedCount={grouped.staged.length}
+              hasPartiallyStagedChanges={hasPartiallyStagedChanges}
+              hasUnresolvedConflicts={unresolvedConflicts.length > 0}
+              isRemoteOperationActive={isRemoteOperationActive || isAbortingOperation}
+              inFlightRemoteOpKind={inFlightRemoteOpKind}
+              primaryAction={primaryAction}
+              dropdownItems={dropdownItems}
+              fixCommitFailureRecipe={getLaunchActionRecipe('fixCommitFailure')}
+              onCommitMessageChange={(value) => {
+                if (!activeWorktreeId) {
+                  return
                 }
-                isCreating={isCreatingPr}
-                primaryAction={directCreatePrAction}
-                dropdownItems={dropdownItems}
-                onGenerate={handleGeneratePullRequestFieldsClick}
-                onCancelGenerate={handleCancelGeneratePullRequestFields}
-                onPrimaryAction={() => {
-                  void handleCreatePullRequest()
-                }}
-                onDropdownAction={handleActionInvoke}
-              />
-            ) : (
-              <CommitArea
-                worktreeId={activeWorktreeId}
-                connectionId={activeConnectionId}
-                repoId={activeRepo?.id ?? null}
-                launchPlatform={activeSourceControlLaunchPlatform}
-                commitMessage={commitMessage}
-                commitError={commitError}
-                commitFailureRecoveryPrompt={commitFailureRecoveryPrompt}
-                remoteActionError={remoteActionError?.message ?? null}
-                createPrIntentNotice={createPrIntentNotice}
-                isCommitting={isCommitting}
-                isFixingCommitFailureWithAI={isLaunchingCommitFailureAgent}
-                isCreatingPr={isCreatingPr || isCreatePrIntentInFlight}
-                isCreatePrIntentInFlight={isCreatePrIntentInFlight}
-                groupId={activeGroupId ?? activeWorktreeId}
-                showComposer={!showGenericEmptyState}
-                sourceControlAiActionsVisible={sourceControlAiActionsVisible}
-                aiEnabled={sourceControlAiActionsVisible && resolvedCommitMessageAi?.ok === true}
-                aiAgentConfigured={resolvedCommitMessageAi?.ok === true}
-                isGenerating={isGenerating}
-                generateError={generateError}
-                stagedCount={grouped.staged.length}
-                hasPartiallyStagedChanges={hasPartiallyStagedChanges}
-                hasUnresolvedConflicts={unresolvedConflicts.length > 0}
-                isRemoteOperationActive={isRemoteOperationActive || isAbortingOperation}
-                inFlightRemoteOpKind={inFlightRemoteOpKind}
-                primaryAction={primaryAction}
-                dropdownItems={dropdownItems}
-                fixCommitFailureRecipe={getLaunchActionRecipe('fixCommitFailure')}
-                onCommitMessageChange={(value) => {
-                  if (!activeWorktreeId) {
-                    return
-                  }
-                  updateCommitDrafts((prev) =>
-                    writeCommitDraftForWorktree(prev, activeWorktreeId, value)
-                  )
-                }}
-                onGenerate={handleGenerateCommitMessageClick}
-                onCancelGenerate={handleCancelGenerate}
-                onSaveLaunchActionDefault={saveLaunchActionDefault}
-                onOpenSourceControlAiSettings={openSourceControlAiSettings}
-                onFixCommitFailureWithAI={handleFixCommitFailureWithAI}
-                onPrimaryAction={handlePrimaryClick}
-                onDropdownAction={handleActionInvoke}
-              />
-            ))}
+                updateCommitDrafts((prev) =>
+                  writeCommitDraftForWorktree(prev, activeWorktreeId, value)
+                )
+              }}
+              onGenerate={handleGenerateCommitMessageClick}
+              onCancelGenerate={handleCancelGenerate}
+              onSaveLaunchActionDefault={saveLaunchActionDefault}
+              onOpenSourceControlAiSettings={openSourceControlAiSettings}
+              onFixCommitFailureWithAI={handleFixCommitFailureWithAI}
+              onPrimaryAction={handlePrimaryClick}
+              onDropdownAction={handleActionInvoke}
+            />
+          )}
 
           {hasFilteredUncommittedEntries && (
             <>
@@ -5870,27 +4069,6 @@ function SourceControlInner(): React.JSX.Element {
         }}
         onSaveDefaults={handleSaveCommitMessageGenerationDefaults}
       />
-      <SourceControlTextGenerationDialog
-        open={sourceControlAiActionsVisible && pullRequestGenerationDialogOpen}
-        onOpenChange={setPullRequestGenerationDialogOpen}
-        actionId="pullRequest"
-        title={translate(
-          'auto.components.right.sidebar.SourceControl.1a6a6e0bc5',
-          'Generate Hosted Review Details'
-        )}
-        description={translate(
-          'auto.components.right.sidebar.SourceControl.f4c766f1ca',
-          'Choose the agent and command template for this run.'
-        )}
-        generateLabel="Generate"
-        settings={settings}
-        repo={activeRepo ?? null}
-        discoveryHostKey={sourceControlAiDiscoveryHostKey}
-        onGenerate={(params) => {
-          void handleGeneratePullRequestFields({ sourceControlAiResolvedParams: params })
-        }}
-        onSaveDefaults={handleSavePullRequestGenerationDefaults}
-      />
     </>
   )
 }
@@ -6075,11 +4253,8 @@ type CommitAreaProps = {
   commitError: string | null
   commitFailureRecoveryPrompt: string | null
   remoteActionError: string | null
-  createPrIntentNotice?: CreatePrIntentNotice | null
   isCommitting: boolean
   isFixingCommitFailureWithAI: boolean
-  isCreatingPr?: boolean
-  isCreatePrIntentInFlight?: boolean
   showComposer?: boolean
   sourceControlAiActionsVisible: boolean
   aiEnabled: boolean
@@ -6118,11 +4293,8 @@ export function CommitArea({
   commitError,
   commitFailureRecoveryPrompt,
   remoteActionError,
-  createPrIntentNotice,
   isCommitting,
   isFixingCommitFailureWithAI,
-  isCreatingPr = false,
-  isCreatePrIntentInFlight = false,
   showComposer = true,
   sourceControlAiActionsVisible,
   aiEnabled,
@@ -6163,11 +4335,9 @@ export function CommitArea({
     primaryAction.kind === inFlightRemoteOpKind ||
     (primaryAction.kind === 'push' && inFlightRemoteOpKind === 'force_push')
   const showSpinner =
-    primaryAction.kind === 'create_pr' || primaryAction.kind === 'create_pr_intent'
-      ? isCreatingPr
-      : primaryAction.kind === 'commit'
-        ? isCommitting
-        : isRemoteOperationActive && primaryHostsRemoteOperation
+    primaryAction.kind === 'commit'
+      ? isCommitting
+      : isRemoteOperationActive && primaryHostsRemoteOperation
   // Why: when the primary doesn't host the in-flight op (e.g. Fetch, or any
   // dropdown action that mismatches the primary's natural label) the click
   // would otherwise be silent — the toast only fires on failure and a
@@ -6175,8 +4345,7 @@ export function CommitArea({
   // the user immediate feedback that the action they picked is running,
   // while still leaving the menu reachable to read the disabled-row
   // tooltips.
-  const showChevronSpinner =
-    (isCommitting || isCreatingPr || isRemoteOperationActive) && !showSpinner
+  const showChevronSpinner = (isCommitting || isRemoteOperationActive) && !showSpinner
   const commitFailureSummary = useMemo(
     () => (commitError ? summarizeCommitFailure(commitError) : null),
     [commitError]
@@ -6247,12 +4416,11 @@ export function CommitArea({
     hasUnresolvedConflicts,
     isCommitting,
     isRemoteOperationActive,
-    isPullRequestOperationActive: isCreatingPr
+    isPullRequestOperationActive: false
   })
   const describedBy = [
     commitError ? 'commit-area-error' : null,
     remoteActionError ? 'commit-area-remote-error' : null,
-    createPrIntentNotice ? 'commit-area-create-pr-intent' : null,
     generateError ? 'commit-area-generate-error' : null
   ]
     .filter(Boolean)
@@ -6260,10 +4428,7 @@ export function CommitArea({
 
   // Why: only render Generate when it has a runnable path; otherwise the
   // composer should stay focused on the normal Commit action.
-  // Why: Create PR intent owns message generation and surfaces status via the
-  // inline notice; a second composer spinner stacks on the primary spinner.
-  const showGenerate =
-    showComposer && aiEnabled && !isCreatePrIntentInFlight && (aiAgentConfigured || isGenerating)
+  const showGenerate = showComposer && aiEnabled && (aiAgentConfigured || isGenerating)
   let generateDisabledReason: string | undefined
   if (isGenerating) {
     generateDisabledReason = 'Generating commit message…'
@@ -6654,37 +4819,6 @@ export function CommitArea({
           {remoteActionError}
         </p>
       ) : null}
-      {createPrIntentNotice && (
-        <div
-          id="commit-area-create-pr-intent"
-          role={createPrIntentNotice.tone === 'destructive' ? 'alert' : 'status'}
-          aria-live="polite"
-          className={cn(
-            'mt-1 flex min-w-0 items-center gap-1.5 text-[11px]',
-            createPrIntentNotice.tone === 'destructive'
-              ? 'text-destructive'
-              : 'text-muted-foreground'
-          )}
-        >
-          {/* Why: Create Review blockers carry recovery steps; truncating them hides
-          the action the user needs in the default narrow sidebar. */}
-          <span className="min-w-0 flex-1 break-words leading-4 [overflow-wrap:anywhere]">
-            {createPrIntentNotice.message}
-          </span>
-          {createPrIntentNotice.action === 'settings' && onOpenSourceControlAiSettings ? (
-            <button
-              type="button"
-              className="shrink-0 font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
-              onClick={() => onOpenSourceControlAiSettings()}
-            >
-              {translate(
-                'auto.components.right.sidebar.SourceControl.473f18758e',
-                'Source Control AI settings'
-              )}
-            </button>
-          ) : null}
-        </div>
-      )}
       {generateError && (
         <p
           id="commit-area-generate-error"

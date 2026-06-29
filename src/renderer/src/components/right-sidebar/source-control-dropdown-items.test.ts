@@ -36,8 +36,6 @@ describe('resolveDropdownItems', () => {
       'separator',
       'push',
       'force_push',
-      'create_pr',
-      'push_create_pr',
       'pull',
       'fast_forward',
       'sync',
@@ -169,13 +167,6 @@ describe('resolveDropdownItems', () => {
           ahead: 14,
           behind: 3,
           behindCommitsArePatchEquivalent: true
-        },
-        hostedReviewCreation: {
-          provider: 'github',
-          review: null,
-          canCreate: false,
-          blockedReason: 'needs_sync',
-          nextAction: 'sync'
         }
       })
     )
@@ -209,9 +200,6 @@ describe('resolveDropdownItems', () => {
     )
     expect(byKind.sync.disabled).toBe(true)
     expect(byKind.sync.title).toBe('Use Force Push — remote only has older copies of local commits')
-    expect(byKind.create_pr.hint).toBe('Force Push first')
-    expect(byKind.push_create_pr.label).toBe('Force Push before PR')
-    expect(byKind.push_create_pr.disabled).toBe(false)
   })
 
   it('offers explicit force-push-with-lease for an ordinary ahead branch', () => {
@@ -346,14 +334,7 @@ describe('resolveDropdownItems', () => {
     const items = resolveDropdownItems(
       inputs({
         isPullRequestOperationActive: true,
-        upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 },
-        hostedReviewCreation: {
-          provider: 'github',
-          review: null,
-          canCreate: true,
-          blockedReason: null,
-          nextAction: null
-        }
+        upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 }
       })
     )
 
@@ -603,119 +584,5 @@ describe('resolveDropdownItems', () => {
     expect(divergedByKind.fast_forward.title).toBe(
       'Try a fast-forward pull; git may reject local commits'
     )
-  })
-
-  it('enables the push-before-PR recovery action when review creation is only blocked by unpushed commits', () => {
-    const items = resolveDropdownItems(
-      inputs({
-        upstreamStatus: { hasUpstream: true, ahead: 2, behind: 0 },
-        hostedReviewCreation: {
-          provider: 'github',
-          review: null,
-          canCreate: false,
-          blockedReason: 'needs_push',
-          nextAction: 'push'
-        }
-      })
-    )
-    const byKind = Object.fromEntries(
-      items.filter((e) => e.kind !== 'separator').map((e) => [e.kind, e])
-    )
-    expect(byKind.create_pr.disabled).toBe(false)
-    expect(byKind.create_pr.hint).toBe('Push first')
-    expect(byKind.push_create_pr.label).toBe('Push before PR')
-    expect(byKind.push_create_pr.disabled).toBe(false)
-  })
-
-  it('uses GitLab MR copy for create and push-before-create rows', () => {
-    const items = resolveDropdownItems(
-      inputs({
-        upstreamStatus: { hasUpstream: true, ahead: 2, behind: 0 },
-        hostedReviewCreation: {
-          provider: 'gitlab',
-          review: null,
-          canCreate: false,
-          blockedReason: 'needs_push',
-          nextAction: 'push'
-        }
-      })
-    )
-    const byKind = Object.fromEntries(
-      items.filter((e) => e.kind !== 'separator').map((e) => [e.kind, e])
-    )
-    expect(byKind.create_pr.label).toBe('Create MR')
-    expect(byKind.create_pr.hint).toBe('Push first')
-    expect(byKind.create_pr.disabled).toBe(false)
-    expect(byKind.push_create_pr.label).toBe('Push before MR')
-    expect(byKind.push_create_pr.title).toBe('Push local commits before creating a merge request')
-    expect(byKind.push_create_pr.disabled).toBe(false)
-  })
-
-  it.each(['azure-devops', 'gitea'] as const)(
-    'enables push-before-PR recovery for %s review creation',
-    (provider) => {
-      const items = resolveDropdownItems(
-        inputs({
-          upstreamStatus: { hasUpstream: true, ahead: 2, behind: 0 },
-          hostedReviewCreation: {
-            provider,
-            review: null,
-            canCreate: false,
-            blockedReason: 'needs_push',
-            nextAction: 'push'
-          }
-        })
-      )
-      const byKind = Object.fromEntries(
-        items.filter((e) => e.kind !== 'separator').map((e) => [e.kind, e])
-      )
-      expect(byKind.create_pr.label).toBe('Create PR')
-      expect(byKind.create_pr.hint).toBe('Push first')
-      expect(byKind.create_pr.disabled).toBe(false)
-      expect(byKind.push_create_pr.label).toBe('Push before PR')
-      expect(byKind.push_create_pr.title).toBe('Push local commits before creating a pull request')
-      expect(byKind.push_create_pr.disabled).toBe(false)
-    }
-  )
-
-  it.each([
-    ['azure-devops', 'Set ORCA_AZURE_DEVOPS_TOKEN in this environment'],
-    ['gitea', 'Set ORCA_GITEA_TOKEN in this environment']
-  ] as const)('uses token auth copy when %s PR creation needs authentication', (provider, hint) => {
-    const items = resolveDropdownItems(
-      inputs({
-        upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 },
-        hostedReviewCreation: {
-          provider,
-          review: null,
-          canCreate: false,
-          blockedReason: 'auth_required',
-          nextAction: 'authenticate'
-        }
-      })
-    )
-    const byKind = Object.fromEntries(
-      items.filter((e) => e.kind !== 'separator').map((e) => [e.kind, e])
-    )
-    expect(byKind.create_pr.hint).toBe(hint)
-  })
-
-  it('uses GitLab auth copy when MR creation needs authentication', () => {
-    const items = resolveDropdownItems(
-      inputs({
-        upstreamStatus: { hasUpstream: true, ahead: 0, behind: 0 },
-        hostedReviewCreation: {
-          provider: 'gitlab',
-          review: null,
-          canCreate: false,
-          blockedReason: 'auth_required',
-          nextAction: 'authenticate'
-        }
-      })
-    )
-    const byKind = Object.fromEntries(
-      items.filter((e) => e.kind !== 'separator').map((e) => [e.kind, e])
-    )
-    expect(byKind.create_pr.hint).toBe('Run glab auth login in this environment')
   })
 })

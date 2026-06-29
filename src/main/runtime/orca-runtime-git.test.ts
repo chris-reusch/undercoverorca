@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GlobalSettings } from '../../shared/types'
 import type * as GitStatusModule from '../git/status'
 import type * as CommitMessageTextGenerationModule from '../text-generation/commit-message-text-generation'
-import type * as PullRequestContextModule from '../text-generation/pull-request-context'
 import { RuntimeGitCommands, type ResolvedRuntimeGitWorktree } from './orca-runtime-git'
 
 const mocks = vi.hoisted(() => ({
@@ -14,11 +13,8 @@ const mocks = vi.hoisted(() => ({
   checkoutBranch: vi.fn(),
   listLocalBranches: vi.fn(),
   getStagedCommitContext: vi.fn(),
-  getPullRequestDraftContext: vi.fn(),
   generateCommitMessageFromContext: vi.fn(),
-  generatePullRequestFieldsFromContext: vi.fn(),
   resolveCommitMessageSettings: vi.fn(),
-  resolveHostedReviewBodyForGeneration: vi.fn(),
   getSshGitProvider: vi.fn()
 }))
 
@@ -39,23 +35,11 @@ vi.mock('../text-generation/commit-message-text-generation', async () => ({
     '../text-generation/commit-message-text-generation'
   )),
   generateCommitMessageFromContext: mocks.generateCommitMessageFromContext,
-  generatePullRequestFieldsFromContext: mocks.generatePullRequestFieldsFromContext,
   resolveCommitMessageSettings: mocks.resolveCommitMessageSettings
-}))
-
-vi.mock('../text-generation/pull-request-context', async () => ({
-  ...(await vi.importActual<typeof PullRequestContextModule>(
-    '../text-generation/pull-request-context'
-  )),
-  getPullRequestDraftContext: mocks.getPullRequestDraftContext
 }))
 
 vi.mock('../providers/ssh-git-dispatch', () => ({
   getSshGitProvider: mocks.getSshGitProvider
-}))
-
-vi.mock('../source-control/pull-request-template', () => ({
-  resolveHostedReviewBodyForGeneration: mocks.resolveHostedReviewBodyForGeneration
 }))
 
 const tempDirs: string[] = []
@@ -87,12 +71,8 @@ describe('RuntimeGitCommands', () => {
     mocks.abortMerge.mockReset()
     mocks.abortRebase.mockReset()
     mocks.getStagedCommitContext.mockReset()
-    mocks.getPullRequestDraftContext.mockReset()
     mocks.generateCommitMessageFromContext.mockReset()
-    mocks.generatePullRequestFieldsFromContext.mockReset()
     mocks.resolveCommitMessageSettings.mockReset()
-    mocks.resolveHostedReviewBodyForGeneration.mockReset()
-    mocks.resolveHostedReviewBodyForGeneration.mockImplementation(async ({ body }) => body)
     mocks.getSshGitProvider.mockReset()
     mocks.checkoutBranch.mockReset()
     mocks.listLocalBranches.mockReset()
@@ -398,139 +378,6 @@ describe('RuntimeGitCommands', () => {
       expect.objectContaining({
         kind: 'local',
         cwd: worktreePath
-      })
-    )
-  })
-
-  it('uses one-shot resolved params before runtime pull-request defaults', async () => {
-    const worktreePath = mkdtempSync(join(tmpdir(), 'orca-runtime-git-'))
-    tempDirs.push(worktreePath)
-    const context = {
-      base: 'main',
-      branch: 'feature/source-control-ai',
-      commitSummary: 'abc123 feat: test',
-      changeSummary: 'M README.md',
-      patch: '+hello',
-      currentTitle: '',
-      currentBody: '',
-      currentDraft: false
-    }
-    const sourceControlAiResolvedParams = {
-      agentId: 'codex' as const,
-      model: 'gpt-5.5',
-      thinkingLevel: 'high',
-      commandInputTemplate: '{basePrompt}\n\nUse release-note style.'
-    }
-    mocks.getPullRequestDraftContext.mockResolvedValue(context)
-    mocks.generatePullRequestFieldsFromContext.mockResolvedValue({
-      success: true,
-      fields: {
-        base: 'main',
-        title: 'Improve Source Control AI',
-        body: 'Body',
-        draft: false
-      }
-    })
-    const commands = new RuntimeGitCommands({
-      resolveRuntimeGitTarget: async () => ({ worktree: makeWorktree(worktreePath) }),
-      getRuntimeSettings: () =>
-        ({
-          sourceControlAi: {
-            pullRequest: {
-              enabled: true,
-              agentId: 'cursor',
-              customPrompt: 'Saved default that should not win.'
-            }
-          }
-        }) as unknown as GlobalSettings
-    })
-
-    await expect(
-      commands.generateRuntimePullRequestFields(
-        'id:wt-1',
-        { base: 'main', title: '', body: '', draft: false },
-        { sourceControlAiResolvedParams }
-      )
-    ).resolves.toEqual({
-      success: true,
-      fields: {
-        base: 'main',
-        title: 'Improve Source Control AI',
-        body: 'Body',
-        draft: false
-      }
-    })
-
-    expect(mocks.resolveCommitMessageSettings).not.toHaveBeenCalled()
-    expect(mocks.generatePullRequestFieldsFromContext).toHaveBeenCalledWith(
-      context,
-      sourceControlAiResolvedParams,
-      expect.objectContaining({
-        kind: 'local',
-        cwd: worktreePath
-      })
-    )
-  })
-
-  it('loads the hosted review template before generating pull-request fields', async () => {
-    const worktreePath = mkdtempSync(join(tmpdir(), 'orca-runtime-git-'))
-    tempDirs.push(worktreePath)
-    const templateBody = '## Summary\n\n## Testing\n\n- [ ] Required checks'
-    const context = {
-      base: 'main',
-      branch: 'feature/template-aware-pr',
-      branchChangedByPreparation: false,
-      commitSummary: 'abc123 feat: test',
-      changeSummary: 'M README.md',
-      patch: '+hello',
-      currentTitle: '',
-      currentBody: templateBody,
-      currentDraft: false
-    }
-    const sourceControlAiResolvedParams = {
-      agentId: 'codex' as const,
-      model: 'gpt-5.5'
-    }
-    mocks.resolveHostedReviewBodyForGeneration.mockResolvedValue(templateBody)
-    mocks.getPullRequestDraftContext.mockResolvedValue(context)
-    mocks.generatePullRequestFieldsFromContext.mockResolvedValue({
-      success: true,
-      fields: {
-        base: 'main',
-        title: 'Use existing template',
-        body: templateBody,
-        draft: false
-      }
-    })
-    const commands = new RuntimeGitCommands({
-      resolveRuntimeGitTarget: async () => ({ worktree: makeWorktree(worktreePath) }),
-      getRuntimeSettings: () => ({}) as GlobalSettings
-    })
-
-    await commands.generateRuntimePullRequestFields(
-      'id:wt-1',
-      {
-        base: 'main',
-        title: '',
-        body: '',
-        draft: false,
-        provider: 'gitlab',
-        useTemplate: true
-      },
-      { sourceControlAiResolvedParams }
-    )
-
-    expect(mocks.resolveHostedReviewBodyForGeneration).toHaveBeenCalledWith({
-      body: '',
-      repoPath: worktreePath,
-      connectionId: undefined,
-      provider: 'gitlab',
-      useTemplate: true
-    })
-    expect(mocks.getPullRequestDraftContext).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.objectContaining({
-        currentBody: templateBody
       })
     )
   })

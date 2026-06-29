@@ -6,10 +6,6 @@ import {
 } from '../../../../shared/source-control-primary-action-decision'
 import type { SourceControlPrimaryActionDecision } from '../../../../shared/source-control-primary-action-decision-types'
 import { translate } from '@/i18n/i18n'
-import {
-  localizedHostedReviewCopy,
-  resolveSupportedHostedReviewCopyProvider
-} from '@/i18n/hosted-review-localized-copy'
 import { type PrimaryAction, type PrimaryActionInputs } from './source-control-primary-action-types'
 import {
   describeForcePushWithLease,
@@ -49,46 +45,27 @@ export type {
  * through "Publish Branch" on every worktree switch.
  */
 export function resolvePrimaryAction(inputs: PrimaryActionInputs): PrimaryAction {
-  return toRendererPrimaryAction(resolveSourceControlPrimaryActionDecision(inputs), inputs)
+  return toRendererPrimaryAction(resolveSourceControlPrimaryActionDecision(inputs))
 }
 
 export function resolveCommitAreaPrimaryAction(inputs: PrimaryActionInputs): PrimaryAction {
-  return toRendererPrimaryAction(
-    resolveSourceControlCommitAreaPrimaryActionDecision(inputs),
-    inputs
-  )
+  return toRendererPrimaryAction(resolveSourceControlCommitAreaPrimaryActionDecision(inputs))
 }
 
-function toRendererPrimaryAction(
-  decision: SourceControlPrimaryActionDecision,
-  inputs: PrimaryActionInputs
-): PrimaryAction {
+function toRendererPrimaryAction(decision: SourceControlPrimaryActionDecision): PrimaryAction {
   return {
     kind: decision.kind,
-    label: resolvePrimaryActionLabel(decision, inputs),
-    title: resolvePrimaryActionTitle(decision, inputs),
+    label: resolvePrimaryActionLabel(decision),
+    title: resolvePrimaryActionTitle(decision),
     disabled: decision.disabled
   }
 }
 
-function resolvePrimaryActionLabel(
-  decision: SourceControlPrimaryActionDecision,
-  inputs: PrimaryActionInputs
-): string {
+function resolvePrimaryActionLabel(decision: SourceControlPrimaryActionDecision): string {
   if (decision.labelIntent === 'force_push') {
     return translate(
       'auto.components.right.sidebar.source.control.primary.action.390abeab93',
       'Force Push'
-    )
-  }
-  if (decision.labelIntent === 'create_pr') {
-    const copy = localizedHostedReviewCopy(
-      resolveSupportedHostedReviewCopyProvider(inputs.hostedReviewCreation?.provider)
-    )
-    return translate(
-      'auto.components.right.sidebar.source.control.primary.action.e7ffa46946',
-      'Create {{value0}}',
-      { value0: copy.shortLabel }
     )
   }
   switch (decision.labelIntent) {
@@ -122,18 +99,10 @@ function resolvePrimaryActionLabel(
         'auto.components.right.sidebar.source.control.primary.action.7b4d02e6b8',
         'Publish Branch'
       )
-    case 'create_pr_intent':
-      return resolvePrimaryActionLabel({ ...decision, labelIntent: 'create_pr' }, inputs)
   }
 }
 
-function resolvePrimaryActionTitle(
-  decision: SourceControlPrimaryActionDecision,
-  inputs: PrimaryActionInputs
-): string {
-  const copy = localizedHostedReviewCopy(
-    resolveSupportedHostedReviewCopyProvider(inputs.hostedReviewCreation?.provider)
-  )
+function resolvePrimaryActionTitle(decision: SourceControlPrimaryActionDecision): string {
   switch (decision.titleIntent) {
     case 'commit_in_progress':
       return translate(
@@ -149,7 +118,7 @@ function resolvePrimaryActionTitle(
       return translate(
         'auto.components.right.sidebar.source.control.primary.action.484f45c439',
         '{{value0}} in progress…',
-        { value0: resolvePrimaryActionLabel(decision, inputs) }
+        { value0: resolvePrimaryActionLabel(decision) }
       )
     case 'remote_operation_in_progress':
       return translate(
@@ -165,18 +134,6 @@ function resolvePrimaryActionTitle(
       return translate(
         'auto.components.right.sidebar.source.control.primary.action.a6457b46a7',
         'Resolve conflicts before committing'
-      )
-    case 'prepare_review':
-      if (decision.disabled) {
-        return translate(
-          'auto.components.right.sidebar.source.control.primary.action.d37e68f61d',
-          'Preparing branch for review…'
-        )
-      }
-      return translate(
-        'auto.components.right.sidebar.source.control.primary.action.c72e5e65d1',
-        'Prepare this branch and create a {{value0}}',
-        { value0: copy.reviewLabel }
       )
     case 'commit_staged_changes':
       return translate(
@@ -236,22 +193,10 @@ function resolvePrimaryActionTitle(
       return describePullCount(decision.count ?? 0)
     case 'push_count':
       return describePushCount(decision.count ?? 0)
-    case 'create_review':
-      return translate(
-        'auto.components.right.sidebar.source.control.primary.action.946a8a05ea',
-        'Create a {{value0}} for this branch',
-        { value0: copy.reviewLabel }
-      )
     case 'nothing_to_commit_up_to_date':
       return translate(
         'auto.components.right.sidebar.source.control.primary.action.8f9a0b1c2d',
         'Nothing to commit. Branch is up to date.'
-      )
-    case 'checking_review_creation':
-      return translate(
-        'auto.components.right.sidebar.source.control.primary.action.h3i4j5k607',
-        'Checking whether this branch can create a {{value0}}…',
-        { value0: copy.reviewLabel }
       )
   }
 }

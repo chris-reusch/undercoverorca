@@ -27,8 +27,9 @@ import { listWorktrees, addWorktree, addSparseWorktree } from '../git/worktree'
 import type { AddWorktreeOptions, AddWorktreeResult } from '../git/worktree'
 import { getGitUsername, getBranchConflictKind, resolveDefaultBaseRefViaExec } from '../git/repo'
 import { hasCommitObjectViaGitExec } from '../git/commit-object-ref'
-import type { ForgeProviderId } from '../source-control/forge-provider'
 import { validateGitPushTarget } from '../git/push-target-validation'
+
+type LinkedReviewProviderId = 'github' | 'gitlab' | 'bitbucket' | 'azure-devops' | 'gitea'
 import { assertGitPushTargetShape } from '../../shared/git-push-target-validation'
 import { gitExecFileAsync } from '../git/runner'
 import { parseGitHubOwnerRepo } from '../github/gh-utils'
@@ -668,7 +669,7 @@ type SelectedReviewBranchInput = Pick<
 >
 
 type SelectedReviewBranch = {
-  provider: ForgeProviderId
+  provider: LinkedReviewProviderId
   number: number
 }
 

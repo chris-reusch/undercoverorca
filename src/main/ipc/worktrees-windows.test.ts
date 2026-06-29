@@ -12,7 +12,6 @@ const {
   resolveDefaultBaseRefViaExecMock,
   getBranchConflictKindMock,
   getPRForBranchMock,
-  createGitHubPullRequestMock,
   getEffectiveHooksMock,
   getEffectiveHooksFromConfigMock,
   getDefaultTabsLaunchMock,
@@ -40,7 +39,6 @@ const {
   resolveDefaultBaseRefViaExecMock: vi.fn(),
   getBranchConflictKindMock: vi.fn(),
   getPRForBranchMock: vi.fn(),
-  createGitHubPullRequestMock: vi.fn(),
   getEffectiveHooksMock: vi.fn(),
   getEffectiveHooksFromConfigMock: vi.fn(),
   getDefaultTabsLaunchMock: vi.fn(),
@@ -90,10 +88,6 @@ vi.mock('../git/repo', () => ({
 
 vi.mock('../github/client', () => ({
   getPRForBranch: getPRForBranchMock
-}))
-
-vi.mock('../github/create-pr', () => ({
-  createGitHubPullRequest: createGitHubPullRequestMock
 }))
 
 vi.mock('../hooks', () => ({
@@ -165,7 +159,6 @@ describe('registerWorktreeHandlers – Windows path handling', () => {
     resolveDefaultBaseRefViaExecMock.mockReset()
     getBranchConflictKindMock.mockReset()
     getPRForBranchMock.mockReset()
-    createGitHubPullRequestMock.mockReset()
     getEffectiveHooksMock.mockReset()
     getEffectiveHooksFromConfigMock.mockReset()
     getDefaultTabsLaunchMock.mockReset()

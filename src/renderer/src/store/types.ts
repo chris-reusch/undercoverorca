@@ -6,7 +6,6 @@ import type { TabsSlice } from './slices/tabs'
 import type { UISlice } from './slices/ui'
 import type { SettingsSlice } from './slices/settings'
 import type { KeybindingsSlice } from './slices/keybindings'
-import type { HostedReviewSlice } from './slices/hosted-review'
 import type { PreflightSlice } from './slices/preflight'
 import type { EditorSlice } from './slices/editor'
 import type { StatsSlice } from './slices/stats'
@@ -21,7 +20,6 @@ import type { WorktreeNavHistorySlice } from './slices/worktree-nav-history'
 import type { DictationSlice } from './slices/dictation'
 import type { WorkspaceCleanupSlice } from './slices/workspace-cleanup'
 import type { RuntimeStatusSlice } from './slices/runtime-status'
-import type { PullRequestGenerationSlice } from './slices/pull-request-generation'
 import type { CommitMessageGenerationSlice } from './slices/commit-message-generation'
 import type { PinnedTabCloseConfirmSlice } from './slices/pinned-tab-close-confirm'
 
@@ -33,7 +31,6 @@ export type AppState = RepoSlice &
   UISlice &
   SettingsSlice &
   KeybindingsSlice &
-  HostedReviewSlice &
   PreflightSlice &
   EditorSlice &
   StatsSlice &
@@ -48,6 +45,5 @@ export type AppState = RepoSlice &
   DictationSlice &
   WorkspaceCleanupSlice &
   RuntimeStatusSlice &
-  PullRequestGenerationSlice &
   CommitMessageGenerationSlice &
   PinnedTabCloseConfirmSlice
